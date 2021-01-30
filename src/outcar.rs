@@ -207,6 +207,15 @@ impl Outcar<'_> {
         [v[0], v[1], v[2]]
     }
 
+    fn parse_opt_cells(context: &str) -> Vec<Mat33<f64>> {
+        Regex::new(r"direct lattice vectors")
+            .unwrap()
+            .find_iter(context)
+            .map(|x| x.start())
+            .map(|x| Self::parse_cell(&context[x..]))
+            .collect()
+    }
+
     fn parse_ions_per_type(context: &str) -> Vec<i32> {
         Regex::new(r"(?m)ions per type = .*$")
             .unwrap()
@@ -414,6 +423,30 @@ mod tests{
                       [0.0, 7.0, 0.0],
                       [0.0, 0.0, 8.0]];
         assert_eq!(Outcar::parse_cell(&input), output);
+    }
+
+    #[test]
+    fn test_parse_opt_cells() {
+        let input = r#"
+      direct lattice vectors                 reciprocal lattice vectors
+     6.000000000  0.000000000  0.000000000     0.166666667  0.000000000  0.000000000
+     0.000000000  7.000000000  0.000000000     0.000000000  0.142857143  0.000000000
+     0.000000000  0.000000000  8.000000000     0.000000000  0.000000000  0.125000000
+--
+      direct lattice vectors                 reciprocal lattice vectors
+     6.000000000  0.000000000  0.000000000     0.166666667  0.000000000  0.000000000
+     0.000000000  7.000000000  0.000000000     0.000000000  0.142857143  0.000000000
+     0.000000000  0.000000000  8.000000000     0.000000000  0.000000000  0.125000000
+--
+      direct lattice vectors                 reciprocal lattice vectors
+     6.000000000  0.000000000  0.000000000     0.166666667  0.000000000  0.000000000
+     0.000000000  7.000000000  0.000000000     0.000000000  0.142857143  0.000000000
+     0.000000000  0.000000000  8.000000000     0.000000000  0.000000000  0.125000000
+--"#;
+        let output = vec![ [[6.0, 0.0, 0.0],
+                            [0.0, 7.0, 0.0],
+                            [0.0, 0.0, 8.0]]; 3];
+        assert_eq!(Outcar::parse_opt_cells(&input), output);
     }
 
     #[test]
