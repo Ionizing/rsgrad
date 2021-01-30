@@ -184,6 +184,26 @@ impl Outcar {
             .collect::<Vec<i32>>();
         (v[0], v[1])
     }
+
+    fn parse_cell(context: &str) -> Mat33<f64> {
+        let pos = Regex::new(r"direct lattice vectors")
+            .unwrap()
+            .find(context)
+            .unwrap()
+            .start();
+        let v = &context[pos..]
+            .lines()
+            .skip(1)
+            .take(3)
+            .map(|l| {
+                let v = l.split_whitespace()
+                         .map(|x| x.parse::<f64>().unwrap())
+                         .collect::<Vec<f64>>();
+                [v[0], v[1], v[2]]
+            })
+            .collect::<Vec<[f64; 3]>>();
+        [v[0], v[1], v[2]]
+    }
 }
 
 
@@ -348,5 +368,20 @@ mod tests{
    number of dos      NEDOS =    301   number of ions     NIONS =      4"#;
         let output = (1i32, 8i32);
         assert_eq!(Outcar::parse_nkpts_nbands(&input), output);
+    }
+
+    #[test]
+    fn test_parse_cell() {
+        let input = r#"
+  energy-cutoff  :      400.00
+  volume of cell :      336.00
+      direct lattice vectors                 reciprocal lattice vectors
+     6.000000000  0.000000000  0.000000000     0.166666667  0.000000000  0.000000000
+     0.000000000  7.000000000  0.000000000     0.000000000  0.142857143  0.000000000
+     0.000000000  0.000000000  8.000000000     0.000000000  0.000000000  0.125000000 "#;
+        let output = [[6.0, 0.0, 0.0],
+                      [0.0, 7.0, 0.0],
+                      [0.0, 0.0, 8.0]];
+        assert_eq!(Outcar::parse_cell(&input), output);
     }
 }
