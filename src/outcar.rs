@@ -40,13 +40,14 @@ struct Viberation {
 
 #[derive(Clone)]
 struct Outcar {
-    ispin  : i32,
-    nions  : i32,
-    nkpts  : i32,
-    nbands : i32,
-    efermi : f64,
-    cell   : Mat33<f64>,
-    vib    : Option<Viberation>,
+    ispin         : i32,
+    nions         : i32,
+    nkpts         : i32,
+    nbands        : i32,
+    efermi        : f64,
+    cell          : Mat33<f64>,
+    ions_per_type : Vec<i32>,
+    vib           : Option<Viberation>,
 }
 
 
@@ -203,6 +204,18 @@ impl Outcar {
             })
             .collect::<Vec<[f64; 3]>>();
         [v[0], v[1], v[2]]
+    }
+
+    fn parse_ions_per_type(context: &str) -> Vec<i32> {
+        Regex::new(r"(?m)ions per type = .*$")
+            .unwrap()
+            .find(context)
+            .unwrap()
+            .as_str()
+            .split_whitespace()
+            .skip(4)
+            .map(|x| x.parse::<i32>().unwrap())
+            .collect()
     }
 }
 
@@ -383,5 +396,15 @@ mod tests{
                       [0.0, 7.0, 0.0],
                       [0.0, 0.0, 8.0]];
         assert_eq!(Outcar::parse_cell(&input), output);
+    }
+
+    #[test]
+    fn test_parse_ions_per_type() {
+        let input = r#"
+   support grid    NGXF=    60 NGYF=   72 NGZF=   80
+   ions per type =               3   1
+ NGX,Y,Z   is equivalent  to a cutoff of   8.31,  8.55,  8.31 a.u. "#;
+        let output = vec![3i32, 1];
+        assert_eq!(Outcar::parse_ions_per_type(&input), output);
     }
 }
