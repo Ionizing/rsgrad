@@ -39,7 +39,7 @@ struct Viberation {
 
 
 #[derive(Clone)]
-struct Outcar {
+struct Outcar<'a> {
     ispin         : i32,
     nions         : i32,
     nkpts         : i32,
@@ -47,11 +47,12 @@ struct Outcar {
     efermi        : f64,
     cell          : Mat33<f64>,
     ions_per_type : Vec<i32>,
+    ion_types     : Vec<&'a str>,
     vib           : Option<Viberation>,
 }
 
 
-impl Outcar {
+impl Outcar<'_> {
     fn parse_ispin(context: &str) -> i32 {
         Regex::new(r"ISPIN  =      (\d)")
             .unwrap()
@@ -216,6 +217,23 @@ impl Outcar {
             .skip(4)
             .map(|x| x.parse::<i32>().unwrap())
             .collect()
+    }
+
+    fn parse_ion_types(context: &str) -> Vec<&str> {
+        let mut v = Regex::new(r"(?m)^ POTCAR:.*$")
+            .unwrap()
+            .find_iter(context)
+            .map(|l| {
+                l.as_str()
+                 .split_whitespace()
+                 .nth(2)
+                 .unwrap()
+            })
+            .collect::<Vec<&str>>();
+
+        let len = v.len() / 2;
+        (0..len).for_each(|_| {v.pop();});
+        v
     }
 }
 
@@ -406,5 +424,28 @@ mod tests{
  NGX,Y,Z   is equivalent  to a cutoff of   8.31,  8.55,  8.31 a.u. "#;
         let output = vec![3i32, 1];
         assert_eq!(Outcar::parse_ions_per_type(&input), output);
+    }
+
+
+    #[test]
+    fn test_parse_ion_types() {
+        let input = r#"
+ INCAR:
+ POTCAR:    PAW_PBE H 15Jun2001
+ POTCAR:    PAW_PBE N 08Apr2002
+ POTCAR:    PAW_PBE H 15Jun2001
+   VRHFIN =H: ultrasoft test
+   LEXCH  = PE
+   EATOM  =    12.4884 eV,    0.9179 Ry
+......
+   number of l-projection  operators is LMAX  =           3
+   number of lm-projection operators is LMMAX =           5
+
+ POTCAR:    PAW_PBE N 08Apr2002
+   VRHFIN =N: s2p3
+   LEXCH  = PE
+   EATOM  =   264.5486 eV,   19.4438 Ry"#;
+        let output = vec!["H", "N"];
+        assert_eq!(Outcar::parse_ion_types(&input), output);
     }
 }
