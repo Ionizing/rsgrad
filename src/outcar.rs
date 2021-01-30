@@ -6,15 +6,15 @@ use regex::Regex;
 
 
 // DONE ISPIN
-// TODO ions per type
-// TODO element symbol
-// TODO NKPTS
+// DONE ions per type
+// DONE element symbol
+// DONE NKPTS
 // TODO stress
-// TODO cell
+// DONE cell
 // DONE positions and forces
 // TODO magmom
-// TODO E-fermi
-// TODO scf
+// DONE E-fermi
+// DONE scf
 // TODO viberation
 
 
@@ -243,6 +243,33 @@ impl Outcar<'_> {
         let len = v.len() / 2;
         (0..len).for_each(|_| {v.pop();});
         v
+    }
+
+    fn parse_nscfs(context: &str) -> Vec<i32> {
+        Regex::new(r"free  energy")  // navigate to tail of ionic step
+            .unwrap()
+            .find_iter(context)
+            .map(|x| x.start())
+            .map(|x| Self::_parse_nscf(&context[..x]))
+            .collect()
+    }
+
+    fn _parse_nscf(context: &str) -> i32 {
+        let pos = context
+            .rmatch_indices("Iteration") // get the last "Iteration" during ionic step
+            .next()
+            .unwrap()
+            .0;
+        let context = &context[pos..];
+        Regex::new(r"Iteration\s*\d+\(\s*(\d+)\)")
+            .unwrap()
+            .captures(context)
+            .unwrap()
+            .get(1)
+            .unwrap()
+            .as_str()
+            .parse::<i32>()
+            .unwrap()
     }
 }
 
@@ -480,5 +507,57 @@ mod tests{
    EATOM  =   264.5486 eV,   19.4438 Ry"#;
         let output = vec!["H", "N"];
         assert_eq!(Outcar::parse_ion_types(&input), output);
+    }
+
+
+    #[test]
+    fn test_parse_nscf() {
+        let input = r#"
+ -0.508   0.103   0.035   0.000   0.070
+----------------------------------------- Iteration    1(  23)  ---------------------------------------
+......
+
+  FREE ENERGIE OF THE ION-ELECTRON SYSTEM (eV)
+  ---------------------------------------------------
+  free  energy   TOTEN  =       -19.26550806 eV
+  energy  without entropy=      -19.27710387  energy(sigma->0) =      -19.26937333 "#;
+        let output = 23i32;
+        assert_eq!(Outcar::_parse_nscf(&input), 23);
+    }
+
+    #[test]
+    fn test_parse_nscfs() {
+        let input = r#"
+----------------------------------------- Iteration    1(  22)  ---------------------------------------
+----------------------------------------- Iteration    1(  23)  ---------------------------------------
+......
+
+  FREE ENERGIE OF THE ION-ELECTRON SYSTEM (eV)
+  ---------------------------------------------------
+  free  energy   TOTEN  =       -19.26550806 eV
+  energy  without entropy=      -19.27710387  energy(sigma->0) =      -19.26937333
+......
+
+
+----------------------------------------- Iteration    2(  12)  ---------------------------------------
+----------------------------------------- Iteration    2(  13)  ---------------------------------------
+......
+  FREE ENERGIE OF THE ION-ELECTRON SYSTEM (eV)
+  ---------------------------------------------------
+  free  energy   TOTEN  =       -19.25519593 eV
+  energy  without entropy=      -19.26679174  energy(sigma->0) =      -19.25906120
+......
+
+
+----------------------------------------- Iteration    3(  12)  ---------------------------------------
+----------------------------------------- Iteration    3(  13)  ---------------------------------------
+......
+  FREE ENERGIE OF THE ION-ELECTRON SYSTEM (eV)
+  ---------------------------------------------------
+  free  energy   TOTEN  =       -19.26817124 eV
+  energy  without entropy=      -19.27976705  energy(sigma->0) =      -19.27203651
+"#;
+        let output = vec![23, 13, 13];
+        assert_eq!(Outcar::parse_nscfs(&input), output);
     }
 }
