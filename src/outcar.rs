@@ -42,6 +42,8 @@ struct Viberation {
 struct Outcar {
     ispin  : i32,
     nions  : i32,
+    nkpts  : i32,
+    nbands : i32,
     efermi : f64,
     cell   : Mat33<f64>,
     vib    : Option<Viberation>,
@@ -164,6 +166,23 @@ impl Outcar {
             .as_str()
             .parse::<f64>()
             .unwrap()
+    }
+
+    fn parse_nkpts_nbands(context: &str) -> (i32, i32) {
+        let v = Regex::new(r"NKPTS = \s*(\d+) .* NBANDS= \s*(\d+)")
+            .unwrap()
+            .captures(context)
+            .unwrap()
+            .iter()
+            .skip(1)
+            .map(|x| {
+                x.unwrap()
+                 .as_str()
+                 .parse::<i32>()
+                    .unwrap()
+            })
+            .collect::<Vec<i32>>();
+        (v[0], v[1])
     }
 }
 
@@ -319,5 +338,15 @@ mod tests{
         let input = " E-fermi :  -0.7865     XC(G=0):  -2.0223     alpha+bet : -0.5051";
         let output = -0.7865f64;
         assert_eq!(Outcar::parse_efermi(&input), output);
+    }
+
+    #[test]
+    fn test_parse_nkpts_nbands() {
+        let input = r#"
+ Dimension of arrays:
+   k-points           NKPTS =      1   k-points in BZ     NKDIM =      1   number of bands    NBANDS=      8
+   number of dos      NEDOS =    301   number of ions     NIONS =      4"#;
+        let output = (1i32, 8i32);
+        assert_eq!(Outcar::parse_nkpts_nbands(&input), output);
     }
 }
