@@ -1,6 +1,8 @@
 type MatX3<T> = Vec<[T;3]>;  // Nx3 matrix
 type Mat33<T> = [[T;3];3];   // 3x3 matrix
 
+use std::io;
+use std::path::Path;
 use rayon::prelude;
 use regex::Regex;
 
@@ -9,13 +11,15 @@ use regex::Regex;
 // DONE ions per type
 // DONE element symbol
 // DONE NKPTS
-// TODO stress
+// DONE stress
 // DONE cell
 // DONE positions and forces
 // TODO magmom
 // DONE E-fermi
 // DONE scf
 // TODO viberation
+// TODO LSORBIT
+// TODO IBRION
 
 
 #[derive(Clone)]
@@ -40,7 +44,9 @@ struct Viberation {
 
 #[derive(Clone)]
 struct Outcar<'a> {
+    lsorbit       : bool,
     ispin         : i32,
+    ibrion        : i32,
     nions         : i32,
     nkpts         : i32,
     nbands        : i32,
@@ -48,11 +54,16 @@ struct Outcar<'a> {
     cell          : Mat33<f64>,
     ions_per_type : Vec<i32>,
     ion_types     : Vec<&'a str>,
+    scf           : IonicIteration,
     vib           : Option<Viberation>,
 }
 
 
 impl Outcar<'_> {
+    pub fn from_file(path: &(impl AsRef<Path> + ?Sized)) -> io::Result<Self> {
+        todo!();
+    }
+
     fn parse_ispin(context: &str) -> i32 {
         Regex::new(r"ISPIN  =      (\d)")
             .unwrap()
@@ -284,6 +295,18 @@ impl Outcar<'_> {
                     .unwrap()
             })
             .collect()
+    }
+
+    fn parse_ibrion(context: &str) -> i32 {
+        Regex::new(r"IBRION = \s*(\S+) ")
+            .unwrap()
+            .captures(context)
+            .unwrap()
+            .get(1)
+            .unwrap()
+            .as_str()
+            .parse::<i32>()
+            .unwrap()
     }
 }
 
@@ -588,5 +611,18 @@ mod tests{
   external pressure =       -5.27 kB  Pullay stress =        0.00 kB"#;
         let output = vec![-6.17, -7.03, -5.27];
         assert_eq!(Outcar::parse_stress(&input), output);
+    }
+
+    #[test]
+    fn test_parse_ibrion() {
+        let input = r#"
+   NSW    =     85    number of steps for IOM
+   NBLOCK =      1;   KBLOCK =      1    inner block; outer block
+   IBRION =      5    ionic relax: 0-MD 1-quasi-New 2-CG
+   NFREE  =      2    steps in history (QN), initial steepest desc. (CG)
+   ISIF   =      2    stress and relaxation
+"#;
+        let output = 5i32;
+        assert_eq!(Outcar::parse_ibrion(&input), output);
     }
 }
