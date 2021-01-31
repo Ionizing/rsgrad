@@ -3,6 +3,7 @@ type Mat33<T> = [[T;3];3];   // 3x3 matrix
 
 use std::io;
 use std::path::Path;
+use std::fs;
 use rayon::prelude;
 use regex::Regex;
 
@@ -18,50 +19,124 @@ use regex::Regex;
 // DONE E-fermi
 // DONE scf
 // TODO viberation
-// TODO LSORBIT
-// TODO IBRION
+// DONE LSORBIT
+// DONE IBRION
 
 
 #[derive(Clone)]
 struct IonicIteration {
-    nscf      : i32,
-    toten     : f64,
-    toten_z   : f64,
-    cputime   : f64,
-    magmom    : Option<Vec<f64>>,  // differs when ISPIN=1,2 and ncl versions
-    positions : MatX3<f64>,
-    forces    : MatX3<f64>,
-    cell      : Mat33<f64>,
+    pub nscf      : i32,
+    pub toten     : f64,
+    pub toten_z   : f64,
+    pub cputime   : f64,
+    pub magmom    : Option<Vec<f64>>,  // differs when ISPIN=1,2 and ncl versions
+    pub positions : MatX3<f64>,
+    pub forces    : MatX3<f64>,
+    pub cell      : Mat33<f64>,
+}
+
+impl IonicIteration {
+    pub fn new(nscf: i32, toten: f64, toten_z: f64, cputime: f64,
+               magmom: Option<Vec<f64>>, positions: MatX3<f64>,
+               forces: MatX3<f64>, cell: Mat33<f64>) -> Self {
+        Self {
+            nscf, toten, toten_z, cputime, magmom, positions, forces, cell
+        }
+    }
 }
 
 
 #[derive(Clone)]
 struct Viberation {
-    freq   : f64,  // in THz
-    dxdydz : MatX3<f64>,
+    pub freq   : f64,  // in THz
+    pub dxdydz : MatX3<f64>,
 }
 
 
 #[derive(Clone)]
 struct Outcar<'a> {
-    lsorbit       : bool,
-    ispin         : i32,
-    ibrion        : i32,
-    nions         : i32,
-    nkpts         : i32,
-    nbands        : i32,
-    efermi        : f64,
-    cell          : Mat33<f64>,
-    ions_per_type : Vec<i32>,
-    ion_types     : Vec<&'a str>,
-    scf           : IonicIteration,
-    vib           : Option<Viberation>,
+    pub lsorbit       : bool,
+    pub ispin         : i32,
+    pub ibrion        : i32,
+    pub nions         : i32,
+    pub nkpts         : i32,
+    pub nbands        : i32,
+    pub efermi        : f64,
+    pub cell          : Mat33<f64>,
+    pub ions_per_type : Vec<i32>,
+    pub ion_types     : Vec<&'a str>,
+    pub scf           : Vec<IonicIteration>,
+    pub vib           : Option<Viberation>,
 }
 
 
 impl Outcar<'_> {
     pub fn from_file(path: &(impl AsRef<Path> + ?Sized)) -> io::Result<Self> {
-        todo!();
+        let context: String = fs::read_to_string(path)?;
+
+        let lsorbit         = Self::parse_lsorbit(&context);
+        let ispin           = Self::parse_ispin(&context);
+        let ibrion          = Self::parse_ibrion(&context);
+        let nions           = Self::parse_nions(&context);
+        let (nkpts, nbands) = Self::parse_nkpts_nbands(&context);
+        let efermi          = Self::parse_efermi(&context);
+        let cell            = Self::parse_cell(&context);
+        let ions_per_type   = Self::parse_ions_per_type(&context);
+        let ion_types       = Self::parse_ion_types(&context);
+
+        let nscfv          = Self::parse_nscfs(&context);
+        let totenv         = Self::parse_toten(&context);
+        let toten_zv       = Self::parse_toten_z(&context);
+        let cputimev       = Self::parse_cputime(&context);
+        let (posv, forcev) = Self::parse_posforce(&context);
+        let cellv          = Self::parse_opt_cells(&context);
+
+        // Do some check
+        let len = totenv.len();
+        assert_eq!(nscfv.len()    , len);
+        assert_eq!(toten_zv.len() , len);
+        assert_eq!(cputimev.len() , len);
+        assert_eq!(posv.len()     , len);
+        assert_eq!(forcev.len()   , len);
+        assert_eq!(cellv.len()    , len);
+
+        // let scf = (0..len).fold(vec![], |mut iscf, i| {
+        //     let ioniter = IonicIteration::new(nscfv[i], totenv[i], toten_zv[i], cputimev[i],
+        //                                       None, posv[i].clone(), forcev[i].clone(), cellv[i]);
+        //     iscf.push(ioniter);
+        //     iscf
+        // });
+
+        let scf = nscfv.into_iter()
+                       .zip(totenv.into_iter())
+                       .zip(toten_zv.into_iter())
+                       .zip(cputimev.into_iter())
+                       .zip(posv.into_iter())
+                       .zip(forcev.into_iter())
+                       .zip(cellv.into_iter())
+                       .map(|((((((iscf, e), ez), cpu), pos), f), cell)| {
+                           IonicIteration::new(iscf, e, ez, cpu, None, pos, f, cell)
+                       })
+                       .collect::<Vec<IonicIteration>>();
+
+        let vib = None;
+
+        Ok(
+            Outcar {
+                lsorbit,
+                ispin,
+                ibrion,
+                nions,
+                nkpts,
+                nbands,
+                efermi,
+                cell,
+                ions_per_type,
+                ion_types,
+                scf,
+                vib
+            }
+        )
     }
 
     fn parse_ispin(context: &str) -> i32 {
@@ -223,6 +298,7 @@ impl Outcar<'_> {
             .unwrap()
             .find_iter(context)
             .map(|x| x.start())
+            .skip(1)
             .map(|x| Self::parse_cell(&context[x..]))
             .collect()
     }
@@ -508,7 +584,7 @@ mod tests{
         let input = r#"
       direct lattice vectors                 reciprocal lattice vectors
      6.000000000  0.000000000  0.000000000     0.166666667  0.000000000  0.000000000
-     0.000000000  7.000000000  0.000000000     0.000000000  0.142857143  0.000000000
+     0.000000000  7.200000000  0.000000000     0.000000000  0.142857143  0.000000000
      0.000000000  0.000000000  8.000000000     0.000000000  0.000000000  0.125000000
 --
       direct lattice vectors                 reciprocal lattice vectors
@@ -523,7 +599,7 @@ mod tests{
 --"#;
         let output = vec![ [[6.0, 0.0, 0.0],
                             [0.0, 7.0, 0.0],
-                            [0.0, 0.0, 8.0]]; 3];
+                            [0.0, 0.0, 8.0]]; 2];
         assert_eq!(Outcar::parse_opt_cells(&input), output);
     }
 
