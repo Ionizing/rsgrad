@@ -308,6 +308,20 @@ impl Outcar<'_> {
             .parse::<i32>()
             .unwrap()
     }
+
+    fn parse_lsorbit(context: &str) -> bool {
+        match Regex::new(r"LSORBIT\s*=\s*([TF])")
+            .unwrap()
+            .captures(context)
+            .unwrap()
+            .get(1)
+            .unwrap()
+            .as_str() {
+                "T" => true,
+                "F" => false,
+                _ => unreachable!("Invalid value for LSORBIT, should be T or F")
+            }
+    }
 }
 
 
@@ -624,5 +638,15 @@ mod tests{
 "#;
         let output = 5i32;
         assert_eq!(Outcar::parse_ibrion(&input), output);
+    }
+
+    #[test]
+    fn test_parse_lsorbit() {
+        let input = r#"
+   LNONCOLLINEAR =      F non collinear calculations
+   LSORBIT =      F    spin-orbit coupling
+   INIWAV =      1    electr: 0-lowe 1-rand  2-diag "#;
+        let output = false;
+        assert_eq!(Outcar::parse_lsorbit(&input), output);
     }
 }
