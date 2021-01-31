@@ -24,7 +24,7 @@ struct IonicIteration {
     toten     : f64,
     toten_z   : f64,
     cputime   : f64,
-    magmom    : f64,
+    magmom    : Option<Vec<f64>>,  // differs when ISPIN=1,2 and ncl versions
     positions : MatX3<f64>,
     forces    : MatX3<f64>,
     cell      : Mat33<f64>,
@@ -270,6 +270,20 @@ impl Outcar<'_> {
             .as_str()
             .parse::<i32>()
             .unwrap()
+    }
+
+    fn parse_stress(context: &str) -> Vec<f64> {
+        Regex::new(r"external pressure = \s*(\S+) kB")
+            .unwrap()
+            .captures_iter(context)
+            .map(|x| {
+                x.get(1)
+                 .unwrap()
+                 .as_str()
+                 .parse::<f64>()
+                    .unwrap()
+            })
+            .collect()
     }
 }
 
@@ -559,5 +573,20 @@ mod tests{
 "#;
         let output = vec![23, 13, 13];
         assert_eq!(Outcar::parse_nscfs(&input), output);
+    }
+
+    #[test]
+    fn test_parse_stress() {
+        let input = r#"
+  in kB      -6.78636    -7.69902    -4.03340     0.00000     0.00000     0.00000
+  external pressure =       -6.17 kB  Pullay stress =        0.00 kB
+--
+  in kB      -8.92250    -8.14636    -4.01885    -1.10430     0.00000     0.00000
+  external pressure =       -7.03 kB  Pullay stress =        0.00 kB
+--
+  in kB      -4.56989    -7.18734    -4.04843     1.18589     0.00000     0.00000
+  external pressure =       -5.27 kB  Pullay stress =        0.00 kB"#;
+        let output = vec![-6.17, -7.03, -5.27];
+        assert_eq!(Outcar::parse_stress(&input), output);
     }
 }
