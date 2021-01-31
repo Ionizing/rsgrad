@@ -52,9 +52,15 @@ struct Viberation {
     pub dxdydz : MatX3<f64>,
 }
 
+impl Viberation {
+    pub fn new(freq: f64, dxdydz: MatX3<f64>) -> Self {
+        Self {freq, dxdydz}
+    }
+}
+
 
 #[derive(Clone)]
-struct Outcar<'a> {
+struct Outcar {
     pub lsorbit       : bool,
     pub ispin         : i32,
     pub ibrion        : i32,
@@ -64,13 +70,13 @@ struct Outcar<'a> {
     pub efermi        : f64,
     pub cell          : Mat33<f64>,
     pub ions_per_type : Vec<i32>,
-    pub ion_types     : Vec<&'a str>,
+    pub ion_types     : Vec<String>,
     pub scf           : Vec<IonicIteration>,
     pub vib           : Option<Viberation>,
 }
 
 
-impl Outcar<'_> {
+impl Outcar {
     pub fn from_file(path: &(impl AsRef<Path> + ?Sized)) -> io::Result<Self> {
         let context: String = fs::read_to_string(path)?;
 
@@ -315,7 +321,7 @@ impl Outcar<'_> {
             .collect()
     }
 
-    fn parse_ion_types(context: &str) -> Vec<&str> {
+    fn parse_ion_types(context: &str) -> Vec<String> {
         let mut v = Regex::new(r"(?m)^ POTCAR:.*$")
             .unwrap()
             .find_iter(context)
@@ -324,8 +330,9 @@ impl Outcar<'_> {
                  .split_whitespace()
                  .nth(2)
                  .unwrap()
+                 .to_owned()
             })
-            .collect::<Vec<&str>>();
+            .collect::<Vec<String>>();
 
         let len = v.len() / 2;
         (0..len).for_each(|_| {v.pop();});
@@ -649,7 +656,7 @@ mod tests{
   free  energy   TOTEN  =       -19.26550806 eV
   energy  without entropy=      -19.27710387  energy(sigma->0) =      -19.26937333 "#;
         let output = 23i32;
-        assert_eq!(Outcar::_parse_nscf(&input), 23);
+        assert_eq!(Outcar::_parse_nscf(&input), output);
     }
 
     #[test]
