@@ -20,9 +20,10 @@ use regex::Regex;
 // TODO viberation
 // DONE LSORBIT
 // DONE IBRION
+// DONE ion masses
 
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, PartialOrd)]
 struct IonicIteration {
     pub nscf      : i32,
     pub toten     : f64,
@@ -46,15 +47,16 @@ impl IonicIteration {
 }
 
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, PartialOrd)]
 struct Viberation {
-    pub freq   : f64,  // in THz
-    pub dxdydz : MatX3<f64>,
+    pub freq       : f64,  // in THz
+    pub dxdydz     : MatX3<f64>,
+    pub is_imagine : bool, // denote wheher this mode is an imagine mode
 }
 
 impl Viberation {
-    pub fn new(freq: f64, dxdydz: MatX3<f64>) -> Self {
-        Self {freq, dxdydz}
+    pub fn new(freq: f64, dxdydz: MatX3<f64>, is_imagine: bool) -> Self {
+        Self {freq, dxdydz, is_imagine}
     }
     // The parsing process is done withon `impl Outcar`
 }
@@ -91,6 +93,7 @@ impl Outcar {
         let cell            = Self::parse_cell(&context);
         let ions_per_type   = Self::parse_ions_per_type(&context);
         let ion_types       = Self::parse_ion_types(&context);
+        let ion_masses      = Self::parse_ion_masses(&context);
 
         let nscfv          = Self::parse_nscfs(&context);
         let totenv         = Self::parse_toten(&context);
@@ -120,25 +123,25 @@ impl Outcar {
                        })
                        .collect::<Vec<IonicIteration>>();
 
-        // let vib = None;
+        let vib = None;
 
-        // Ok(
-        //     Outcar {
-        //         lsorbit,
-        //         ispin,
-        //         ibrion,
-        //         nions,
-        //         nkpts,
-        //         nbands,
-        //         efermi,
-        //         cell,
-        //         ions_per_type,
-        //         ion_types,
-        //         scf,
-        //         vib
-        //     }
-        // );
-        todo!();
+        Ok(
+            Self {
+                lsorbit,
+                ispin,
+                ibrion,
+                nions,
+                nkpts,
+                nbands,
+                efermi,
+                cell,
+                ions_per_type,
+                ion_types,
+                ion_masses,
+                scf,
+                vib
+            }
+        )
     }
 
     fn parse_ispin(context: &str) -> i32 {
@@ -447,6 +450,18 @@ impl Outcar {
                 (0..n).for_each(|_| acc.push(m));
                 acc
             })
+    }
+
+    fn parse_viberations(context: &str) -> Option<Vec<Viberation>> {
+        todo!();
+    }
+
+    fn _parse_single_vibmode(context: &str) -> Viberation {
+        todo!();
+    }
+
+    fn _parse_dof(context: &str) -> i32 {
+        todo!();
     }
 }
 
@@ -875,5 +890,112 @@ mod tests{
             .collect::<Vec<_>>();
 
         assert_eq!(Outcar::parse_ion_masses(&input), output);
+    }
+
+    #[test]
+    fn test_parse_dof() {
+        let input = r#"
+   Step               POTIM =    1.4999999999999999E-002
+   Degrees of freedom DOF   =           3
+  LATTYP: Found a simple orthorhombic cell. "#;
+        let output = 3i32;
+        assert_eq!(Outcar::_parse_dof(&input), output);
+    }
+
+    #[test]
+    fn test_parse_single_vibmode() {
+        let input = r#"
+   2 f  =  108.545068 THz   682.008775 2PiTHz 3620.673620 cm-1   448.906478 meV
+             X         Y         Z           dx          dy          dz
+      3.877200  4.015200  4.000000     0.577374    0.346813    0.000001
+      3.000000  2.482900  4.000000    -0.016790    0.000464    0.000000
+      2.122800  4.015200  4.000000     0.577337   -0.346802   -0.000001
+      3.000000  3.500000  4.000000    -0.304117   -0.000127   -0.000000 "#;
+        let output = Viberation::new(3620.673620f64,
+                                     vec![[ 0.577374,   0.346813,   0.000001],
+                                          [-0.016790,   0.000464,   0.000000],
+                                          [ 0.577337,  -0.346802,  -0.000001],
+                                          [-0.304117,  -0.000127,  -0.000000]], false);
+        assert_eq!(Outcar::_parse_single_vibmode(&input), output);
+
+        let input = r#"
+  10 f/i=    0.022552 THz     0.141700 2PiTHz    0.752260 cm-1     0.093268 meV
+             X         Y         Z           dx          dy          dz
+      3.877200  4.015200  4.000000    -0.000213    0.242665   -0.002062
+      3.000000  2.482900  4.000000    -0.000118    0.242678   -0.002057
+      2.122800  4.015200  4.000000    -0.000027    0.242662   -0.002062
+      3.000000  3.500000  4.000000    -0.000445    0.907339   -0.007730 "#;
+
+        let output = Viberation::new(0.752260f64,
+                                     vec![[-0.000213,   0.242665,  -0.002062],
+                                         [-0.000118,   0.242678,  -0.002057],
+                                         [-0.000027,   0.242662,  -0.002062],
+                                         [-0.000445,   0.907339,  -0.007730]], true);
+        assert_eq!(Outcar::_parse_single_vibmode(&input), output);
+    }
+
+    #[test]
+    fn test_parse_viberations() {
+        let input = r#"
+   Step               POTIM =    1.4999999999999999E-002
+   Degrees of freedom DOF   =           3
+  LATTYP: Found a simple orthorhombic cell.
+
+ Eigenvectors and eigenvalues of the dynamical matrix
+ ----------------------------------------------------
+
+
+   1 f  =  108.762017 THz   683.371905 2PiTHz 3627.910256 cm-1   449.803706 meV
+             X         Y         Z           dx          dy          dz
+      3.877200  4.015200  4.000000    -0.351753   -0.188283   -0.000001
+      3.000000  2.482900  4.000000    -0.000006   -0.766624    0.000001
+      2.122800  4.015200  4.000000     0.352227   -0.188565   -0.000001
+      3.000000  3.500000  4.000000    -0.000124    0.305756    0.000000
+
+   2 f  =  108.545068 THz   682.008775 2PiTHz 3620.673620 cm-1   448.906478 meV
+             X         Y         Z           dx          dy          dz
+      3.877200  4.015200  4.000000     0.577374    0.346813    0.000001
+      3.000000  2.482900  4.000000    -0.016790    0.000464    0.000000
+      2.122800  4.015200  4.000000     0.577337   -0.346802   -0.000001
+      3.000000  3.500000  4.000000    -0.304117   -0.000127   -0.000000
+
+  10 f/i=    0.022552 THz     0.141700 2PiTHz    0.752260 cm-1     0.093268 meV
+             X         Y         Z           dx          dy          dz
+      3.877200  4.015200  4.000000    -0.000213    0.242665   -0.002062
+      3.000000  2.482900  4.000000    -0.000118    0.242678   -0.002057
+      2.122800  4.015200  4.000000    -0.000027    0.242662   -0.002062
+      3.000000  3.500000  4.000000    -0.000445    0.907339   -0.007730
+
+ Eigenvectors after division by SQRT(mass)
+
+ Eigenvectors and eigenvalues of the dynamical matrix
+ ----------------------------------------------------
+
+
+   1 f  =  108.762017 THz   683.371905 2PiTHz 3627.910256 cm-1   449.803706 meV
+             X         Y         Z           dx          dy          dz
+      3.877200  4.015200  4.000000    -0.351753   -0.188283   -0.000001
+      3.000000  2.482900  4.000000    -0.000006   -0.766624    0.000001
+      2.122800  4.015200  4.000000     0.352227   -0.188565   -0.000001
+      3.000000  3.500000  4.000000    -0.000033    0.081714    0.000000
+
+   2 f  =  108.545068 THz   682.008775 2PiTHz 3620.673620 cm-1   448.906478 meV
+             X         Y         Z           dx          dy          dz
+      3.877200  4.015200  4.000000     0.577374    0.346813    0.000001
+      3.000000  2.482900  4.000000    -0.016790    0.000464    0.000000
+      2.122800  4.015200  4.000000     0.577337   -0.346802   -0.000001
+      3.000000  3.500000  4.000000    -0.081276   -0.000034   -0.000000
+
+  10 f/i=    0.022552 THz     0.141700 2PiTHz    0.752260 cm-1     0.093268 meV
+             X         Y         Z           dx          dy          dz
+      3.877200  4.015200  4.000000    -0.000213    0.242665   -0.002062
+      3.000000  2.482900  4.000000    -0.000118    0.242678   -0.002057
+      2.122800  4.015200  4.000000    -0.000027    0.242662   -0.002062
+      3.000000  3.500000  4.000000    -0.000119    0.242488   -0.002066
+
+ Finite differences POTIM=   1.4999999999999999E-002
+  LATTYP: Found a simple orthorhombic cell.
+"#;
+
     }
 }
