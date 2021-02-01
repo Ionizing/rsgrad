@@ -7,7 +7,6 @@ use std::fs;
 use rayon::prelude;
 use regex::Regex;
 
-
 // DONE ISPIN
 // DONE ions per type
 // DONE element symbol
@@ -43,6 +42,7 @@ impl IonicIteration {
             nscf, toten, toten_z, cputime, magmom, positions, forces, cell
         }
     }
+    // The parsing process is done within `impl Outcar`
 }
 
 
@@ -56,6 +56,7 @@ impl Viberation {
     pub fn new(freq: f64, dxdydz: MatX3<f64>) -> Self {
         Self {freq, dxdydz}
     }
+    // The parsing process is done withon `impl Outcar`
 }
 
 
@@ -71,6 +72,7 @@ struct Outcar {
     pub cell          : Mat33<f64>,
     pub ions_per_type : Vec<i32>,
     pub ion_types     : Vec<String>,
+    pub ion_masses    : Vec<f64>,  // .len() == nions
     pub scf           : Vec<IonicIteration>,
     pub vib           : Option<Viberation>,
 }
@@ -106,13 +108,6 @@ impl Outcar {
         assert_eq!(forcev.len()   , len);
         assert_eq!(cellv.len()    , len);
 
-        // let scf = (0..len).fold(vec![], |mut iscf, i| {
-        //     let ioniter = IonicIteration::new(nscfv[i], totenv[i], toten_zv[i], cputimev[i],
-        //                                       None, posv[i].clone(), forcev[i].clone(), cellv[i]);
-        //     iscf.push(ioniter);
-        //     iscf
-        // });
-
         let scf = nscfv.into_iter()
                        .zip(totenv.into_iter())
                        .zip(toten_zv.into_iter())
@@ -125,24 +120,25 @@ impl Outcar {
                        })
                        .collect::<Vec<IonicIteration>>();
 
-        let vib = None;
+        // let vib = None;
 
-        Ok(
-            Outcar {
-                lsorbit,
-                ispin,
-                ibrion,
-                nions,
-                nkpts,
-                nbands,
-                efermi,
-                cell,
-                ions_per_type,
-                ion_types,
-                scf,
-                vib
-            }
-        )
+        // Ok(
+        //     Outcar {
+        //         lsorbit,
+        //         ispin,
+        //         ibrion,
+        //         nions,
+        //         nkpts,
+        //         nbands,
+        //         efermi,
+        //         cell,
+        //         ions_per_type,
+        //         ion_types,
+        //         scf,
+        //         vib
+        //     }
+        // );
+        todo!();
     }
 
     fn parse_ispin(context: &str) -> i32 {
@@ -430,6 +426,27 @@ impl Outcar {
                 "F" => false,
                 _ => unreachable!("Invalid value for LSORBIT, should be T or F")
             }
+    }
+
+    fn parse_ion_masses(context: &str) -> Vec<f64> {
+        let ions_per_type = Self::parse_ions_per_type(context);
+        let masses_per_type = Regex::new(r"POMASS = \s*(\S+); ZVAL")
+            .unwrap()
+            .captures_iter(context)
+            .map(|x| { x.get(1)
+                       .unwrap()
+                       .as_str()
+                       .parse::<f64>()
+                       .unwrap()
+            })
+            .collect::<Vec<f64>>();
+
+        ions_per_type.into_iter()
+            .zip(masses_per_type.into_iter())
+            .fold(vec![], |mut acc, (n, m): (i32, f64)| {
+                (0..n).for_each(|_| acc.push(m));
+                acc
+            })
     }
 }
 
@@ -822,5 +839,41 @@ mod tests{
 "#;
         let output = Some(vec![vec![42.0005098f64; 3]; 3]);
         assert_eq!(Outcar::parse_magmoms(&input), output);
+    }
+
+    #[test]
+    fn test_parse_ion_masses() {
+        let input = r#"
+   RPACOR =    1.200    partial core radius
+   POMASS =   10.811; ZVAL   =    3.000    mass and valenz
+   RCORE  =    1.700    outmost cutoff radius
+--
+   RPACOR =    1.200    partial core radius
+   POMASS =   14.001; ZVAL   =    5.000    mass and valenz
+   RCORE  =    1.500    outmost cutoff radius
+--
+   RPACOR =    1.200    partial core radius
+   POMASS =   12.011; ZVAL   =    4.000    mass and valenz
+   RCORE  =    1.500    outmost cutoff radius
+--
+   RPACOR =    1.800    partial core radius
+   POMASS =   22.990; ZVAL   =    7.000    mass and valenz
+   RCORE  =    2.200    outmost cutoff radius
+--
+  Mass of Ions in am
+   POMASS =  10.81 14.00 12.01 22.99
+  Ionic Valenz
+--
+   support grid    NGXF=   224 NGYF=  224 NGZF=  300
+   ions per type =              18  18 108   1
+ NGX,Y,Z   is equivalent  to a cutoff of  12.40, 12.40, 12.47 a.u."#;
+
+        let output = vec![10.811; 18].into_iter()
+            .chain(vec![14.001; 18].into_iter())
+            .chain(vec![12.011; 108].into_iter())
+            .chain(vec![22.990].into_iter())
+            .collect::<Vec<_>>();
+
+        assert_eq!(Outcar::parse_ion_masses(&input), output);
     }
 }

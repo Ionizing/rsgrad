@@ -10,3 +10,4 @@ edition = "2018"
 rayon = "1"
 regex = "1"
 async-std = { version = "1.2.0", features = ["attributes"] }
+vasp-poscar = "0.3"
