@@ -15,7 +15,7 @@ use regex::Regex;
 // DONE stress
 // DONE cell
 // DONE positions and forces
-// TODO magmom
+// DONE magmom
 // DONE E-fermi
 // DONE scf
 // TODO viberation
@@ -212,8 +212,34 @@ impl Outcar {
             .collect()
     }
 
-    fn parse_magmom(context: &str, is_ncl: bool) -> Option<Vec<f64>> {
-        todo!();
+    fn parse_magmoms(context: &str) -> Option<Vec<Vec<f64>>> {
+        Regex::new(r"free  energy")
+            .unwrap()
+            .find_iter(context)
+            .map(|x| x.start())
+            .map(|x| Self::_parse_magmom(&context[..x]))
+            .inspect(|x| {dbg!(x);})
+            .collect()
+    }
+
+    fn _parse_magmom(context: &str) -> Option<Vec<f64>> {
+        let pos = context
+            .rmatch_indices("number of electron")
+            .next()
+            .unwrap()
+            .0;
+        let ret = context[pos..]
+            .lines()
+            .next()
+            .unwrap()
+            .split_whitespace()
+            .skip(5)
+            .map(|x| x.trim().parse::<f64>().unwrap())
+            .collect::<Vec<_>>();
+        match ret.len() {
+            0 => None,
+            _ => Some(ret)
+        }
     }
 
     fn parse_posforce(context: &str) -> (Vec<MatX3<f64>>, Vec<MatX3<f64>>) {
@@ -731,5 +757,70 @@ mod tests{
    INIWAV =      1    electr: 0-lowe 1-rand  2-diag "#;
         let output = false;
         assert_eq!(Outcar::parse_lsorbit(&input), output);
+    }
+
+
+    #[test]
+    fn test_parse_magmoms() {
+        let input = r#"
+ total energy-change (2. order) :-0.5897058E-05  (-0.8072299E-08)
+ number of electron     309.9999998 magnetization      42.0005098
+ augmentation part       88.5937960 magnetization      26.8073410
+......
+  free  energy   TOTEN  =      -391.79003630 eV
+  energy  without entropy=     -391.77828290  energy(sigma->0) =     -391.78611850
+"#;
+        let output = Some(vec![vec![42.0005098f64]]);
+        assert_eq!(Outcar::parse_magmoms(&input), output);
+
+
+        let input = r#"
+ total energy-change (2. order) :-0.5897058E-05  (-0.8072299E-08)
+ number of electron     309.9999998 magnetization      42.0005098 42.0005098 42.0005098
+ augmentation part       88.5937960 magnetization      26.8073410 26.8073410 26.8073410
+......
+  free  energy   TOTEN  =      -391.79003630 eV
+  energy  without entropy=     -391.77828290  energy(sigma->0) =     -391.78611850
+"#;
+        let output = Some(vec![vec![42.0005098f64; 3]]);
+        assert_eq!(Outcar::parse_magmoms(&input), output);
+
+
+        let input = r#"
+ total energy-change (2. order) :-0.5897058E-05  (-0.8072299E-08)
+ number of electron     309.9999998 magnetization
+ augmentation part       88.5937960 magnetization
+......
+  free  energy   TOTEN  =      -391.79003630 eV
+  energy  without entropy=     -391.77828290  energy(sigma->0) =     -391.78611850
+"#;
+        let output = None;
+        assert_eq!(Outcar::parse_magmoms(&input), output);
+
+
+        let input = r#"
+ total energy-change (2. order) :-0.5897058E-05  (-0.8072299E-08)
+ number of electron     309.9999998 magnetization      42.0005098 42.0005098 42.0005098
+ augmentation part       88.5937960 magnetization      26.8073410 26.8073410 26.8073410
+......
+  free  energy   TOTEN  =      -391.79003630 eV
+  energy  without entropy=     -391.77828290  energy(sigma->0) =     -391.78611850
+
+ total energy-change (2. order) :-0.5897058E-05  (-0.8072299E-08)
+ number of electron     309.9999998 magnetization      42.0005098 42.0005098 42.0005098
+ augmentation part       88.5937960 magnetization      26.8073410 26.8073410 26.8073410
+......
+  free  energy   TOTEN  =      -391.79003630 eV
+  energy  without entropy=     -391.77828290  energy(sigma->0) =     -391.78611850
+
+ total energy-change (2. order) :-0.5897058E-05  (-0.8072299E-08)
+ number of electron     309.9999998 magnetization      42.0005098 42.0005098 42.0005098
+ augmentation part       88.5937960 magnetization      26.8073410 26.8073410 26.8073410
+......
+  free  energy   TOTEN  =      -391.79003630 eV
+  energy  without entropy=     -391.77828290  energy(sigma->0) =     -391.78611850
+"#;
+        let output = Some(vec![vec![42.0005098f64; 3]; 3]);
+        assert_eq!(Outcar::parse_magmoms(&input), output);
     }
 }
