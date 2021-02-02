@@ -4,7 +4,6 @@ type Mat33<T> = [[T;3];3];   // 3x3 matrix
 use std::io;
 use std::path::Path;
 use std::fs;
-use rayon::prelude;
 use regex::Regex;
 
 // DONE ISPIN
@@ -24,7 +23,7 @@ use regex::Regex;
 
 
 #[derive(Clone, PartialEq, Debug)]
-struct IonicIteration {
+pub struct IonicIteration {
     pub nscf      : i32,
     pub toten     : f64,
     pub toten_z   : f64,
@@ -48,7 +47,7 @@ impl IonicIteration {
 
 
 #[derive(Clone, PartialEq, Debug)]
-struct Viberation {
+pub struct Viberation {
     pub freq       : f64,  // in THz
     pub dxdydz     : MatX3<f64>,
     pub is_imagine : bool, // denote wheher this mode is an imagine mode
@@ -63,7 +62,7 @@ impl Viberation {
 
 
 #[derive(Clone, Debug, PartialEq)]
-struct Outcar {
+pub struct Outcar {
     pub lsorbit       : bool,
     pub ispin         : i32,
     pub ibrion        : i32,
@@ -75,7 +74,7 @@ struct Outcar {
     pub ions_per_type : Vec<i32>,
     pub ion_types     : Vec<String>,
     pub ion_masses    : Vec<f64>,  // .len() == nions
-    pub scf           : Vec<IonicIteration>,
+    pub ion_iters     : Vec<IonicIteration>,
     pub vib           : Option<Vec<Viberation>>, // .len() == degrees of freedom
 }
 
@@ -111,17 +110,17 @@ impl Outcar {
         assert_eq!(forcev.len()   , len);
         assert_eq!(cellv.len()    , len);
 
-        let scf = nscfv.into_iter()
-                       .zip(totenv.into_iter())
-                       .zip(toten_zv.into_iter())
-                       .zip(cputimev.into_iter())
-                       .zip(posv.into_iter())
-                       .zip(forcev.into_iter())
-                       .zip(cellv.into_iter())
-                       .map(|((((((iscf, e), ez), cpu), pos), f), cell)| {
-                           IonicIteration::new(iscf, e, ez, cpu, None, pos, f, cell)
-                       })
-                       .collect::<Vec<IonicIteration>>();
+        let ion_iters = nscfv.into_iter()
+                             .zip(totenv.into_iter())
+                             .zip(toten_zv.into_iter())
+                             .zip(cputimev.into_iter())
+                             .zip(posv.into_iter())
+                             .zip(forcev.into_iter())
+                             .zip(cellv.into_iter())
+                             .map(|((((((iscf, e), ez), cpu), pos), f), cell)| {
+                                 IonicIteration::new(iscf, e, ez, cpu, None, pos, f, cell)
+                             })
+                             .collect::<Vec<IonicIteration>>();
 
         let vib = Self::parse_viberations(&context);
 
@@ -138,7 +137,7 @@ impl Outcar {
                 ions_per_type,
                 ion_types,
                 ion_masses,
-                scf,
+                ion_iters,
                 vib
             }
         )
@@ -1119,6 +1118,31 @@ mod tests{
                  .collect::<Vec<_>>()
         );
 
+        assert_eq!(Outcar::parse_viberations(&input), output);
+
+
+        let input = r#"
+   RPACOR =    0.000    partial core radius
+   POMASS =    1.000; ZVAL   =    1.000    mass and valenz
+   RCORE  =    1.100    outmost cutoff radius
+--
+   RPACOR =    1.200    partial core radius
+   POMASS =   14.001; ZVAL   =    5.000    mass and valenz
+   RCORE  =    1.500    outmost cutoff radius
+--
+  Mass of Ions in am
+   POMASS =   1.00 14.00
+  Ionic Valenz
+
+   support grid    NGXF=    60 NGYF=   72 NGZF=   80
+   ions per type =               3   1
+ NGX,Y,Z   is equivalent  to a cutoff of   8.31,  8.55,  8.31 a.u.
+
+   Step               POTIM =    1.4999999999999999E-002
+   Degrees of freedom DOF   =           3
+  LATTYP: Found a simple orthorhombic cell.
+"#;
+        let output = None;
         assert_eq!(Outcar::parse_viberations(&input), output);
     }
 }
