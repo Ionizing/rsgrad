@@ -17,13 +17,13 @@ use regex::Regex;
 // DONE magmom
 // DONE E-fermi
 // DONE scf
-// TODO viberation
+// DONE viberation
 // DONE LSORBIT
 // DONE IBRION
 // DONE ion masses
 
 
-#[derive(Clone, PartialEq, PartialOrd)]
+#[derive(Clone, PartialEq, Debug)]
 struct IonicIteration {
     pub nscf      : i32,
     pub toten     : f64,
@@ -47,7 +47,7 @@ impl IonicIteration {
 }
 
 
-#[derive(Clone, PartialEq, PartialOrd)]
+#[derive(Clone, PartialEq, Debug)]
 struct Viberation {
     pub freq       : f64,  // in THz
     pub dxdydz     : MatX3<f64>,
@@ -62,7 +62,7 @@ impl Viberation {
 }
 
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 struct Outcar {
     pub lsorbit       : bool,
     pub ispin         : i32,
@@ -76,7 +76,7 @@ struct Outcar {
     pub ion_types     : Vec<String>,
     pub ion_masses    : Vec<f64>,  // .len() == nions
     pub scf           : Vec<IonicIteration>,
-    pub vib           : Option<Viberation>,
+    pub vib           : Option<Vec<Viberation>>, // .len() == degrees of freedom
 }
 
 
@@ -123,7 +123,7 @@ impl Outcar {
                        })
                        .collect::<Vec<IonicIteration>>();
 
-        let vib = None;
+        let vib = Self::parse_viberations(&context);
 
         Ok(
             Self {
@@ -453,15 +453,93 @@ impl Outcar {
     }
 
     fn parse_viberations(context: &str) -> Option<Vec<Viberation>> {
-        todo!();
+        let massess_sqrt = Self::parse_ion_masses(context)
+            .iter()
+            .map(|x| x.sqrt())
+            .collect::<Vec<_>>();
+
+        let ndof = Self::_parse_dof(context) as usize;
+
+        let mut vibs = Regex::new(r"(?m) .* 2PiTHz.* cm-1")
+            .unwrap()
+            .find_iter(context)
+            .take(ndof)
+            .map(|x| x.start())
+            .map(|x| Self::_parse_single_vibmode(&context[x..]))
+            .collect::<Vec<_>>();
+
+        if vibs.is_empty() { return None; }
+
+        vibs.iter_mut()
+            .for_each(|v| {
+                v.dxdydz.iter_mut()
+                        .zip(massess_sqrt.iter())
+                        .for_each(|(d, m)| {
+                            d.iter_mut()
+                             .for_each(|x| *x /= m)
+                        })
+            });
+
+        Some(vibs)
     }
 
     fn _parse_single_vibmode(context: &str) -> Viberation {
-        todo!();
+        let freq = Regex::new(r"2PiTHz \s*(\S*) cm-1")
+            .unwrap()
+            .captures(context)
+            .unwrap()
+            .get(1)
+            .unwrap()
+            .as_str()
+            .parse::<f64>()
+            .unwrap();
+
+        let is_imagine = match Regex::new(r"f(/i|  )= .* THz")  // Find the line contains "f/i=  xxxx THz"
+            .unwrap()
+            .captures(context)
+            .unwrap()
+            .get(1)
+            .unwrap()
+            .as_str() {
+                "  " => false,
+                "/i" => true,
+                _ => unreachable!("Invalid viberation frequency indicator")
+            };
+
+
+        let start_pos = Regex::new(r"dx \s* dy \s* dz")
+            .unwrap()
+            .find(context)
+            .unwrap()
+            .start();
+
+        let dxdydz: MatX3<f64> = context[start_pos..]
+            .lines()
+            .skip(1)
+            .take_while(|l| !l.trim().is_empty())
+            .map(|l| {
+                let v = l.split_whitespace()
+                         .skip(3)
+                         .take(3)
+                         .map(|token| token.parse::<f64>().unwrap())
+                         .collect::<Vec<_>>();
+                [v[0], v[1], v[2]]
+            })
+            .collect::<MatX3<f64>>();
+
+        Viberation::new(freq, dxdydz, is_imagine)
     }
 
     fn _parse_dof(context: &str) -> i32 {
-        todo!();
+        Regex::new(r"(?m)^   Degrees of freedom DOF   = \s*(\S+)$")
+            .unwrap()
+            .captures(context)
+            .unwrap()
+            .get(1)
+            .unwrap()
+            .as_str()
+            .parse::<i32>()
+            .unwrap()
     }
 }
 
@@ -916,6 +994,7 @@ mod tests{
                                           [-0.016790,   0.000464,   0.000000],
                                           [ 0.577337,  -0.346802,  -0.000001],
                                           [-0.304117,  -0.000127,  -0.000000]], false);
+
         assert_eq!(Outcar::_parse_single_vibmode(&input), output);
 
         let input = r#"
@@ -928,15 +1007,31 @@ mod tests{
 
         let output = Viberation::new(0.752260f64,
                                      vec![[-0.000213,   0.242665,  -0.002062],
-                                         [-0.000118,   0.242678,  -0.002057],
-                                         [-0.000027,   0.242662,  -0.002062],
-                                         [-0.000445,   0.907339,  -0.007730]], true);
+                                          [-0.000118,   0.242678,  -0.002057],
+                                          [-0.000027,   0.242662,  -0.002062],
+                                          [-0.000445,   0.907339,  -0.007730]], true);
         assert_eq!(Outcar::_parse_single_vibmode(&input), output);
     }
 
     #[test]
     fn test_parse_viberations() {
         let input = r#"
+   RPACOR =    0.000    partial core radius
+   POMASS =    1.000; ZVAL   =    1.000    mass and valenz
+   RCORE  =    1.100    outmost cutoff radius
+--
+   RPACOR =    1.200    partial core radius
+   POMASS =   14.001; ZVAL   =    5.000    mass and valenz
+   RCORE  =    1.500    outmost cutoff radius
+--
+  Mass of Ions in am
+   POMASS =   1.00 14.00
+  Ionic Valenz
+
+   support grid    NGXF=    60 NGYF=   72 NGZF=   80
+   ions per type =               3   1
+ NGX,Y,Z   is equivalent  to a cutoff of   8.31,  8.55,  8.31 a.u.
+
    Step               POTIM =    1.4999999999999999E-002
    Degrees of freedom DOF   =           3
   LATTYP: Found a simple orthorhombic cell.
@@ -996,6 +1091,34 @@ mod tests{
  Finite differences POTIM=   1.4999999999999999E-002
   LATTYP: Found a simple orthorhombic cell.
 "#;
+        let masses_sqrt = vec![1.0f64, 1.0, 1.0, 14.001]
+            .into_iter()
+            .map(|x| x.sqrt())
+            .collect::<Vec<_>>();
+        let freqs = vec![3627.910256, 3620.673620, 0.752260];
+        let dxdydzs =
+            vec![vec![[-0.351753/masses_sqrt[0],  -0.188283/masses_sqrt[0],  -0.000001/masses_sqrt[0]],
+                      [-0.000006/masses_sqrt[1],  -0.766624/masses_sqrt[1],   0.000001/masses_sqrt[1]],
+                      [ 0.352227/masses_sqrt[2],  -0.188565/masses_sqrt[2],  -0.000001/masses_sqrt[2]],
+                      [-0.000124/masses_sqrt[3],   0.305756/masses_sqrt[3],   0.000000/masses_sqrt[3]]],
+                 vec![[ 0.577374/masses_sqrt[0],   0.346813/masses_sqrt[0],   0.000001/masses_sqrt[0]],
+                      [-0.016790/masses_sqrt[1],   0.000464/masses_sqrt[1],   0.000000/masses_sqrt[1]],
+                      [ 0.577337/masses_sqrt[2],  -0.346802/masses_sqrt[2],  -0.000001/masses_sqrt[2]],
+                      [-0.304117/masses_sqrt[3],  -0.000127/masses_sqrt[3],  -0.000000/masses_sqrt[3]]],
+                 vec![[-0.000213/masses_sqrt[0],   0.242665/masses_sqrt[0],  -0.002062/masses_sqrt[0]],
+                      [-0.000118/masses_sqrt[1],   0.242678/masses_sqrt[1],  -0.002057/masses_sqrt[1]],
+                      [-0.000027/masses_sqrt[2],   0.242662/masses_sqrt[2],  -0.002062/masses_sqrt[2]],
+                      [-0.000445/masses_sqrt[3],   0.907339/masses_sqrt[3],  -0.007730/masses_sqrt[3]]]];
+        let is_imagines = vec![false, false, true];
 
+        let output = Some(
+            freqs.into_iter()
+                 .zip(dxdydzs.into_iter())
+                 .zip(is_imagines.into_iter())
+                 .map(|((f, d), im)| Viberation::new(f, d, im))
+                 .collect::<Vec<_>>()
+        );
+
+        assert_eq!(Outcar::parse_viberations(&input), output);
     }
 }
