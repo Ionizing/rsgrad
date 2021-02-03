@@ -5,6 +5,7 @@ use std::io;
 use std::path::Path;
 use std::fs;
 use regex::Regex;
+use itertools::multizip;
 
 // DONE ISPIN
 // DONE ions per type
@@ -71,6 +72,7 @@ pub struct Outcar {
     pub nbands        : i32,
     pub efermi        : f64,
     pub cell          : Mat33<f64>,
+    pub ext_pressure  : Vec<f64>,
     pub ions_per_type : Vec<i32>,
     pub ion_types     : Vec<String>,
     pub ion_masses    : Vec<f64>,  // .len() == nions
@@ -90,6 +92,7 @@ impl Outcar {
         let (nkpts, nbands) = Self::parse_nkpts_nbands(&context);
         let efermi          = Self::parse_efermi(&context);
         let cell            = Self::parse_cell(&context);
+        let ext_pressure    = Self::parse_stress(&context);
         let ions_per_type   = Self::parse_ions_per_type(&context);
         let ion_types       = Self::parse_ion_types(&context);
         let ion_masses      = Self::parse_ion_masses(&context);
@@ -97,6 +100,7 @@ impl Outcar {
         let nscfv          = Self::parse_nscfs(&context);
         let totenv         = Self::parse_toten(&context);
         let toten_zv       = Self::parse_toten_z(&context);
+        let magmomv        = Self::parse_magmoms(&context);
         let cputimev       = Self::parse_cputime(&context);
         let (posv, forcev) = Self::parse_posforce(&context);
         let cellv          = Self::parse_opt_cells(&context);
@@ -110,17 +114,11 @@ impl Outcar {
         assert_eq!(forcev.len()   , len);
         assert_eq!(cellv.len()    , len);
 
-        let ion_iters = nscfv.into_iter()
-                             .zip(totenv.into_iter())
-                             .zip(toten_zv.into_iter())
-                             .zip(cputimev.into_iter())
-                             .zip(posv.into_iter())
-                             .zip(forcev.into_iter())
-                             .zip(cellv.into_iter())
-                             .map(|((((((iscf, e), ez), cpu), pos), f), cell)| {
-                                 IonicIteration::new(iscf, e, ez, cpu, None, pos, f, cell)
-                             })
-                             .collect::<Vec<IonicIteration>>();
+        let ion_iters = multizip((nscfv, totenv, toten_zv, magmomv, cputimev, posv, forcev, cellv))
+            .map(|(iscf, e, ez, mag, cpu, pos, f, cell)| {
+                IonicIteration::new(iscf, e, ez, cpu, mag, pos, f, cell)
+            })
+            .collect::<Vec<IonicIteration>>();
 
         let vib = Self::parse_viberations(&context);
 
@@ -134,6 +132,7 @@ impl Outcar {
                 nbands,
                 efermi,
                 cell,
+                ext_pressure,
                 ions_per_type,
                 ion_types,
                 ion_masses,
@@ -185,7 +184,6 @@ impl Outcar {
         Regex::new(r"energy  without entropy=\s+([-+]?[0-9]+[.]?[0-9]*?)  energy\(sigma->0\) =\s+([-+]?[0-9]+[.]?[0-9]*)")
             .unwrap()
             .captures_iter(context)
-            // .inspect(|x| {dbg!(&x);})
             .map(|x| {
                 x.get(2)
                  .unwrap()
@@ -210,13 +208,12 @@ impl Outcar {
             .collect()
     }
 
-    fn parse_magmoms(context: &str) -> Option<Vec<Vec<f64>>> {
+    fn parse_magmoms(context: &str) -> Vec<Option<Vec<f64>>> {
         Regex::new(r"free  energy")
             .unwrap()
             .find_iter(context)
             .map(|x| x.start())
             .map(|x| Self::_parse_magmom(&context[..x]))
-            .inspect(|x| {dbg!(x);})
             .collect()
     }
 
@@ -258,10 +255,8 @@ impl Outcar {
     fn _parse_posforce_single_iteration(context: &str) -> (MatX3<f64>, MatX3<f64>) {
         assert!(context.starts_with(" POSITION"));
         context.lines()
-               // .inspect(|x| {dbg!(&x);})
                .skip(2)
                .take_while(|x| !x.starts_with(" ----"))
-               // .inspect(|x| {dbg!(&x);})
                .map(|x| {
                    x.split_whitespace()
                        .map(|x| x.parse::<f64>().unwrap())
@@ -457,7 +452,7 @@ impl Outcar {
             .map(|x| x.sqrt())
             .collect::<Vec<_>>();
 
-        let ndof = Self::_parse_dof(context) as usize;
+        let ndof = Self::_parse_dof(context)? as usize;
 
         let mut vibs = Regex::new(r"(?m) .* 2PiTHz.* cm-1")
             .unwrap()
@@ -529,16 +524,15 @@ impl Outcar {
         Viberation::new(freq, dxdydz, is_imagine)
     }
 
-    fn _parse_dof(context: &str) -> i32 {
+    fn _parse_dof(context: &str) -> Option<i32> {
         Regex::new(r"(?m)^   Degrees of freedom DOF   = \s*(\S+)$")
             .unwrap()
-            .captures(context)
-            .unwrap()
+            .captures(context)?
             .get(1)
             .unwrap()
             .as_str()
             .parse::<i32>()
-            .unwrap()
+            .ok()
     }
 }
 
@@ -879,7 +873,7 @@ mod tests{
   free  energy   TOTEN  =      -391.79003630 eV
   energy  without entropy=     -391.77828290  energy(sigma->0) =     -391.78611850
 "#;
-        let output = Some(vec![vec![42.0005098f64]]);
+        let output = vec![Some(vec![42.0005098f64])];
         assert_eq!(Outcar::parse_magmoms(&input), output);
 
 
@@ -891,7 +885,7 @@ mod tests{
   free  energy   TOTEN  =      -391.79003630 eV
   energy  without entropy=     -391.77828290  energy(sigma->0) =     -391.78611850
 "#;
-        let output = Some(vec![vec![42.0005098f64; 3]]);
+        let output = vec![Some(vec![42.0005098f64; 3])];
         assert_eq!(Outcar::parse_magmoms(&input), output);
 
 
@@ -903,7 +897,7 @@ mod tests{
   free  energy   TOTEN  =      -391.79003630 eV
   energy  without entropy=     -391.77828290  energy(sigma->0) =     -391.78611850
 "#;
-        let output = None;
+        let output = vec![None];
         assert_eq!(Outcar::parse_magmoms(&input), output);
 
 
@@ -929,7 +923,7 @@ mod tests{
   free  energy   TOTEN  =      -391.79003630 eV
   energy  without entropy=     -391.77828290  energy(sigma->0) =     -391.78611850
 "#;
-        let output = Some(vec![vec![42.0005098f64; 3]; 3]);
+        let output = vec![Some(vec![42.0005098f64; 3]); 3];
         assert_eq!(Outcar::parse_magmoms(&input), output);
     }
 
@@ -975,7 +969,7 @@ mod tests{
    Step               POTIM =    1.4999999999999999E-002
    Degrees of freedom DOF   =           3
   LATTYP: Found a simple orthorhombic cell. "#;
-        let output = 3i32;
+        let output = Some(3i32);
         assert_eq!(Outcar::_parse_dof(&input), output);
     }
 
