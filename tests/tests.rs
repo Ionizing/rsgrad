@@ -167,3 +167,49 @@ fn test_ncl_outcar() -> io::Result<()> {
                     .for_each(|(x, y)| assert_eq!(&x.magmom, y));
     Ok(())
 }
+
+#[test]
+fn test_vib_outcar() -> io::Result<()> {
+    let fname = get_fpath_in_current_dir!("OUTCAR_viberations");
+    let outcar = Outcar::from_file(&fname)?;
+
+    assert_eq!(outcar.lsorbit, false);
+    assert_eq!(outcar.ispin, 1);
+    assert_eq!(outcar.ibrion, 5);
+    assert_eq!(outcar.nions, 4);
+    assert_eq!(outcar.nkpts, 1);
+    assert_eq!(outcar.nbands, 8);
+    assert_eq!(outcar.efermi, -0.7865);
+    assert_eq!(outcar.cell, [[6.000000000, 0.000000000, 0.000000000],
+                             [0.000000000, 7.000000000, 0.000000000],
+                             [0.000000000, 0.000000000, 8.000000000]]);
+    assert_eq!(outcar.ext_pressure, vec![-6.17, -7.03, -5.27, -6.69, -5.65,
+                                         -6.18, -6.18, -6.18, -6.18, -5.11,
+                                         -7.16, -6.18, -6.18, -5.27, -7.03,
+                                         -6.68, -5.65, -6.18, -6.18, -6.13,
+                                         -6.13, -6.13, -6.14, -6.19, -6.19]);
+    assert_eq!(outcar.ions_per_type, vec![3, 1]);
+    assert_eq!(outcar.ion_types, vec!["H", "N"]);
+    assert_eq!(outcar.ion_masses, vec![1.000, 1.000, 1.000, 14.001]);
+    assert_eq!(outcar.ion_iters.len(), 25);
+
+    outcar.vib.as_ref().unwrap().iter()
+                                .zip(vec![3627.910256, 3620.673620, 3431.763448,
+                                          1551.740811, 1537.186276,  388.963336,
+                                           370.876616,  370.090822,    0.658347,
+                                             0.752260,    1.873335,  702.438182].iter())
+                                .for_each(|(x, y)| assert_eq!(&x.freq, y));
+
+    outcar.vib.as_ref().unwrap().iter()
+                                .zip(vec![false; 9].iter().chain(vec![true; 3].iter()))
+                                .for_each(|(x, y)| assert_eq!(&x.is_imagine, y));
+
+    let imass = &outcar.ion_masses;
+    assert_eq!(outcar.vib.as_ref().unwrap().iter().last().unwrap().dxdydz,
+               vec![[-0.000004/imass[0].sqrt(),  0.000002/imass[0].sqrt(), -0.511996/imass[0].sqrt()],
+                    [ 0.000000/imass[1].sqrt(),  0.000003/imass[1].sqrt(), -0.547859/imass[1].sqrt()],
+                    [ 0.000004/imass[2].sqrt(),  0.000001/imass[2].sqrt(), -0.511993/imass[2].sqrt()],
+                    [ 0.000000/imass[3].sqrt(), -0.000002/imass[3].sqrt(),  0.419014/imass[3].sqrt()]]);
+
+    Ok(())
+}
