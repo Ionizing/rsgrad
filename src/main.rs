@@ -1,9 +1,12 @@
 use std::io::Result;
 use std::path::Path;
+use std::time;
 use clap::{Arg, App, SubCommand};
 use rsgrad::outcar::Outcar;
 
 fn main() -> Result<()> {
+    let now = time::Instant::now();
+
     let matches = App::new("rsgrad")
         .version("0.1")
         .author("Ionizing PeterSmith_9@outlook.com")
@@ -16,5 +19,7 @@ fn main() -> Result<()> {
     for (i, ionit) in f.ion_iters.iter().enumerate() {
         println!("{:3} {}", i+1, ionit);
     }
+
+    eprintln!("# Time used: {:?}", now.elapsed());
     Ok(())
 }
