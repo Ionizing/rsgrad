@@ -195,7 +195,7 @@ impl Outcar {
     }
 
     fn parse_toten(context: &str) -> Vec<f64> {
-        Regex::new(r"free  energy   TOTEN  = \s*([-+]?[0-9]+[.]?[0-9]*([eE][-+]?[0-9]+)?) eV")
+        Regex::new(r"free  energy   TOTEN  = \s*(\S+) eV")
             .unwrap()
             .captures_iter(context)
             .map(|x| {
@@ -209,11 +209,11 @@ impl Outcar {
     }
 
     fn parse_toten_z(context: &str) -> Vec<f64> {
-        Regex::new(r"energy  without entropy=\s+([-+]?[0-9]+[.]?[0-9]*?)  energy\(sigma->0\) =\s+([-+]?[0-9]+[.]?[0-9]*)")
+        Regex::new(r"energy  without entropy=\s+(?:\S+)  energy\(sigma->0\) =\s+(\S+)")
             .unwrap()
             .captures_iter(context)
             .map(|x| {
-                x.get(2)
+                x.get(1)
                  .unwrap()
                  .as_str()
                  .parse::<f64>()
@@ -223,7 +223,7 @@ impl Outcar {
     }
 
     fn parse_cputime(context: &str) -> Vec<f64> {
-        Regex::new(r"LOOP\+:  cpu time .* real time \s+([0-9]+[.]?[0-9]*)")
+        Regex::new(r"LOOP\+:  cpu time .* real time \s+(\S+)")
             .unwrap()
             .captures_iter(context)
             .map(|x| {
@@ -298,7 +298,7 @@ impl Outcar {
     }
 
     fn parse_efermi(context: &str) -> f64 {
-        Regex::new(r" E-fermi : \s+([-+]?[0-9]+[.]?[0-9]*)")
+        Regex::new(r" E-fermi : \s+(\S+)")
             .unwrap()
             .captures(context)
             .unwrap()
