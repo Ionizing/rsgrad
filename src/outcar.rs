@@ -4,8 +4,10 @@ type Mat33<T> = [[T;3];3];   // 3x3 matrix
 use std::io;
 use std::path::Path;
 use std::fs;
+use std::fmt;
 use regex::Regex;
 use itertools::multizip;
+use colored::Colorize;
 
 // DONE ISPIN
 // DONE ions per type
@@ -44,6 +46,25 @@ impl IonicIteration {
         }
     }
     // The parsing process is done within `impl Outcar`
+}
+
+
+impl fmt::Display for IonicIteration {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let nscf_text = format!("{:4}", self.nscf).white();
+        let toten_text = format!("{:11.5}", self.toten).bright_green();
+        let totez_text = format!("{:11.5}", self.toten_z).bright_green();
+        let cputime_text = format!("{:6.2}", self.cputime / 60.0).bright_blue();
+        let magmom_text = if let Some(mag) = &self.magmom {
+            mag.iter()
+               .map(|n| format!("{:8.4}", n))
+               .collect::<Vec<_>>()
+                .join(" ")
+                .bright_yellow()
+        } else { "NoMag".to_string().normal() };
+
+        write!(f, "{} {} {} {} {}", toten_text, totez_text, nscf_text, cputime_text, magmom_text)
+    }
 }
 
 
