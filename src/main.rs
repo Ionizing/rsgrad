@@ -13,8 +13,8 @@ fn main() -> Result<()> {
         .get_matches();
 
     let f = Outcar::from_file(Path::new(matches.value_of("input").unwrap()))?;
-    for ionit in f.ion_iters {
-        println!("{}", ionit);
+    for (i, ionit) in f.ion_iters.iter().enumerate() {
+        println!("{:3} {}", i+1, ionit);
     }
     Ok(())
 }
