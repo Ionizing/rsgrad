@@ -1,9 +1,18 @@
 use std::io::Result;
 use std::path::Path;
+use clap::{Arg, App, SubCommand};
 use rsgrad::outcar::Outcar;
 
 fn main() -> Result<()> {
-    let f = Outcar::from_file(Path::new("OUTCAR_multiple_ionic_steps"))?;
+    let matches = App::new("rsgrad")
+        .version("0.1")
+        .author("Ionizing PeterSmith_9@outlook.com")
+        .about("Tracking the relaxation or MD progress of VASP calculation")
+        .arg(Arg::with_name("input")
+             .default_value("OUTCAR"))
+        .get_matches();
+
+    let f = Outcar::from_file(Path::new(matches.value_of("input").unwrap()))?;
     for ionit in f.ion_iters {
         println!("{}", ionit);
     }

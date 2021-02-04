@@ -55,6 +55,12 @@ impl fmt::Display for IonicIteration {
         let toten_text = format!("{:11.5}", self.toten).bright_green();
         let totez_text = format!("{:11.5}", self.toten_z).bright_green();
         let cputime_text = format!("{:6.2}", self.cputime / 60.0).bright_blue();
+
+        let fsize = self.forces.iter()
+                               .map(|f| (f[0]*f[0] + f[1]*f[1] * f[2]*f[2]).sqrt())
+                               .collect::<Vec<_>>();
+        let maxf_text = format!("{:6.3}", fsize.iter().cloned().fold(0.0, f64::max)).bright_yellow();
+        let avgf_text = format!("{:6.3}", fsize.iter().sum::<f64>() / self.forces.len() as f64).yellow();
         let magmom_text = if let Some(mag) = &self.magmom {
             mag.iter()
                .map(|n| format!("{:8.4}", n))
@@ -63,7 +69,8 @@ impl fmt::Display for IonicIteration {
                 .bright_yellow()
         } else { "NoMag".to_string().normal() };
 
-        write!(f, "{} {} {} {} {}", toten_text, totez_text, nscf_text, cputime_text, magmom_text)
+        write!(f, "E={} Ez={} {} Favg={} Fmax={} time={} mag={}",
+               toten_text, totez_text, nscf_text, avgf_text, maxf_text, cputime_text, magmom_text)
     }
 }
 
