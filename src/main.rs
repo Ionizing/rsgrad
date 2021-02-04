@@ -1,7 +1,7 @@
 use std::io::Result;
 use std::path::Path;
 use std::time;
-use clap::{Arg, App, SubCommand};
+use clap::{Arg, App};
 use rsgrad::outcar::Outcar;
 
 fn main() -> Result<()> {
