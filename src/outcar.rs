@@ -254,7 +254,7 @@ impl Outcar {
     }
 
     fn parse_cputime(context: &str) -> Vec<f64> {
-        Regex::new(r"LOOP\+:  cpu time .* real time \s+(\S+)")
+        Regex::new(r"LOOP\+:  cpu time .* real time\s*(\S+)")
             .unwrap()
             .captures_iter(context)
             .map(|x| {
@@ -658,8 +658,9 @@ mod tests{
       LOOP:  cpu time    0.0275: real time    0.0261
      LOOP+:  cpu time    2.0921: real time    2.0863
      LOOP+:  cpu time    1.2021: real time    1.1865
+     LOOP+:  cpu time 1543.2679: real time 1544.6603
      LOOP+:  cpu time    1.2788: real time    1.2670"#;
-        let output = vec![2.0863, 1.1865, 1.2670];
+        let output = vec![2.0863, 1.1865, 1544.6603, 1.2670];
         assert_eq!(Outcar::parse_cputime(&input), output);
     }
 
