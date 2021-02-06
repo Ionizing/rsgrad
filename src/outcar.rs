@@ -5,6 +5,7 @@ use std::io;
 use std::path::Path;
 use std::fs;
 use std::fmt;
+use rayon;
 use regex::Regex;
 use itertools::multizip;
 use colored::Colorize;
@@ -113,25 +114,55 @@ impl Outcar {
     pub fn from_file(path: &(impl AsRef<Path> + ?Sized)) -> io::Result<Self> {
         let context: String = fs::read_to_string(path)?;
 
-        let lsorbit         = Self::parse_lsorbit(&context);
-        let ispin           = Self::parse_ispin(&context);
-        let ibrion          = Self::parse_ibrion(&context);
-        let nions           = Self::parse_nions(&context);
-        let (nkpts, nbands) = Self::parse_nkpts_nbands(&context);
-        let efermi          = Self::parse_efermi(&context);
-        let cell            = Self::parse_cell(&context);
-        let ext_pressure    = Self::parse_stress(&context);
-        let ions_per_type   = Self::parse_ions_per_type(&context);
-        let ion_types       = Self::parse_ion_types(&context);
-        let ion_masses      = Self::parse_ion_masses(&context);
+        let mut lsorbit         = false;
+        let mut ispin           = 0i32;
+        let mut ibrion          = 0i32;
+        let mut nions           = 0i32;
+        let (mut nkpts, mut nbands) = (0i32, 0i32);
+        let mut efermi          = 0.0f64;
+        let mut cell            = [[0.0f64; 3]; 3];
+        let mut ext_pressure    = vec![0.0f64; 0];
+        let mut ions_per_type   = vec![0i32; 0];
+        let mut ion_types       = vec![String::new();0];
+        let mut ion_masses      = vec![0.0f64; 0];
 
-        let nscfv          = Self::parse_nscfs(&context);
-        let totenv         = Self::parse_toten(&context);
-        let toten_zv       = Self::parse_toten_z(&context);
-        let magmomv        = Self::parse_magmoms(&context);
-        let cputimev       = Self::parse_cputime(&context);
-        let (posv, forcev) = Self::parse_posforce(&context);
-        let cellv          = Self::parse_opt_cells(&context);
+        let mut nscfv          = vec![0i32; 0];
+        let mut totenv         = vec![0.0f64; 0];
+        let mut toten_zv       = vec![0.0f64; 0];
+        let mut magmomv        = vec![Some(vec![0.0f64; 0]); 0];
+        let mut cputimev       = vec![0.0f64; 0];
+        let (mut posv, mut forcev) = (vec![vec![[0.0f64; 3];0]; 0], vec![vec![[0.0f64; 3];0]; 0]);
+        let mut cellv          = vec![[[0.0f64; 3]; 3]; 0];
+
+        rayon::scope(|s| {
+            s.spawn(|_| { lsorbit         = Self::parse_lsorbit(&context) });
+            s.spawn(|_| { ispin           = Self::parse_ispin(&context) });
+            s.spawn(|_| { ibrion          = Self::parse_ibrion(&context) });
+            s.spawn(|_| { nions           = Self::parse_nions(&context) });
+            s.spawn(|_| {
+                let (_nkpts, _nbands) = Self::parse_nkpts_nbands(&context);
+                nkpts = _nkpts;
+                nbands = _nbands;
+            });
+            s.spawn(|_| { efermi          = Self::parse_efermi(&context) });
+            s.spawn(|_| { cell            = Self::parse_cell(&context) });
+            s.spawn(|_| { ext_pressure    = Self::parse_stress(&context) });
+            s.spawn(|_| { ions_per_type   = Self::parse_ions_per_type(&context) });
+            s.spawn(|_| { ion_types       = Self::parse_ion_types(&context) });
+            s.spawn(|_| { ion_masses      = Self::parse_ion_masses(&context) });
+
+            s.spawn(|_| { nscfv          = Self::parse_nscfs(&context) });
+            s.spawn(|_| { totenv         = Self::parse_toten(&context) });
+            s.spawn(|_| { toten_zv       = Self::parse_toten_z(&context) });
+            s.spawn(|_| { magmomv        = Self::parse_magmoms(&context) });
+            s.spawn(|_| { cputimev       = Self::parse_cputime(&context) });
+            s.spawn(|_| {
+                let (_posv, _forcev) = Self::parse_posforce(&context);
+                posv = _posv;
+                forcev = _forcev;
+            });
+            s.spawn(|_| { cellv          = Self::parse_opt_cells(&context) });
+        });
 
         // Do some check
         let len = totenv.len();
