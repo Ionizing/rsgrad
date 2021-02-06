@@ -52,16 +52,16 @@ impl IonicIteration {
 
 impl fmt::Display for IonicIteration {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let nscf_text = format!("{:4}", self.nscf).white();
-        let toten_text = format!("{:11.5}", self.toten).bright_green();
-        let totez_text = format!("{:11.5}", self.toten_z).bright_green();
+        let nscf_text    = format!("{:4}", self.nscf).white();
+        let toten_text   = format!("{:11.5}", self.toten).bright_green();
+        let totez_text   = format!("{:11.5}", self.toten_z).bright_green();
         let cputime_text = format!("{:6.2}", self.cputime / 60.0).bright_blue();
 
         let fsize = self.forces.iter()
                                .map(|f| (f[0]*f[0] + f[1]*f[1] * f[2]*f[2]).sqrt())
                                .collect::<Vec<_>>();
-        let maxf_text = format!("{:6.3}", fsize.iter().cloned().fold(0.0, f64::max)).bright_yellow();
-        let avgf_text = format!("{:6.3}", fsize.iter().sum::<f64>() / self.forces.len() as f64).yellow();
+        let maxf_text   = format!("{:6.3}", fsize.iter().cloned().fold(0.0, f64::max)).bright_yellow();
+        let avgf_text   = format!("{:6.3}", fsize.iter().sum::<f64>() / self.forces.len() as f64).yellow();
         let magmom_text = if let Some(mag) = &self.magmom {
             mag.iter()
                .map(|n| format!("{:8.4}", n))
@@ -378,11 +378,16 @@ impl Outcar {
     }
 
     fn parse_opt_cells(context: &str) -> Vec<Mat33<f64>> {
+        let skip_cnt: usize = if context.find(" old parameters").is_some() {
+            2
+        } else {
+            1
+        };
         Regex::new(r"direct lattice vectors")
             .unwrap()
             .find_iter(context)
             .map(|x| x.start())
-            .skip(1)
+            .skip(skip_cnt)
             .map(|x| Self::parse_cell(&context[x..]))
             .collect()
     }
@@ -781,6 +786,12 @@ mod tests{
      6.000000000  0.000000000  0.000000000     0.166666667  0.000000000  0.000000000
      0.000000000  7.200000000  0.000000000     0.000000000  0.142857143  0.000000000
      0.000000000  0.000000000  8.000000000     0.000000000  0.000000000  0.125000000
+--
+ old parameters found on file WAVECAR:
+      direct lattice vectors                 reciprocal lattice vectors
+     4.001368000  0.000000000  0.000000000     0.249914529  0.000000000  0.000000000
+     0.000000000  4.001368000  0.000000000     0.000000000  0.249914529  0.000000000
+     0.000000000  0.000000000  4.215744000     0.000000000  0.000000000  0.237206054
 --
       direct lattice vectors                 reciprocal lattice vectors
      6.000000000  0.000000000  0.000000000     0.166666667  0.000000000  0.000000000
