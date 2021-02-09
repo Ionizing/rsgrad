@@ -27,7 +27,6 @@ fn test_normal_outcar() -> io::Result<()> {
     assert_eq!(outcar.cell, [[7.519999981,         0.0,         0.0],
                              [        0.0, 7.519999981,         0.0],
                              [        0.0,         0.0, 7.519999981]]);
-    assert_eq!(outcar.ext_pressure, vec![-18.05, 21.53, -2.72, -5.24, -0.30]);
     assert_eq!(outcar.ions_per_type, vec![32]);
     assert_eq!(outcar.ion_types, vec!["C"]);
     assert_eq!(outcar.ion_masses, vec![12.011; 32]);
@@ -52,6 +51,10 @@ fn test_normal_outcar() -> io::Result<()> {
                               -253.58960211,
                               -253.64363797].iter())
                     .for_each(|(x, y)| assert_eq!(&x.toten_z, y));
+
+    outcar.ion_iters.iter()
+                    .zip(vec![-18.05, 21.53, -2.72, -5.24, -0.30].iter())
+                    .for_each(|(x, y)| assert_eq!(&x.stress, y));
 
     assert_eq!(&outcar.ion_iters.last().unwrap().cell, &[[7.494265554, 0.000000000, -0.000000000],
                                                          [0.000000000, 7.494265554, -0.000000000],
@@ -82,7 +85,6 @@ fn test_ispin2_outcar() -> io::Result<()> {
     assert_eq!(outcar.cell, [[ 2.864537506, -1.653841500,  0.000000000],
                              [ 0.000000000,  3.307683000,  0.000000000],
                              [ 0.000000000,  0.000000000, 23.001852000]]);
-    assert_eq!(outcar.ext_pressure, vec![-0.68, -1.59, -1.61]);
     assert_eq!(outcar.ions_per_type, vec![2, 1]);
     assert_eq!(outcar.ion_types, vec!["Se", "V"]);
     assert_eq!(outcar.ion_masses, vec![78.96, 78.96, 50.941]);
@@ -104,6 +106,10 @@ fn test_ispin2_outcar() -> io::Result<()> {
                               -18.95789288,
                               -18.95796667].iter())
                     .for_each(|(x, y)| assert_eq!(&x.toten_z, y));
+
+    outcar.ion_iters.iter()
+                    .zip(vec![-0.68, -1.59, -1.61].iter())
+                    .for_each(|(x, y)| assert_eq!(&x.stress, y));
 
     assert_eq!(outcar.ion_iters.last().unwrap()
                .positions.last().unwrap(), &[0.00000, 0.00000, 4.13794]);
@@ -135,7 +141,6 @@ fn test_ncl_outcar() -> io::Result<()> {
     assert_eq!(outcar.cell, [[2.864537506,-1.653841500, 0.000000000],
                              [0.000000000, 3.307683000, 0.000000000],
                              [0.000000000, 0.000000000,23.001852000]]);
-    assert_eq!(outcar.ext_pressure, vec![-1.77]);
     assert_eq!(outcar.ions_per_type, vec![2, 1]);
     assert_eq!(outcar.ion_types, vec!["Se", "V"]);
     assert_eq!(outcar.ion_masses, vec![78.96, 78.96, 50.941]);
@@ -153,6 +158,10 @@ fn test_ncl_outcar() -> io::Result<()> {
     outcar.ion_iters.iter()
                     .zip(vec![-19.00194579].iter())
                     .for_each(|(x, y)| assert_eq!(&x.toten_z, y));
+
+    outcar.ion_iters.iter()
+                    .zip(vec![-1.77].iter())
+                    .for_each(|(x, y)| assert_eq!(&x.stress, y));
 
     assert_eq!(outcar.ion_iters.last().unwrap().positions, vec![[1.90969, -0.00000, 2.55994],
                                                                 [0.95485,  1.65384, 5.71537],
@@ -183,11 +192,6 @@ fn test_vib_outcar() -> io::Result<()> {
     assert_eq!(outcar.cell, [[6.000000000, 0.000000000, 0.000000000],
                              [0.000000000, 7.000000000, 0.000000000],
                              [0.000000000, 0.000000000, 8.000000000]]);
-    assert_eq!(outcar.ext_pressure, vec![-6.17, -7.03, -5.27, -6.69, -5.65,
-                                         -6.18, -6.18, -6.18, -6.18, -5.11,
-                                         -7.16, -6.18, -6.18, -5.27, -7.03,
-                                         -6.68, -5.65, -6.18, -6.18, -6.13,
-                                         -6.13, -6.13, -6.14, -6.19, -6.19]);
     assert_eq!(outcar.ions_per_type, vec![3, 1]);
     assert_eq!(outcar.ion_types, vec!["H", "N"]);
     assert_eq!(outcar.ion_masses, vec![1.000, 1.000, 1.000, 14.001]);
@@ -203,6 +207,14 @@ fn test_vib_outcar() -> io::Result<()> {
     outcar.vib.as_ref().unwrap().iter()
                                 .zip(vec![false; 9].iter().chain(vec![true; 3].iter()))
                                 .for_each(|(x, y)| assert_eq!(&x.is_imagine, y));
+
+    outcar.ion_iters.iter().zip(vec![-6.17, -7.03, -5.27, -6.69, -5.65,
+                                     -6.18, -6.18, -6.18, -6.18, -5.11,
+                                     -7.16, -6.18, -6.18, -5.27, -7.03,
+                                     -6.68, -5.65, -6.18, -6.18, -6.13,
+                                     -6.13, -6.13, -6.14, -6.19, -6.19].iter())
+                           .for_each(|(x, y)| assert_eq!(&x.stress, y));
+
 
     let imass = &outcar.ion_masses;
     assert_eq!(outcar.vib.as_ref().unwrap().iter().last().unwrap().dxdydz,

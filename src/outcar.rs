@@ -32,6 +32,7 @@ pub struct IonicIteration {
     pub toten     : f64,
     pub toten_z   : f64,
     pub cputime   : f64,
+    pub stress    : f64,
     pub magmom    : Option<Vec<f64>>,  // differs when ISPIN=1,2 and ncl versions
     pub positions : MatX3<f64>,
     pub forces    : MatX3<f64>,
@@ -40,10 +41,11 @@ pub struct IonicIteration {
 
 impl IonicIteration {
     pub fn new(nscf: i32, toten: f64, toten_z: f64, cputime: f64,
-               magmom: Option<Vec<f64>>, positions: MatX3<f64>,
+               stress: f64, magmom: Option<Vec<f64>>, positions: MatX3<f64>,
                forces: MatX3<f64>, cell: Mat33<f64>) -> Self {
         Self {
-            nscf, toten, toten_z, cputime, magmom, positions, forces, cell
+            nscf, toten, toten_z, cputime, stress,
+            magmom, positions, forces, cell
         }
     }
     // The parsing process is done within `impl Outcar`
@@ -53,27 +55,39 @@ impl IonicIteration {
 impl fmt::Display for IonicIteration {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let nscf_text    = format!("{:4}", self.nscf).white();
-        let toten_text   = format!("{:11.5}", self.toten).bright_green();
+        let toten_text   = format!("{:11.5}", self.toten).white();
         let totez_text   = format!("{:11.5}", self.toten_z).bright_green();
-        let cputime_text = format!("{:6.2}", self.cputime / 60.0).bright_blue();
+        let cputime_text = format!("{:6.2}", self.cputime / 60.0).white();
+        let stress_text  = format!("{:6.2}", self.stress);
 
         let fsize = self.forces.iter()
                                .map(|f| (f[0]*f[0] + f[1]*f[1] * f[2]*f[2]).sqrt())
                                .collect::<Vec<_>>();
-        let maxf_text   = format!("{:6.3}", fsize.iter().cloned().fold(0.0, f64::max)).bright_yellow();
-        let avgf_text   = format!("{:6.3}", fsize.iter().sum::<f64>() / self.forces.len() as f64).yellow();
+        let maxf_text   = format!("{:6.3}", fsize.iter().cloned().fold(0.0, f64::max)).red();
+        let avgf_text   = format!("{:6.3}", fsize.iter().sum::<f64>() / self.forces.len() as f64).bright_yellow();
         let magmom_text = if let Some(mag) = &self.magmom {
             mag.iter()
                .map(|n| format!("{:8.4}", n))
                .collect::<Vec<_>>()
                 .join(" ")
                 .bright_yellow()
-        } else { "NoMag".to_string().normal() };
+        } else { "NaN".to_string().normal() };
 
-        write!(f, "E={} Ez={} {} Favg={} Fmax={} time={} mag={}",
-               toten_text, totez_text, nscf_text, avgf_text, maxf_text, cputime_text, magmom_text)
+        write!(f, "{E} {Ez} {nscf} {Favg} {Fmax} {Stress} {Time} {Mag}",
+               E=toten_text, Ez=totez_text, nscf=nscf_text, Favg=avgf_text,
+               Fmax=maxf_text, Time=cputime_text, Mag=magmom_text, Stress=stress_text)
     }
 }
+
+
+// pub struct PrintOptIterations(Vec<IonicIteration>);
+
+// impl fmt::Display for PrintOptIterations {
+//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+//         let header = format!("# NStep {:^11} {:^11} {:^4} {:^6} {:^6} {:^6} {:^8}",
+//                "E", "Ez", "NSCF", "Favg", "Fmax", "Time", "Mag");
+//     }
+// }
 
 
 #[derive(Clone, PartialEq, Debug)]
@@ -101,7 +115,6 @@ pub struct Outcar {
     pub nbands        : i32,
     pub efermi        : f64,
     pub cell          : Mat33<f64>,
-    pub ext_pressure  : Vec<f64>,
     pub ions_per_type : Vec<i32>,
     pub ion_types     : Vec<String>,
     pub ion_masses    : Vec<f64>,  // .len() == nions
@@ -173,9 +186,9 @@ impl Outcar {
         assert_eq!(forcev.len()   , len);
         assert_eq!(cellv.len()    , len);
 
-        let ion_iters = multizip((nscfv, totenv, toten_zv, magmomv, cputimev, posv, forcev, cellv))
-            .map(|(iscf, e, ez, mag, cpu, pos, f, cell)| {
-                IonicIteration::new(iscf, e, ez, cpu, mag, pos, f, cell)
+        let ion_iters = multizip((nscfv, totenv, toten_zv, magmomv, cputimev, ext_pressure, posv, forcev, cellv))
+            .map(|(iscf, e, ez, mag, cpu, stress, pos, f, cell)| {
+                IonicIteration::new(iscf, e, ez, cpu, stress, mag, pos, f, cell)
             })
             .collect::<Vec<IonicIteration>>();
 
@@ -191,7 +204,6 @@ impl Outcar {
                 nbands,
                 efermi,
                 cell,
-                ext_pressure,
                 ions_per_type,
                 ion_types,
                 ion_masses,
