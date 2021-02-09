@@ -85,13 +85,13 @@ pub struct PrintOptIterations(Vec<IonicIteration>);
 impl fmt::Display for PrintOptIterations {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let header = format!("# NStep {:>11} {:>11} {:>4} {:>6} {:>6} {:>6} {:>6} {:>8}",
-               "E/eV", "Ez/eV", "NSCF", "Favg", "Fmax", "Stress", "Time", "Mag/muB");
+               "E/eV", "Ez/eV", "NSCF", "Favg", "Fmax", "Stress", "t/min", "Mag/muB");
         let body = self.0.iter().enumerate()
             .map(|(i, x)| format!(" {:6} {}", i+1, x))
             .collect::<Vec<String>>()
             .join("\n");
 
-        write!(f, "{}\n{}", header, body)
+        write!(f, "{}\n{}", header.bright_green(), body)
     }
 }
 
