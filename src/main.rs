@@ -3,6 +3,7 @@ use std::path::Path;
 use std::time;
 use clap::{Arg, App};
 use rsgrad::outcar::Outcar;
+use rsgrad::outcar::PrintOptIterations;
 
 fn main() -> Result<()> {
     let now = time::Instant::now();
@@ -16,9 +17,7 @@ fn main() -> Result<()> {
         .get_matches();
 
     let f = Outcar::from_file(Path::new(matches.value_of("input").unwrap()))?;
-    for (i, ionit) in f.ion_iters.iter().enumerate() {
-        println!("{:3} {}", i+1, ionit);
-    }
+    println!("{}", PrintOptIterations::from(f.ion_iters));
 
     eprintln!("# Time used: {:?}", now.elapsed());
     Ok(())
