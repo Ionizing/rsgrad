@@ -1,3 +1,5 @@
+![Rust](https://github.com/Ionizing/rsgrad/workflows/Rust/badge.svg)
+
 Tracking the relaxation or MD progress of VASP calculation.
 
 # Usage
