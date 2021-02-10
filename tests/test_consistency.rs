@@ -71,6 +71,57 @@ fn test_normal_outcar() -> io::Result<()> {
 
 
 #[test]
+fn test_unfinished_outcar() -> io::Result<()> {
+    let fname = get_fpath_in_current_dir!("OUTCAR_unfinished");
+    let outcar = Outcar::from_file(&fname)?;
+
+    assert_eq!(outcar.lsorbit, false);
+    assert_eq!(outcar.ispin, 1);
+    assert_eq!(outcar.ibrion, 1);
+    assert_eq!(outcar.nions, 32);
+    assert_eq!(outcar.nkpts, 20);
+    assert_eq!(outcar.nbands, 81);
+    assert_eq!(outcar.efermi, 2.9331);
+    assert_eq!(outcar.cell, [[7.519999981,         0.0,         0.0],
+                             [        0.0, 7.519999981,         0.0],
+                             [        0.0,         0.0, 7.519999981]]);
+    assert_eq!(outcar.ions_per_type, vec![32]);
+    assert_eq!(outcar.ion_types, vec!["C"]);
+    assert_eq!(outcar.ion_masses, vec![12.011; 32]);
+    assert_eq!(outcar.ion_iters.len(), 1);
+    assert_eq!(outcar.vib, None);
+
+    outcar.ion_iters.iter()
+                    .zip(vec![14i32].iter())
+                    .for_each(|(x, y)| assert_eq!(&x.nscf, y));
+
+    outcar.ion_iters.iter()
+                    .zip(vec![-253.61858820].iter())
+                    .for_each(|(x, y)| assert_eq!(&x.toten, y));
+
+    outcar.ion_iters.iter()
+                    .zip(vec![-253.61858820].iter())
+                    .for_each(|(x, y)| assert_eq!(&x.toten_z, y));
+
+    outcar.ion_iters.iter()
+                    .zip(vec![-18.05].iter())
+                    .for_each(|(x, y)| assert_eq!(&x.stress, y));
+
+    assert_eq!(&outcar.ion_iters.last().unwrap().cell, &[[7.519999981,         0.0,         0.0],
+                                                         [        0.0, 7.519999981,         0.0],
+                                                         [        0.0,         0.0, 7.519999981]]);
+
+    assert_eq!(outcar.ion_iters.last().unwrap()
+               .positions.last().unwrap(), &[5.10918, 5.10918, 1.34918]);
+    assert_eq!(outcar.ion_iters.last().unwrap()
+               .forces.last().unwrap(), &[0.0; 3]);
+
+    assert!(outcar.ion_iters.iter().all(|i| i.magmom.is_none()));
+    Ok(())
+}
+
+
+#[test]
 fn test_ispin2_outcar() -> io::Result<()> {
     let fname = get_fpath_in_current_dir!("OUTCAR_ispin2");
     let outcar = Outcar::from_file(&fname)?;
