@@ -14,13 +14,13 @@ jobs:
         include:
           - os: ubuntu-latest
             artifact_name: mything
-            asset_name: mything-linux-amd64
+            asset_name: rsgrad-linux-amd64
           - os: windows-latest
             artifact_name: mything.exe
-            asset_name: mything-windows-amd64
+            asset_name: rsgrad-windows-amd64
           - os: macos-latest
             artifact_name: mything
-            asset_name: mything-macos-amd64
+            asset_name: rsgrad-macos-amd64
 
     steps:
     - uses: actions/checkout@v2
