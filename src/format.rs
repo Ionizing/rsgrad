@@ -65,6 +65,7 @@ impl IonicIterationsFormat {
 impl fmt::Display for IonicIterationsFormat {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut de: f64 = 0.0;
+        let mut ce: f64 = 0.0;
 
         // Prepare Header
         let mut header = "  #Step".to_owned();
@@ -84,7 +85,8 @@ impl fmt::Display for IonicIterationsFormat {
         for (i, it) in self._data.iter().enumerate() {
             let mut line = format!("{:7}", i+1);
 
-            de -= self._data[i].toten_z;
+            de = self._data[i].toten_z - ce;
+            ce = self._data[i].toten_z;
             if self.print_energy  { line += &format!(" {:11.5}", it.toten); }
             if self.print_energyz { line += &format!(" {:11.5}", it.toten_z).bright_green().to_string(); }
             if self.print_log10de { line += &format!(" {:4.1}", de.abs().log10()); }
@@ -136,9 +138,9 @@ impl fmt::Display for IonicIterationsFormat {
                     // |10 11 12|
                     // |20 21 22|
 
-                    c[0][0] * (c[1][1] * c[2][2] - c[2][1] * c[1][2]) +
-                        c[0][1] * (c[1][0] * c[2][2] - c[1][2] * c[2][0]) +
-                        c[0][2] * (c[1][0] * c[2][1] - c[1][1] * c[2][0])
+                    c[0][0] * (c[1][1] * c[2][2] - c[2][1] * c[1][2])
+                        - c[0][1] * (c[1][0] * c[2][2] - c[1][2] * c[2][0])
+                        + c[0][2] * (c[1][0] * c[2][1] - c[1][1] * c[2][0])
                 };
                 line += &format!(" {:8.1}", volume);
             }
