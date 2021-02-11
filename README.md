@@ -51,7 +51,7 @@ Now it is rewritten with Rust language, which make it safer and faster and more 
 - Display the time usage of each ionic step
 
 # Future features
-- [ ] A prettier output layout
+- [X] A prettier output layout
 - [ ] Output the trajectory of relaxation or MD
 - [ ] Display the unconverged atoms
 - [ ] Save the viberation modes
