@@ -1,5 +1,6 @@
 use std::fmt;
 
+use colored::Colorize;
 use crate::outcar::IonicIteration;
 
 pub struct IonicIterationsFormat {
@@ -39,7 +40,7 @@ impl From<Vec<IonicIteration>> for IonicIterationsFormat {
 
 macro_rules! impl_builder_item {
     ($t: tt) => {
-        pub fn $t(&mut self, arg: bool) -> &mut Self {
+        pub fn $t(mut self, arg: bool) -> Self {
             self.$t = arg;
             self
         }
@@ -65,13 +66,28 @@ impl fmt::Display for IonicIterationsFormat {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut de: f64 = 0.0;
 
+        // Prepare Header
+        let mut header = "  #Step".to_owned();
+        header += if self.print_energy     { "    TOTEN/eV" } else { "" };
+        header += if self.print_energyz    { "  TOTEN_z/eV" } else { "" };
+        header += if self.print_log10de    { " LgdE" }        else { "" };
+        header += if self.print_favg       { "   Favg" }      else { "" };
+        header += if self.print_fmax       { "   Fmax" }      else { "" };
+        header += if self.print_fmax_index { " idx" }         else { "" };
+        header += if self.print_fmax_axis  { "  " }           else { "" };
+        header += if self.print_nscf       { " #SCF" }        else { "" };
+        header += if self.print_time_usage { " Time/m" }      else { "" };
+        header += if self.print_volume     { "   Vol/A3" }    else { "" };
+        header += if self.print_magmom     { " Mag/muB" }     else { "" };
+        writeln!(f, "{}", header.bright_green())?;
+
         for (i, it) in self._data.iter().enumerate() {
             let mut line = format!("{:7}", i+1);
 
             de -= self._data[i].toten_z;
             if self.print_energy  { line += &format!(" {:11.5}", it.toten); }
-            if self.print_energyz { line += &format!(" {:11.5}", it.toten_z); }
-            if self.print_log10de { line += &format!(" {:4.1}", de.log10()); }
+            if self.print_energyz { line += &format!(" {:11.5}", it.toten_z).bright_green().to_string(); }
+            if self.print_log10de { line += &format!(" {:4.1}", de.abs().log10()); }
 
             let fsize = it.forces.iter()
                                    .map(|f| (f[0]*f[0] + f[1]*f[1] * f[2]*f[2]).sqrt())
@@ -84,16 +100,32 @@ impl fmt::Display for IonicIterationsFormat {
             let (fmax_ind, fmax) = fsize.into_iter()
                                         .enumerate()
                                         .fold((0, 0.0), |mut acc, (i, f)|{
-                                            if acc.1 > f {
+                                            if acc.1 < f {
                                                 acc.1 = f;
                                                 acc.0 = i;
                                             }
                                             acc
                                         });
+            let fmaxis = match it.forces[fmax_ind]
+                .iter()
+                .enumerate()
+                .fold((0, 0.0), |mut acc, (i, f)| {
+                    if acc.1 < f.abs() {
+                        acc.1 = f.abs();
+                        acc.0 = i;
+                    }
+                    acc
+                }) {
+                    (0, _) => "X",
+                    (1, _) => "Y",
+                    (2, _) => "Z",
+                    _ => unreachable!("Invalid Fmax Axis here")
+                };
 
-            if self.print_fmax       { line += &format!(" {:6.3}", fmax); }
-            if self.print_fmax_index { line += &format!(" {:3}", fmax_ind); }
-            if self.print_nscf       { line += &format!(" {:3}", it.nscf); }
+            if self.print_fmax       { line += &format!(" {:6.3}", fmax).bright_green().to_string(); }
+            if self.print_fmax_index { line += &format!(" {:3}", fmax_ind+1); }
+            if self.print_fmax_axis  { line += &format!(" {:1}", fmaxis); }
+            if self.print_nscf       { line += &format!(" {:4}", it.nscf).bright_yellow().to_string(); }
             if self.print_time_usage { line += &format!(" {:6.2}", it.cputime/60.0); }
 
             if self.print_volume {
@@ -108,7 +140,7 @@ impl fmt::Display for IonicIterationsFormat {
                         c[0][1] * (c[1][0] * c[2][2] - c[1][2] * c[2][0]) +
                         c[0][2] * (c[1][0] * c[2][1] - c[1][1] * c[2][0])
                 };
-                line += &format!(" {}", volume);
+                line += &format!(" {:8.1}", volume);
             }
 
             if self.print_magmom {

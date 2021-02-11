@@ -4,11 +4,9 @@ type Mat33<T> = [[T;3];3];   // 3x3 matrix
 use std::io;
 use std::path::Path;
 use std::fs;
-use std::fmt;
 use rayon;
 use regex::Regex;
 use itertools::multizip;
-use colored::Colorize;
 
 // DONE ISPIN
 // DONE ions per type
@@ -49,56 +47,6 @@ impl IonicIteration {
         }
     }
     // The parsing process is done within `impl Outcar`
-}
-
-
-impl fmt::Display for IonicIteration {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let nscf_text    = format!("{:4}", self.nscf).normal();
-        let toten_text   = format!("{:11.5}", self.toten).normal();
-        let totez_text   = format!("{:11.5}", self.toten_z).bright_green();
-        let cputime_text = format!("{:6.2}", self.cputime / 60.0).white();
-        let stress_text  = format!("{:6.2}", self.stress).normal();
-
-        let fsize = self.forces.iter()
-                               .map(|f| (f[0]*f[0] + f[1]*f[1] * f[2]*f[2]).sqrt())
-                               .collect::<Vec<_>>();
-        let maxf_text   = format!("{:6.3}", fsize.iter().cloned().fold(0.0, f64::max)).bright_green();
-        let avgf_text   = format!("{:6.3}", fsize.iter().sum::<f64>() / self.forces.len() as f64).normal();
-        let magmom_text = if let Some(mag) = &self.magmom {
-            mag.iter()
-               .map(|n| format!("{:8.4}", n))
-               .collect::<Vec<_>>()
-                .join(" ")
-                .bright_yellow()
-        } else { "   NoMag".to_string().normal() };
-
-        write!(f, "{E} {Ez} {nscf} {Favg} {Fmax} {Stress} {Time} {Mag}",
-               E=toten_text, Ez=totez_text, nscf=nscf_text, Favg=avgf_text,
-               Fmax=maxf_text, Time=cputime_text, Mag=magmom_text, Stress=stress_text)
-    }
-}
-
-
-pub struct PrintOptIterations(Vec<IonicIteration>);
-
-impl fmt::Display for PrintOptIterations {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let header = format!("# NStep {:>11} {:>11} {:>4} {:>6} {:>6} {:>6} {:>6} {:>8}",
-               "E/eV", "Ez/eV", "NSCF", "Favg", "Fmax", "Stress", "t/min", "Mag/muB");
-        let body = self.0.iter().enumerate()
-            .map(|(i, x)| format!(" {:6} {}", i+1, x))
-            .collect::<Vec<String>>()
-            .join("\n");
-
-        write!(f, "{}\n{}", header.bright_green(), body)
-    }
-}
-
-impl From<Vec<IonicIteration>> for PrintOptIterations {
-    fn from(v: Vec<IonicIteration>) -> Self {
-        Self(v)
-    }
 }
 
 
