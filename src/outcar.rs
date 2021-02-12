@@ -1,5 +1,5 @@
-type MatX3<T> = Vec<[T;3]>;  // Nx3 matrix
-type Mat33<T> = [[T;3];3];   // 3x3 matrix
+pub type MatX3<T> = Vec<[T;3]>;  // Nx3 matrix
+pub type Mat33<T> = [[T;3];3];   // 3x3 matrix
 
 use std::io;
 use std::path::Path;
