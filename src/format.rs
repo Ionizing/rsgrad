@@ -1,6 +1,7 @@
 use std::fmt;
 use std::path::{
     Path,
+    PathBuf,
 };
 use std::fs;
 use std::io;
@@ -299,8 +300,24 @@ impl Trajectory {
         Ok(())
     }
 
-    pub fn _save_as_seperated_poscars(&self, path: &(impl AsRef<Path> + ?Sized)) -> io::Result<()> {
-        todo!();
+    pub fn save_as_seperated_poscars(self, path: &(impl AsRef<Path> + ?Sized)) -> io::Result<()> {
+        let mut fname = PathBuf::new();
+        fname.push(path);
+        if !fname.is_dir() {
+            fs::create_dir_all(&fname)?;
+        }
+
+        for (i, v) in self.0.into_iter().enumerate() {
+            fname.push(&format!("POSCAR_{:05}.vasp", i+1));
+            let mut f = fs::OpenOptions::new()
+                .create(true)
+                .truncate(true)
+                .write(true)
+                .open(&fname)?;
+            write!(f, "{:15.9}", Poscar::from(v))?;
+            fname.pop();
+        }
+        Ok(())
     }
 
     pub fn _save_into_seperated_dirs(&self, path: &(impl AsRef<Path> + ?Sized)) -> io::Result<()> {
