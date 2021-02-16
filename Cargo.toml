@@ -19,3 +19,7 @@ vasp-poscar = "0.3"
 clap  = "2"
 colored = "2"
 tempdir = "0.3"
+
+[profile.release]
+incremental = false
+lto = true
