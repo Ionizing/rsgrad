@@ -205,9 +205,12 @@ impl Outcar {
         carpos.iter()
               .map(|v| {
                   [
-                      convmat[0][0] * v[0] + convmat[0][1] * v[1] * convmat[0][2] * v[2],
-                      convmat[1][0] * v[0] + convmat[1][1] * v[1] * convmat[1][2] * v[2],
-                      convmat[2][0] * v[0] + convmat[2][1] * v[1] * convmat[2][2] * v[2],
+                      //                    [B11, B12, B13]
+                      // carpos [x, y, z] x [B21, B22, B23]
+                      //                    [B31, B32, B33]
+                      convmat[0][0] * v[0] + convmat[1][0] * v[1] + convmat[2][0] * v[2],
+                      convmat[0][1] * v[0] + convmat[1][1] * v[1] + convmat[2][1] * v[2],
+                      convmat[0][2] * v[0] + convmat[1][2] * v[1] + convmat[2][2] * v[2],
                   ]
             }).collect()
     }
@@ -367,5 +370,23 @@ Cartesian
                     [4.0, 5.0, 6.0],
                     [7.0, 8.0, 9.0]];
         let _ = Outcar::_calc_inv_3x3(&cell);
+    }
+
+    #[test]
+    fn test_car_to_frac() {
+        let cell = [[1.0, 2.0, 3.0],
+                    [0.0, 1.0, 4.0],
+                    [5.0, 6.0, 0.0]];
+        let car = vec![[0.0, 0.0, 0.0],
+                       [0.5, 1.0, 1.5],
+                       [0.0, 0.5, 2.0],
+                       [2.5, 3.0, 0.0],
+                       [11.0, 45.0, 14.0]];
+        let frac = vec![[0.0, 0.0, 0.0],
+                        [0.5, 0.0, 0.0],
+                        [0.0, 0.5, 0.0],
+                        [0.0, 0.0, 0.5],
+                        [566.0, -421.0, -111.0]];
+        assert_eq!(frac, Outcar::_car_to_frac(&cell, &car));
     }
 }
