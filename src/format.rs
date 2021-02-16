@@ -183,27 +183,70 @@ pub struct Structure {
     pub cell          : Mat33<f64>,
     pub ion_types     : Vec<String>,
     pub ions_per_type : Vec<i32>,
-    pub positions     : MatX3<f64>,
+    pub car_pos     : MatX3<f64>,
+    pub frac_pos    : MatX3<f64>,
 }
 
 
 impl Outcar {
     pub fn get_structure_cloned(&self, i: usize) -> Structure {
-        Structure {
-            cell: self.ion_iters[i].cell.clone(),
-            ion_types: self.ion_types.clone(),
-            ions_per_type: self.ions_per_type.clone(),
-            positions: self.ion_iters[i].positions.clone(),
-        }
+        // Structure {
+        //     cell: self.ion_iters[i].cell.clone(),
+        //     ion_types: self.ion_types.clone(),
+        //     ions_per_type: self.ions_per_type.clone(),
+        //     car_pos: self.ion_iters[i].positions.clone(),
+        // };
+
+        todo!();
+    }
+
+    fn _car_to_frac(cell: &Mat33<f64>, carpos: &MatX3<f64>) -> MatX3<f64> {
+        let convmat = Self::_calc_inv_3x3(cell);
+        carpos.iter()
+              .map(|v| {
+                  [
+                      convmat[0][0] * v[0] + convmat[0][1] * v[1] * convmat[0][2] * v[2],
+                      convmat[1][0] * v[0] + convmat[1][1] * v[1] * convmat[1][2] * v[2],
+                      convmat[2][0] * v[0] + convmat[2][1] * v[1] * convmat[2][2] * v[2],
+                  ]
+            }).collect()
+    }
+
+    fn _calc_inv_3x3(cell: &Mat33<f64>) -> Mat33<f64> {
+        let a = cell[0][0];
+        let b = cell[0][1];
+        let c = cell[0][2];
+        let d = cell[1][0];
+        let e = cell[1][1];
+        let f = cell[1][2];
+        let g = cell[2][0];
+        let h = cell[2][1];
+        let i = cell[2][2];
+
+        // [a b c]
+        // [d e f]
+        // [g h i]
+
+        let det = a*(e*i - f*h) - b*(d*i - f*g) + c*(d*h - e*g);
+        assert!(det.abs() > 1.0e-5, "Cell volume too small, check your lattice.");
+        let detdiv = 1.0 / det;
+
+        [[(e*i - f*h) * detdiv, (c*h - b*i) * detdiv, (b*f - c*e) * detdiv],
+         [(f*g - d*i) * detdiv, (a*i - c*g) * detdiv, (c*d - a*f) * detdiv],
+         [(d*h - e*g) * detdiv, (b*g - a*h) * detdiv, (a*e - b*d) * detdiv]]
     }
 }
 
 
 #[derive(Clone)]
-pub struct Structures(Vec<Structure>);
+pub struct Trajectory(Vec<Structure>);
 
-impl Structures {
-    pub fn save_as_xdatcar(&self, path: &(impl AsRef<Path> + ?Sized)) -> io::Result<()> {
+impl Trajectory {
+    pub fn save_as_xdatcar(self, path: &(impl AsRef<Path> + ?Sized)) -> io::Result<()> {
+        let pos = self.0.into_iter()
+                        .map(Poscar::from)
+                        .collect::<Vec<_>>();
+        let mut header = format!("{}\n", pos[0].comment());
         todo!();
     }
 
@@ -216,35 +259,36 @@ impl Structures {
     }
 }
 
-impl Index<usize> for Structures {
+impl Index<usize> for Trajectory {
     type Output = Structure;
     fn index(&self, index: usize) -> &Self::Output {
         &self.0[index]
     }
 }
 
-impl IndexMut<usize> for Structures {
+impl IndexMut<usize> for Trajectory {
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
         &mut self.0[index]
     }
 
 }
 
-impl From<Outcar> for Structures {
+impl From<Outcar> for Trajectory {
     fn from(o: Outcar) -> Self {
         let len = o.ion_iters.len();
-        Self (
-            multizip((o.ion_iters, vec![o.ion_types; len], vec![o.ions_per_type; len]))
-                .map(|(ii, it, ipt)| -> Structure {
-                    Structure {
-                        cell: ii.cell,
-                        ion_types: it,
-                        ions_per_type: ipt,
-                        positions: ii.positions,
-                    }
-                })
-                .collect()
-        )
+        todo!();
+        // Self (
+        //     multizip((o.ion_iters, vec![o.ion_types; len], vec![o.ions_per_type; len]))
+        //         .map(|(ii, it, ipt)| -> Structure {
+        //             Structure {
+        //                 cell: ii.cell,
+        //                 ion_types: it,
+        //                 ions_per_type: ipt,
+        //                 car_pos: ii.positions,
+        //             }
+        //         })
+        //         .collect()
+        // )
     }
 }
 
@@ -260,7 +304,7 @@ impl From<Structure> for Poscar {
                           .map(|x| x as usize)
                           .collect::<Vec<usize>>())
             .positions(
-                vasp_poscar::Coords::Cart(s.positions)
+                vasp_poscar::Coords::Cart(s.car_pos)
             )
             .build()
             .unwrap()
@@ -290,7 +334,8 @@ mod tests {
             cell: [[5.0, 0.0, 0.0], [0.0, 5.0, 0.0], [0.0, 0.0, 5.0]],
             ion_types: vec!["H".to_string()],
             ions_per_type: vec![1],
-            positions: vec![[0.0, 0.0, 0.0]],
+            car_pos: vec![[0.0, 0.0, 0.0]],
+            frac_pos: vec![[0.0, 0.0, 0.0]],
         };
         println!("{:13.9}", Poscar::from(s.clone()));
         assert_eq!(r#"Generated by rsgrad
@@ -303,5 +348,24 @@ mod tests {
 Cartesian
     0.000000000   0.000000000   0.000000000
 "#, format!("{:13.9}", Poscar::from(s)));
+    }
+
+    #[test]
+    fn test_calc_inv_3x3() {
+        let cell = [[1.0, 2.0, 3.0],
+                    [0.0, 1.0, 4.0],
+                    [5.0, 6.0, 0.0]];
+        assert_eq!(Outcar::_calc_inv_3x3(&cell), [[-24.0,  18.0,  5.0],
+                                                  [ 20.0, -15.0, -4.0],
+                                                  [ -5.0,   4.0,  1.0]]);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_inv_3x3_singular() {
+        let cell = [[1.0, 2.0, 3.0],
+                    [4.0, 5.0, 6.0],
+                    [7.0, 8.0, 9.0]];
+        let _ = Outcar::_calc_inv_3x3(&cell);
     }
 }
