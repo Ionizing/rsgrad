@@ -177,7 +177,7 @@ impl Outcar {
         Regex::new(r"ISPIN  =      (\d)")
             .unwrap()
             .captures(context)
-            .unwrap()
+            .expect("Cannot find ISPIN")
             .get(1)
             .unwrap()
             .as_str()
@@ -189,7 +189,7 @@ impl Outcar {
         Regex::new(r"NIONS = \s+(\d+)")
             .unwrap()
             .captures(context)
-            .unwrap()
+            .expect("Cannot find NIONS")
             .get(1)
             .unwrap()
             .as_str()
@@ -206,7 +206,7 @@ impl Outcar {
                  .unwrap()
                  .as_str()
                  .parse::<f64>()
-                    .unwrap()
+                    .expect("Cannot parse TOTEN as float value")
             })
             .collect()
     }
@@ -220,7 +220,7 @@ impl Outcar {
                  .unwrap()
                  .as_str()
                  .parse::<f64>()
-                    .unwrap()
+                    .expect("Cannot parse TOTENZ as float value")
             })
             .collect()
     }
@@ -234,7 +234,7 @@ impl Outcar {
                  .unwrap()
                  .as_str()
                  .parse::<f64>()
-                    .unwrap()
+                    .expect("Cannot parse CPU time as float value")
             })
             .collect()
     }
@@ -252,7 +252,7 @@ impl Outcar {
         let pos = context
             .rmatch_indices("number of electron")
             .next()
-            .unwrap()
+            .expect("Magmom data not found")
             .0;
         let ret = context[pos..]
             .lines()
@@ -260,7 +260,7 @@ impl Outcar {
             .unwrap()
             .split_whitespace()
             .skip(5)
-            .map(|x| x.trim().parse::<f64>().unwrap())
+            .map(|x| x.trim().parse::<f64>().expect("Cannot parse magmom as float value"))
             .collect::<Vec<_>>();
         match ret.len() {
             0 => None,
@@ -587,12 +587,32 @@ mod tests{
     }
 
     #[test]
+    #[should_panic(expected = "Cannot find ISPIN")]
+    fn test_parse_ispin_fail() {
+        let input = r#"
+   ICHARG =      2    charge: 1-file 2-atom 10-const
+   ISPIN  =           spin polarized calculation?
+   LNONCOLLINEAR =      F non collinear calculations"#;
+        Outcar::parse_ispin(&input);
+    }
+
+    #[test]
     fn test_parse_nions() {
         let input = r#"
    k-points           NKPTS =      1   k-points in BZ     NKDIM =      1   number of bands    NBANDS=      8
    number of dos      NEDOS =    301   number of ions     NIONS =      4
    non local maximal  LDIM  =      4   non local SUM 2l+1 LMDIM =      8 "#;
         assert_eq!(Outcar::parse_nions(&input), 4i32);
+    }
+
+    #[test]
+    #[should_panic(expected = "Cannot find NIONS")]
+    fn test_parse_nions_fail() {
+        let input = r#"
+   k-points           NKPTS =      1   k-points in BZ     NKDIM =      1   number of bands    NBANDS=      8
+   number of dos      NEDOS =    301   number of ions     NIONS =      d
+   non local maximal  LDIM  =      4   non local SUM 2l+1 LMDIM =      8 "#;
+        Outcar::parse_nions(&input);
     }
 
     #[test]
@@ -610,6 +630,20 @@ mod tests{
     }
 
     #[test]
+    #[should_panic(expected = "Cannot parse TOTEN as float value")]
+    fn test_parse_toten_faile() {
+        let input = r#"
+  free energy    TOTEN  =        51.95003235 eV
+  free energy    TOTEN  =       -10.91478741 eV
+  free energy    TOTEN  =       -22.11911831 eV
+  free  energy   TOTEN  =       ************ eV
+  free  energy   TOTEN  =       -19.25519593 eV
+  free  energy   TOTEN  =       -19.26817124 eV
+"#;
+        Outcar::parse_toten(&input);
+    }
+
+    #[test]
     fn test_parse_toten_z() {
         let input = r#"
   energy without entropy =       51.93837380  energy(sigma->0) =       51.94614617
@@ -620,6 +654,19 @@ mod tests{
   energy  without entropy=      -19.27976705  energy(sigma->0) =      -19.27203651"#;
         let output = vec![-19.26937333f64, -19.25906120, -19.27203651];
         assert_eq!(Outcar::parse_toten_z(&input), output);
+    }
+
+    #[test]
+    #[should_panic(expected = "Cannot parse TOTENZ as float value")]
+    fn test_parse_toten_z_fail() {
+        let input = r#"
+  energy without entropy =       51.93837380  energy(sigma->0) =       51.94614617
+  energy without entropy =      -10.92638322  energy(sigma->0) =      -10.91865268
+  energy without entropy =      -22.13071412  energy(sigma->0) =      -22.12298358
+  energy  without entropy=      -19.27710387  energy(sigma->0) =      ************
+  energy  without entropy=      -19.26679174  energy(sigma->0) =      -19.25906120
+  energy  without entropy=      -19.27976705  energy(sigma->0) =      -19.27203651"#;
+        Outcar::parse_toten_z(&input);
     }
 
     #[test]
@@ -634,6 +681,20 @@ mod tests{
      LOOP+:  cpu time    1.2788: real time    1.2670"#;
         let output = vec![2.0863, 1.1865, 1544.6603, 1.2670];
         assert_eq!(Outcar::parse_cputime(&input), output);
+    }
+
+    #[test]
+    #[should_panic(expected = "Cannot parse CPU time as float value")]
+    fn test_parse_cputime_fail() {
+        let input = r#"
+      LOOP:  cpu time    0.0894: real time    0.0949
+      LOOP:  cpu time    0.0360: real time    0.0330
+      LOOP:  cpu time    0.0275: real time    0.0261
+     LOOP+:  cpu time    2.0921: real time    ******
+     LOOP+:  cpu time    1.2021: real time    1.1865
+     LOOP+:  cpu time 1543.2679: real time 1544.6603
+     LOOP+:  cpu time    1.2788: real time    1.2670"#;
+        Outcar::parse_cputime(&input);
     }
 
     #[test]
@@ -980,6 +1041,20 @@ mod tests{
 "#;
         let output = vec![Some(vec![42.0005098f64; 3]); 3];
         assert_eq!(Outcar::parse_magmoms(&input), output);
+    }
+
+    #[test]
+    #[should_panic(expected = "Cannot parse magmom as float value")]
+    fn test_parse_magmoms_fail() {
+        let input = r#"
+ total energy-change (2. order) :-0.5897058E-05  (-0.8072299E-08)
+ number of electron     309.9999998 magnetization      **********
+ augmentation part       88.5937960 magnetization      26.8073410
+......
+  free  energy   TOTEN  =      -391.79003630 eV
+  energy  without entropy=     -391.77828290  energy(sigma->0) =     -391.78611850
+"#;
+        Outcar::parse_magmoms(&input);
     }
 
     #[test]
