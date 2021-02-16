@@ -320,7 +320,7 @@ impl Trajectory {
         Ok(())
     }
 
-    pub fn _save_into_seperated_dirs(&self, path: &(impl AsRef<Path> + ?Sized)) -> io::Result<()> {
+    pub fn _save_into_seperated_dirs(self, _path: &(impl AsRef<Path> + ?Sized)) -> io::Result<()> {
         todo!();
     }
 }
