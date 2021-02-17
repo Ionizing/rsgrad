@@ -1,7 +1,7 @@
 use std::io::Result;
 use std::path::Path;
 use std::time;
-use clap::{Arg, App};
+use clap::{Arg, App, AppSettings};
 use rsgrad::outcar::Outcar;
 use rsgrad::format::IonicIterationsFormat;
 
@@ -10,6 +10,7 @@ fn main() -> Result<()> {
     let now = time::Instant::now();
 
     let matches = App::new("rsgrad")
+        .setting(AppSettings::ColoredHelp)
         .version("0.2")
         .author("Ionizing PeterSmith_9@outlook.com")
         .about("Tracking the relaxation or MD progress of VASP calculation")
