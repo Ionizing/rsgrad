@@ -40,9 +40,14 @@ fn main() -> Result<()> {
              .default_value("t"))
         .arg(Arg::from_usage("--print-volume [t|f] 'Print the system volumes of each ionic iteration'")
              .default_value("f"))
+        .arg(Arg::from_usage("--print-all [t|f] 'Print all supported information'")
+             .default_value("f"))
         .get_matches();
 
     let convert_helper = |c: &str| -> bool {
+        if matches.value_of("print-all").unwrap().to_ascii_uppercase() == "T" {
+            return true;
+        }
         match c {
             "t" | "T" => true,
             "f" | "F" => false,
