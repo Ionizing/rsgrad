@@ -1,7 +1,7 @@
 use std::io::Result;
 use std::path::Path;
 use std::time;
-use clap::{Arg, App, AppSettings};
+use clap::{Arg, App, AppSettings, crate_version};
 use rsgrad::outcar::Outcar;
 use rsgrad::format::IonicIterationsFormat;
 
@@ -11,7 +11,7 @@ fn main() -> Result<()> {
 
     let matches = App::new("rsgrad")
         .setting(AppSettings::ColoredHelp)
-        .version("0.2")
+        .version(crate_version!())
         .author("Ionizing PeterSmith_9@outlook.com")
         .about("Tracking the relaxation or MD progress of VASP calculation")
         .arg(Arg::with_name("input")
@@ -40,12 +40,11 @@ fn main() -> Result<()> {
              .default_value("t"))
         .arg(Arg::from_usage("--print-volume [t|f] 'Print the system volumes of each ionic iteration'")
              .default_value("f"))
-        .arg(Arg::from_usage("--print-all [t|f] 'Print all supported information'")
-             .default_value("f"))
+        .arg(Arg::from_usage("--print-all 'Print all supported information'"))
         .get_matches();
 
     let convert_helper = |c: &str| -> bool {
-        if matches.value_of("print-all").unwrap().to_ascii_uppercase() == "T" {
+        if matches.is_present("print-all") {
             return true;
         }
         match c {
