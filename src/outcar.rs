@@ -51,13 +51,13 @@ impl IonicIteration {
 
 
 #[derive(Clone, PartialEq, Debug)]
-pub struct Viberation {
+pub struct Vibration {
     pub freq       : f64,  // in THz
     pub dxdydz     : MatX3<f64>,
     pub is_imagine : bool, // denote wheher this mode is an imagine mode
 }
 
-impl Viberation {
+impl Vibration {
     pub fn new(freq: f64, dxdydz: MatX3<f64>, is_imagine: bool) -> Self {
         Self {freq, dxdydz, is_imagine}
     }
@@ -79,7 +79,7 @@ pub struct Outcar {
     pub ion_types     : Vec<String>,
     pub ion_masses    : Vec<f64>,  // .len() == nions
     pub ion_iters     : Vec<IonicIteration>,
-    pub vib           : Option<Vec<Viberation>>, // .len() == degrees of freedom
+    pub vib           : Option<Vec<Vibration>>, // .len() == degrees of freedom
 }
 
 
@@ -482,7 +482,7 @@ impl Outcar {
             })
     }
 
-    fn parse_viberations(context: &str) -> Option<Vec<Viberation>> {
+    fn parse_viberations(context: &str) -> Option<Vec<Vibration>> {
         let massess_sqrt = Self::parse_ion_masses(context)
             .iter()
             .map(|x| x.sqrt())
@@ -513,7 +513,7 @@ impl Outcar {
         Some(vibs)
     }
 
-    fn _parse_single_vibmode(context: &str) -> Viberation {
+    fn _parse_single_vibmode(context: &str) -> Vibration {
         let freq = Regex::new(r"2PiTHz \s*(\S*) cm-1")
             .unwrap()
             .captures(context)
@@ -557,7 +557,7 @@ impl Outcar {
             })
             .collect::<MatX3<f64>>();
 
-        Viberation::new(freq, dxdydz, is_imagine)
+        Vibration::new(freq, dxdydz, is_imagine)
     }
 
     fn _parse_dof(context: &str) -> Option<i32> {
@@ -1112,7 +1112,7 @@ mod tests{
       3.000000  2.482900  4.000000    -0.016790    0.000464    0.000000
       2.122800  4.015200  4.000000     0.577337   -0.346802   -0.000001
       3.000000  3.500000  4.000000    -0.304117   -0.000127   -0.000000 "#;
-        let output = Viberation::new(3620.673620f64,
+        let output = Vibration::new(3620.673620f64,
                                      vec![[ 0.577374,   0.346813,   0.000001],
                                           [-0.016790,   0.000464,   0.000000],
                                           [ 0.577337,  -0.346802,  -0.000001],
@@ -1128,7 +1128,7 @@ mod tests{
       2.122800  4.015200  4.000000    -0.000027    0.242662   -0.002062
       3.000000  3.500000  4.000000    -0.000445    0.907339   -0.007730 "#;
 
-        let output = Viberation::new(0.752260f64,
+        let output = Vibration::new(0.752260f64,
                                      vec![[-0.000213,   0.242665,  -0.002062],
                                           [-0.000118,   0.242678,  -0.002057],
                                           [-0.000027,   0.242662,  -0.002062],
@@ -1238,7 +1238,7 @@ mod tests{
             freqs.into_iter()
                  .zip(dxdydzs.into_iter())
                  .zip(is_imagines.into_iter())
-                 .map(|((f, d), im)| Viberation::new(f, d, im))
+                 .map(|((f, d), im)| Vibration::new(f, d, im))
                  .collect::<Vec<_>>()
         );
 
