@@ -4,6 +4,7 @@ use std::fs;
 use rsgrad::{
     outcar::Outcar,
     format::Trajectory,
+    format::Vibrations,
 };
 
 use vasp_poscar::Poscar;
@@ -50,5 +51,21 @@ fn test_save_as_seperated_poscars() -> io::Result<()> {
         .collect::<Result<Vec<_>, io::Error>>()?;
 
     assert!(entries.iter().all(|f| Poscar::from_path(f).is_ok()));
+    Ok(())
+}
+
+#[test]
+fn test_save_as_single_xsf() -> io::Result<()> {
+    let fname = get_fpath_in_current_dir!("OUTCAR_vibrations");
+    let outcar = Outcar::from_file(&fname)?;
+    let vibs = Vibrations::from(outcar);
+
+    let tmpdir = TempDir::new_in(".", "rsgrad_test").unwrap();
+    vibs.save_as_xsf(1, &tmpdir.path())?;
+
+    for i in 1..=vibs.modes.len() {
+        vibs.save_as_xsf(i, &tmpdir.path())?;
+    }
+
     Ok(())
 }

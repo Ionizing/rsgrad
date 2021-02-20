@@ -230,7 +230,7 @@ fn test_ncl_outcar() -> io::Result<()> {
 
 #[test]
 fn test_vib_outcar() -> io::Result<()> {
-    let fname = get_fpath_in_current_dir!("OUTCAR_viberations");
+    let fname = get_fpath_in_current_dir!("OUTCAR_vibrations");
     let outcar = Outcar::from_file(&fname)?;
 
     assert_eq!(outcar.lsorbit, false);

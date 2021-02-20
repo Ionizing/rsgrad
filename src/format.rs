@@ -383,13 +383,72 @@ impl Structure {
 
 
 pub struct Vibrations{
-    modes: Vec<Vibration>,
-    structure: Structure
+    pub modes: Vec<Vibration>,
+    pub structure: Structure
+}
+
+impl From<Outcar> for Vibrations {
+    fn from(outcar: Outcar) -> Self {
+        let structure = outcar.get_structure_cloned(0);
+        let modes = outcar.vib
+                          .expect("This OUTCAR does not contains vibration calculation, try with IBRION = 5");
+        Self {
+            modes,
+            structure,
+        }
+    }
 }
 
 impl Vibrations {
-    pub fn save_as_xsf(&self, path: &(impl AsRef<Path> + ?Sized)) -> io::Result<()> {
+    pub fn save_as_xsf(&self, index: usize, path: &(impl AsRef<Path> + ?Sized)) -> io::Result<()> {
+        let len = self.modes.len();
+        assert!(1 <= index && index <= len, "Index out of bound.");
+        let index = index - 1;
 
+        let mut fname = PathBuf::new();
+        fname.push(path);
+        if !fname.is_dir() {
+            fs::create_dir_all(&fname)?;
+        }
+
+        fname.push(
+            if self.modes[index].is_imagine {
+                format!("mode_{:04}_{:011.5}cm-1_imag.xsf", index+1, self.modes[index].freq)
+            } else {
+                format!("mode_{:04}_{:011.5}cm-1.xsf", index+1, self.modes[index].freq)
+            }
+        );
+
+        let mut f = fs::OpenOptions::new()
+            .create(true)
+            .truncate(true)
+            .write(true)
+            .open(&fname)?;
+
+        writeln!(f, "CRYSTAL")?;
+        writeln!(f, "PRIMVEC")?;
+        for v in self.structure.cell.iter() {
+            writeln!(f, " {:20.16} {:20.16} {:20.16}", v[0], v[1], v[2])?;
+        }
+        writeln!(f, "PRIMCOORD")?;
+        writeln!(f, "{:3} {:3}", self.structure.ions_per_type.iter().sum::<i32>(), 1)?;
+
+        // generate the chemical symbol array for each atom
+        let syms = {
+            let symbs = &self.structure.ion_types;
+            let nsymb = &self.structure.ions_per_type;
+            symbs.iter()
+                 .zip(nsymb.iter())
+                 .fold(vec![], |mut acc, (s, n)| {
+                     acc.extend(vec![s; (*n) as usize]);
+                     acc
+                 })
+        };
+
+        for (s, p, m) in multizip((syms, &self.structure.car_pos, &self.modes[index].dxdydz)) {
+            writeln!(f, "{:4} {:15.10} {:15.10} {:15.10}   {:15.10} {:15.10} {:15.10}",
+                           s,     p[0],    p[1],    p[2],      m[0],    m[1],    m[2])?;
+        }
         Ok(())
     }
 }
