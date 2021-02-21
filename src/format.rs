@@ -10,6 +10,7 @@ use std::io::Write;
 use itertools::multizip;
 use colored::Colorize;
 use vasp_poscar::{self, Poscar};
+use log::{info, trace, warn};
 use crate::outcar::{
     Outcar,
     IonicIteration,
@@ -17,6 +18,43 @@ use crate::outcar::{
     Mat33,
     MatX3,
 };
+
+
+fn _save_as_xsf_helper(fname: &Path, structure: &Structure, forces: &MatX3<f64>) -> io::Result<()> {
+    let mut f = fs::OpenOptions::new()
+        .create(true)
+        .truncate(true)
+        .write(true)
+        .open(&fname)?;
+
+    writeln!(f, "CRYSTAL")?;
+    writeln!(f, "PRIMVEC")?;
+    for v in structure.cell.iter() {
+        writeln!(f, " {:20.16} {:20.16} {:20.16}", v[0], v[1], v[2])?;
+    }
+    writeln!(f, "PRIMCOORD")?;
+    writeln!(f, "{:3} {:3}", structure.ions_per_type.iter().sum::<i32>(), 1)?;
+
+    // generate the chemical symbol array for each atom
+    let syms = {
+        let symbs = &structure.ion_types;
+        let nsymb = &structure.ions_per_type;
+        symbs.iter()
+             .zip(nsymb.iter())
+             .fold(vec![], |mut acc, (s, n)| {
+                 acc.extend(vec![s; (*n) as usize]);
+                 acc
+             })
+    };
+
+    for (s, p, m) in multizip((syms, &structure.car_pos, forces)) {
+        writeln!(f, "{:4} {:15.10} {:15.10} {:15.10}   {:15.10} {:15.10} {:15.10}",
+                 s, p[0], p[1], p[2], m[0], m[1], m[2])?;
+    }
+
+    Ok(())
+}
+
 
 #[derive(Clone)]
 pub struct IonicIterationsFormat {
@@ -188,9 +226,14 @@ pub struct Structure {
 
 
 impl Outcar {
-    pub fn get_structure_cloned(&self, i: usize) -> Structure {
-        let cell     = self.ion_iters[i].cell.clone();
-        let car_pos  = self.ion_iters[i].positions.clone();
+    pub fn get_structure_cloned(&self, index: usize) -> Structure {
+        // index starts from 1
+        let len = self.ion_iters.len();
+        assert!(1 <= index && index <= len, "Index out of bound.");
+        let index = index - 1;
+
+        let cell     = self.ion_iters[index].cell.clone();
+        let car_pos  = self.ion_iters[index].positions.clone();
         let frac_pos = _car_to_frac(&cell, &car_pos);
 
         Structure {
@@ -202,6 +245,24 @@ impl Outcar {
         }
     }
 
+    pub fn save_ionic_step_as_xsf(&self, index: usize, path: &(impl AsRef<Path> + ?Sized)) -> io::Result<()> {
+        // index starts from 1
+        let len = self.ion_iters.len();
+        assert!(1 <= index && index <= len, "Index out of bound.");
+        let index = index - 1;
+
+        let s = &self.get_structure_cloned(index);
+        let f = &self.ion_iters[index].forces;
+
+        let mut fname = PathBuf::new();
+        fname.push(path);
+        if !fname.is_dir() {
+            fs::create_dir_all(&fname)?;
+        }
+        fname.push(&format!("step_{:04}.xsf", index+1));
+        info!("Saving to \"{}\" ...", fname.to_str().unwrap().yellow());
+        _save_as_xsf_helper(&fname, s, f)
+    }
 }
 
 fn _car_to_frac(cell: &Mat33<f64>, carpos: &MatX3<f64>) -> MatX3<f64> {
@@ -248,11 +309,20 @@ pub struct Trajectory(Vec<Structure>);
 
 impl Trajectory {
     pub fn save_as_xdatcar(self, path: &(impl AsRef<Path> + ?Sized)) -> io::Result<()> {
+        let mut fname = PathBuf::new();
+        fname.push(path);
+        if !fname.is_dir() {
+            fs::create_dir_all(&fname)?;
+        }
+        fname.push("XDATCAR");
+
         let mut f = fs::OpenOptions::new()
             .create(true)
             .truncate(true)
             .write(true)
-            .open(path)?;
+            .open(&fname)?;
+
+        info!("Saving to \"{}\"", fname.to_str().unwrap().yellow());
 
         for (i, v) in self.0.into_iter().enumerate() {
             //
@@ -389,7 +459,7 @@ pub struct Vibrations{
 
 impl From<Outcar> for Vibrations {
     fn from(outcar: Outcar) -> Self {
-        let structure = outcar.get_structure_cloned(0);
+        let structure = outcar.get_structure_cloned(1);
         let modes = outcar.vib
                           .expect("This OUTCAR does not contains vibration calculation, try with IBRION = 5");
         Self {
@@ -399,8 +469,10 @@ impl From<Outcar> for Vibrations {
     }
 }
 
+
 impl Vibrations {
     pub fn save_as_xsf(&self, index: usize, path: &(impl AsRef<Path> + ?Sized)) -> io::Result<()> {
+        // index starts from 1
         let len = self.modes.len();
         assert!(1 <= index && index <= len, "Index out of bound.");
         let index = index - 1;
@@ -419,37 +491,7 @@ impl Vibrations {
             }
         );
 
-        let mut f = fs::OpenOptions::new()
-            .create(true)
-            .truncate(true)
-            .write(true)
-            .open(&fname)?;
-
-        writeln!(f, "CRYSTAL")?;
-        writeln!(f, "PRIMVEC")?;
-        for v in self.structure.cell.iter() {
-            writeln!(f, " {:20.16} {:20.16} {:20.16}", v[0], v[1], v[2])?;
-        }
-        writeln!(f, "PRIMCOORD")?;
-        writeln!(f, "{:3} {:3}", self.structure.ions_per_type.iter().sum::<i32>(), 1)?;
-
-        // generate the chemical symbol array for each atom
-        let syms = {
-            let symbs = &self.structure.ion_types;
-            let nsymb = &self.structure.ions_per_type;
-            symbs.iter()
-                 .zip(nsymb.iter())
-                 .fold(vec![], |mut acc, (s, n)| {
-                     acc.extend(vec![s; (*n) as usize]);
-                     acc
-                 })
-        };
-
-        for (s, p, m) in multizip((syms, &self.structure.car_pos, &self.modes[index].dxdydz)) {
-            writeln!(f, "{:4} {:15.10} {:15.10} {:15.10}   {:15.10} {:15.10} {:15.10}",
-                           s,     p[0],    p[1],    p[2],      m[0],    m[1],    m[2])?;
-        }
-        Ok(())
+        _save_as_xsf_helper(&fname, &self.structure, &self.modes[index].dxdydz)
     }
 }
 

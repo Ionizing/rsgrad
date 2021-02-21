@@ -26,12 +26,12 @@ fn test_save_as_xdatcar() -> io::Result<()> {
     let traj = Trajectory::from(outcar);
 
     let tmpdir = TempDir::new("rsgrad_test")?;
-    let path = tmpdir.path().join("XDATCAR");
+    let path = tmpdir.path();
     traj.save_as_xdatcar(&path)?;
 
     let xdatcar_ref = fs::read_to_string(
         get_fpath_in_current_dir!("XDATCAR_another_rlx"))?;
-    let xdatcar_content = fs::read_to_string(path)?;
+    let xdatcar_content = fs::read_to_string(path.join("XDATCAR"))?;
     assert_eq!(xdatcar_content, xdatcar_ref);
     Ok(())
 }

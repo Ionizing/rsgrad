@@ -2,6 +2,7 @@ use std::io::Result;
 use std::path::Path;
 use std::time;
 use clap::{Arg, App, AppSettings, crate_version};
+use log::{info, warn, debug};
 use rsgrad::outcar::Outcar;
 use rsgrad::format::IonicIterationsFormat;
 
@@ -71,6 +72,6 @@ fn main() -> Result<()> {
 
     print!("{}", iif);
 
-    eprintln!("# Time used: {:?}", now.elapsed());
+    info!("# Time used: {:?}", now.elapsed());
     Ok(())
 }
