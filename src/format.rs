@@ -10,7 +10,7 @@ use std::io::Write;
 use itertools::multizip;
 use colored::Colorize;
 use vasp_poscar::{self, Poscar};
-use log::{info, trace, warn};
+use log::info;
 use crate::outcar::{
     Outcar,
     IonicIteration,
