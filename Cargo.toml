@@ -16,7 +16,8 @@ regex = "1"
 itertools = "0.10"
 async-std = { version = "1.2.0", features = ["attributes"] }
 vasp-poscar = "0.3"
-clap  = { version = "2", features = ["color"]}
+#clap  = { version = "2", features = ["color"]}
+structopt = "0.3"
 colored = "2"
 tempdir = "0.3"
 log = "0.4"
