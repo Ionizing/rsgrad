@@ -52,10 +52,10 @@ Now it is rewritten with Rust language, which make it safer and faster and more 
 
 # Future features
 - [X] A prettier output layout
-- [ ] Output the trajectory of relaxation or MD
+- [X] Output the trajectory of relaxation or MD
 - [ ] Display the unconverged atoms
-- [ ] Save the viberation modes
-- [ ] More detailed error messages
+- [X] Save the viberation modes
+- [X] More detailed error messages
 
 # How to build
 
