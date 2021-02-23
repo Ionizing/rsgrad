@@ -90,7 +90,8 @@ enum Command {
     },
 
     #[structopt(setting = AppSettings::ColoredHelp,
-                setting = AppSettings::ColorAuto)]
+                setting = AppSettings::ColorAuto,
+                setting = AppSettings::AllowNegativeNumbers)]
     /// Operations about relaxation/MD trajectory
     Trj {
         #[structopt(short = "i", long)]
