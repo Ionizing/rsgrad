@@ -1,11 +1,16 @@
 use std::io::Result;
 use std::path::PathBuf;
 use std::time;
-use log::info;
+use log::{
+    info,
+    Record,
+    LevelFilter,
+    Level,
+    Metadata
+};
 use structopt::StructOpt;
 use rsgrad::outcar::Outcar;
 use rsgrad::format::IonicIterationsFormat;
-
 
 use structopt::clap::AppSettings;
 
@@ -16,12 +21,12 @@ use structopt::clap::AppSettings;
             setting = AppSettings::ColoredHelp,
             setting = AppSettings::ColorAuto)]
 struct Opt {
-    // /// Activate debug mode
-    // #[structopt(short, long)]
-    // debug: bool,
-
     #[structopt(subcommand)]
     command: Command,
+
+    #[structopt(default_value = "./OUTCAR")]
+    /// Specify the input OUTCAR file name
+    input: PathBuf,
 
     #[structopt(short, long)]
     /// Show total time usage
@@ -34,9 +39,6 @@ enum Command {
                 setting = AppSettings::ColorAuto)]
     /// Tracking info associated with relaxation stuff
     Rlx {
-        #[structopt(default_value = "OUTCAR")]
-        input: PathBuf,
-
         #[structopt(short = "e", long = "toten")]
         /// Prints TOTEN in eV
         print_energy: bool,
@@ -86,7 +88,18 @@ enum Command {
                 setting = AppSettings::ColorAuto)]
     /// Tracking info associated with vibration stuff
     Vib {
+        #[structopt(short, long)]
+        /// Shows vibration modes in brief
+        list: bool,
 
+        #[structopt(short = "x", long)]
+        save_as_xsfs: bool,
+
+        #[structopt(short = "i", long)]
+        select_indices: Option<Vec<i32>>,
+
+        #[structopt(long, default_value = ".")]
+        save_in: PathBuf,
     },
 
     #[structopt(setting = AppSettings::ColoredHelp,
@@ -94,6 +107,9 @@ enum Command {
                 setting = AppSettings::AllowNegativeNumbers)]
     /// Operations about relaxation/MD trajectory
     Trj {
+        #[structopt(short, long)]
+        list: bool,
+
         #[structopt(short = "i", long)]
         /// Select the indices to operate.
         ///
@@ -123,56 +139,33 @@ enum Command {
 }
 
 
+struct Logger;
+static LOGGER: Logger = Logger;
+
+impl log::Log for Logger {
+    fn enabled(&self, metadata: &Metadata) -> bool {
+        metadata.level() <= Level::Info
+    }
+
+    fn log(&self, record: &Record) {
+        if self.enabled(record.metadata()) {
+            println!("# [{}] -- {}", record.level(), record.args());
+        }
+    }
+    fn flush(&self) { }
+}
+
+
 fn main() -> Result<()> {
     let now = time::Instant::now();
+
+    // set logger
+    log::set_logger(&LOGGER).unwrap();
+    log::set_max_level(LevelFilter::Info);
+
     let opt = Opt::from_args();
 
-    eprintln!("{:?}", opt.command);
-
-    // let matches = App::new("rsgrad")
-    //     .setting(AppSettings::ColoredHelp)
-    //     .version(crate_version!())
-    //     .author("Ionizing PeterSmith_9@outlook.com")
-    //     .about("Tracking the relaxation or MD progress of VASP calculation")
-    //     .arg(Arg::with_name("input")
-    //          .default_value("OUTCAR"))
-    //     .arg(Arg::from_usage("--print-energy [t|f] 'Print TOTEN in eV'")
-    //          .default_value("f"))
-    //     .arg(Arg::from_usage("--print-energyz [t|f] 'Print TOTEN without entropy in eV'")
-    //          .default_value("t"))
-    //     .arg(Arg::from_usage("--print-lgde [t|f] 'Print Log10(deltaE), where deltaE is the
-    // difference between two consecutive energies
-    // without entropy'")
-    //          .default_value("t"))
-    //     .arg(Arg::from_usage("--print-favg [t|f] 'Print averaged total force in eV/A'")
-    //          .default_value("t"))
-    //     .arg(Arg::from_usage("--print-fmax [t|f] 'Print maximum total force in eV/A'")
-    //          .default_value("t"))
-    //     .arg(Arg::from_usage("--print-fmax-index [t|f] 'Print the index of ion with maximum force load'")
-    //          .default_value("f"))
-    //     .arg(Arg::from_usage("--print-fmax-axis [t|f] 'Print the axis where the strongest force weight lies on'")
-    //          .default_value("f"))
-    //     .arg(Arg::from_usage("--print-nscf [t|f] 'Print the number SCF iteration in the ionic iteration'")
-    //          .default_value("t"))
-    //     .arg(Arg::from_usage("--print-time [t|f] 'Print the time usage of each ionic iteration in unit of minute'")
-    //          .default_value("t"))
-    //     .arg(Arg::from_usage("--print-magmom [t|f] 'Print the magnetic moment in current system'")
-    //          .default_value("t"))
-    //     .arg(Arg::from_usage("--print-volume [t|f] 'Print the system volumes of each ionic iteration'")
-    //          .default_value("f"))
-    //     .arg(Arg::from_usage("--print-all 'Print all supported information'"))
-    //     .get_matches();
-
-    // let convert_helper = |c: &str| -> bool {
-    //     if matches.is_present("print-all") {
-    //         return true;
-    //     }
-    //     match c {
-    //         "t" | "T" => true,
-    //         "f" | "F" => false,
-    //         _ => unreachable!("Only [tTfF] is allowed in --print-xxx values")
-    //     }
-    // };
+    info!("{:?}", opt);
 
     // let f = Outcar::from_file(Path::new(matches.value_of("input").unwrap()))?;
 
@@ -191,6 +184,6 @@ fn main() -> Result<()> {
 
     // print!("{}", iif);
 
-    info!("# Time used: {:?}", now.elapsed());
+    info!("Time used: {:?}", now.elapsed());
     Ok(())
 }
