@@ -8,7 +8,7 @@ Tracking the relaxation or MD progress of VASP calculation.
 
 ```
 $ ./rsgrad
-rsgrad 0.1.0
+rsgrad 0.2.0
 @Ionizing  https, //github.com/Ionizing/rsgrad
 A tool used to tracking the relaxation or MD progress of VASP calculation
 
@@ -62,7 +62,7 @@ Full functions of `rsgrad rlx`
 
 ```
 $ ./rsgrad some_OUTCAR rlx -h
-rsgrad-trj 0.1.0
+rsgrad-trj 0.2.0
 Operations about relaxation/MD trajectory
 
 USAGE:
@@ -105,7 +105,7 @@ Full usage
 
 ```
 $ ./rsgrad some_OUTCAR vib -h
-rsgrad-vib 0.1.0
+rsgrad-vib 0.2.0
 Tracking info associated with vibration stuff
 
 USAGE:
