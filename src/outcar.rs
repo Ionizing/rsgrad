@@ -139,12 +139,12 @@ impl Outcar {
 
         // Do some check
         let len = totenv.len();
-        assert_eq!(nscfv.len()    , len);
-        assert_eq!(toten_zv.len() , len);
-        assert_eq!(cputimev.len() , len);
-        assert_eq!(posv.len()     , len);
-        assert_eq!(forcev.len()   , len);
-        assert_eq!(cellv.len()    , len);
+        assert_eq!(nscfv.len()    , len, "Init failed due to incomplete OUTCAR");
+        assert_eq!(toten_zv.len() , len, "Init failed due to incomplete OUTCAR");
+        assert_eq!(cputimev.len() , len, "Init failed due to incomplete OUTCAR");
+        assert_eq!(posv.len()     , len, "Init failed due to incomplete OUTCAR");
+        assert_eq!(forcev.len()   , len, "Init failed due to incomplete OUTCAR");
+        assert_eq!(cellv.len()    , len, "Init failed due to incomplete OUTCAR");
 
         let ion_iters = multizip((nscfv, totenv, toten_zv, magmomv, cputimev, ext_pressure, posv, forcev, cellv))
             .map(|(iscf, e, ez, mag, cpu, stress, pos, f, cell)| {

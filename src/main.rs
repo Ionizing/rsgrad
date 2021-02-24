@@ -1,16 +1,19 @@
 use std::io::Result;
 use std::path::PathBuf;
 use std::time;
+use env_logger;
 use log::{
     info,
-    Record,
-    LevelFilter,
-    Level,
-    Metadata
+    warn,
+    debug,
 };
 use structopt::StructOpt;
 use rsgrad::outcar::Outcar;
-use rsgrad::format::IonicIterationsFormat;
+use rsgrad::format::{
+    IonicIterationsFormat,
+    Vibrations,
+    PrintAllVibFreqs,
+};
 
 use structopt::clap::AppSettings;
 
@@ -27,10 +30,6 @@ struct Opt {
     #[structopt(default_value = "./OUTCAR")]
     /// Specify the input OUTCAR file name
     input: PathBuf,
-
-    #[structopt(short, long)]
-    /// Show total time usage
-    time: bool,
 }
 
 #[derive(Debug, StructOpt)]
@@ -85,7 +84,8 @@ enum Command {
     },
 
     #[structopt(setting = AppSettings::ColoredHelp,
-                setting = AppSettings::ColorAuto)]
+                setting = AppSettings::ColorAuto,
+                setting = AppSettings::AllowNegativeNumbers)]
     /// Tracking info associated with vibration stuff
     Vib {
         #[structopt(short, long)]
@@ -139,50 +139,90 @@ enum Command {
 }
 
 
-struct Logger;
-static LOGGER: Logger = Logger;
-
-impl log::Log for Logger {
-    fn enabled(&self, metadata: &Metadata) -> bool {
-        metadata.level() <= Level::Info
-    }
-
-    fn log(&self, record: &Record) {
-        if self.enabled(record.metadata()) {
-            println!("# [{}] -- {}", record.level(), record.args());
-        }
-    }
-    fn flush(&self) { }
-}
-
-
 fn main() -> Result<()> {
     let now = time::Instant::now();
 
-    // set logger
-    log::set_logger(&LOGGER).unwrap();
-    log::set_max_level(LevelFilter::Info);
+    let env = env_logger::Env::new().filter_or("RSGRAD_LOG", "info");
+    env_logger::init_from_env(env);
 
     let opt = Opt::from_args();
+    debug!("{:?}", opt);
 
-    info!("{:?}", opt);
+    info!("Parsing input file {:?} ...", &opt.input);
+    let f = Outcar::from_file(&opt.input)?;
 
-    // let f = Outcar::from_file(Path::new(matches.value_of("input").unwrap()))?;
+    match opt.command {
+        Command::Rlx { print_energy,
+                       print_favg,
+                       print_fmax_axis,
+                       print_fmax_index,
+                       print_volume,
+                       no_print_fmax,
+                       no_print_energyz,
+                       no_print_lgde,
+                       no_print_magmom,
+                       no_print_nscf,
+                       no_print_time } => {
+            let iif = IonicIterationsFormat::from(f.ion_iters)
+                .print_energy     (print_energy)
+                .print_energyz    (!no_print_energyz)
+                .print_log10de    (!no_print_lgde)
+                .print_favg       (print_favg)
+                .print_fmax       (!no_print_fmax)
+                .print_fmax_axis  (print_fmax_axis)
+                .print_fmax_index (print_fmax_index)
+                .print_nscf       (!no_print_nscf)
+                .print_time_usage (!no_print_time)
+                .print_magmom     (!no_print_magmom)
+                .print_volume     (print_volume);
+            print!("{}", iif);
+        },
+        Command::Vib { list,
+                       save_as_xsfs,
+                       select_indices,
+                       save_in } => {
+            if list {
+                let paf: PrintAllVibFreqs = Vibrations::from(f).into();
+                print!("{}", paf);
+                return Ok(());
+            }
 
-    // let iif = IonicIterationsFormat::from(f.ion_iters)
-    //     .print_energy     (convert_helper(matches.value_of("print-energy").unwrap()))
-    //     .print_energyz    (convert_helper(matches.value_of("print-energyz").unwrap()))
-    //     .print_log10de    (convert_helper(matches.value_of("print-lgde").unwrap()))
-    //     .print_favg       (convert_helper(matches.value_of("print-favg").unwrap()))
-    //     .print_fmax       (convert_helper(matches.value_of("print-fmax").unwrap()))
-    //     .print_fmax_axis  (convert_helper(matches.value_of("print-fmax-axis").unwrap()))
-    //     .print_fmax_index (convert_helper(matches.value_of("print-fmax-index").unwrap()))
-    //     .print_nscf       (convert_helper(matches.value_of("print-nscf").unwrap()))
-    //     .print_time_usage (convert_helper(matches.value_of("print-time").unwrap()))
-    //     .print_magmom     (convert_helper(matches.value_of("print-magmom").unwrap()))
-    //     .print_volume     (convert_helper(matches.value_of("print-volume").unwrap()));
+            if save_as_xsfs {
+                let select_indices = select_indices.unwrap_or_default();
+                if select_indices.len() == 0 {
+                    warn!("No modes are selected to operate!");
+                    return Ok(());
+                }
 
-    // print!("{}", iif);
+                let vibs = Vibrations::from(f);
+                let len = vibs.modes.len();
+
+                let inds: Vec<usize> =
+                    if select_indices.contains(&0) {
+                        (1..=len).collect()
+                    } else {
+                        select_indices
+                            .into_iter()
+                            .map(|i| {
+                                if i < 0 {
+                                    i.rem_euclid(len as i32) as usize + 1
+                                } else {
+                                    i as usize + 1
+                                }
+                            })
+                            .collect::<Vec<usize>>()
+                    };
+
+                for i in inds {
+                    info!("Saving mode #{:4} into {:?} ...", i, save_in);
+                    vibs.save_as_xsf(i, &save_in)?;
+                }
+            }
+        },
+        Command::Trj { .. } => {
+
+        }
+    }
 
     info!("Time used: {:?}", now.elapsed());
     Ok(())
