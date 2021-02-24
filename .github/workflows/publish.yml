@@ -13,13 +13,13 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            artifact_name: mything
+            artifact_name: rsgrad
             asset_name: rsgrad-linux-amd64
           - os: windows-latest
-            artifact_name: mything.exe
+            artifact_name: rsgrad.exe
             asset_name: rsgrad-windows-amd64
           - os: macos-latest
-            artifact_name: mything
+            artifact_name: rsgrad
             asset_name: rsgrad-macos-amd64
 
     steps:
