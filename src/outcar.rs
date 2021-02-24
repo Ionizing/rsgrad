@@ -303,9 +303,15 @@ impl Outcar {
     }
 
     fn parse_efermi(context: &str) -> f64 {
+        let start_pos = context
+            .rmatch_indices(" E-fermi : ")
+            .next()
+            .expect("Fermi level info not found")
+            .0;
+
         Regex::new(r" E-fermi : \s+(\S+)")
             .unwrap()
-            .captures(context)
+            .captures(&context[start_pos ..])
             .expect("Fermi level info not found")
             .get(1)
             .unwrap()
@@ -799,8 +805,12 @@ mod tests{
 
     #[test]
     fn test_parse_efermi() {
-        let input = " E-fermi :  -0.7865     XC(G=0):  -2.0223     alpha+bet : -0.5051";
-        let output = -0.7865f64;
+        let input = r#"
+ E-fermi :  -0.7865     XC(G=0):  -2.0223     alpha+bet : -0.5051
+ E-fermi :  -1.7865     XC(G=0):  -2.0223     alpha+bet : -0.5051
+ E-fermi :  -2.7865     XC(G=0):  -2.0223     alpha+bet : -0.5051
+"#;
+        let output = -2.7865f64;
         assert_eq!(Outcar::parse_efermi(&input), output);
     }
 

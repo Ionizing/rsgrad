@@ -23,7 +23,7 @@ fn test_normal_outcar() -> io::Result<()> {
     assert_eq!(outcar.nions, 32);
     assert_eq!(outcar.nkpts, 20);
     assert_eq!(outcar.nbands, 81);
-    assert_eq!(outcar.efermi, 2.9331);
+    assert_eq!(outcar.efermi, 3.0152);
     assert_eq!(outcar.cell, [[7.519999981,         0.0,         0.0],
                              [        0.0, 7.519999981,         0.0],
                              [        0.0,         0.0, 7.519999981]]);
@@ -132,7 +132,7 @@ fn test_ispin2_outcar() -> io::Result<()> {
     assert_eq!(outcar.nions, 3);
     assert_eq!(outcar.nkpts, 41);
     assert_eq!(outcar.nbands, 16);
-    assert_eq!(outcar.efermi, -2.2687);
+    assert_eq!(outcar.efermi, -2.2691);
     assert_eq!(outcar.cell, [[ 2.864537506, -1.653841500,  0.000000000],
                              [ 0.000000000,  3.307683000,  0.000000000],
                              [ 0.000000000,  0.000000000, 23.001852000]]);
@@ -239,7 +239,7 @@ fn test_vib_outcar() -> io::Result<()> {
     assert_eq!(outcar.nions, 4);
     assert_eq!(outcar.nkpts, 1);
     assert_eq!(outcar.nbands, 8);
-    assert_eq!(outcar.efermi, -0.7865);
+    assert_eq!(outcar.efermi, -4.9033);
     assert_eq!(outcar.cell, [[6.000000000, 0.000000000, 0.000000000],
                              [0.000000000, 7.000000000, 0.000000000],
                              [0.000000000, 0.000000000, 8.000000000]]);
