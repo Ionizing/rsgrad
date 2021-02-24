@@ -19,4 +19,4 @@ jobs:
     - name: Run tests
       run: cargo test --verbose --release
     - name: Run integrated tests
-      run: for i in tests/OUTCAR*; do cargo run --release -- $i; done
+      run: for i in tests/OUTCAR*; do cargo run --release -- $i rlx; done
