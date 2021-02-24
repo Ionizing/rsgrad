@@ -37,13 +37,16 @@ fn test_save_as_xdatcar() -> io::Result<()> {
 }
 
 #[test]
-fn test_save_as_seperated_poscars() -> io::Result<()> {
+fn test_save_as_poscar() -> io::Result<()> {
     let fname = get_fpath_in_current_dir!("OUTCAR_another_rlx");
     let outcar = Outcar::from_file(&fname)?;
     let traj = Trajectory::from(outcar);
 
     let tmpdir = TempDir::new("rsgrad_test")?;
-    traj.save_as_seperated_poscars(tmpdir.path())?;
+    let len = traj.0.len();
+    for i in 1..=len {
+        traj.save_as_poscar(i, tmpdir.path())?;
+    }
 
     // Validation
     let entries = fs::read_dir(tmpdir)?
