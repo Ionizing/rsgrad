@@ -650,6 +650,7 @@ Cartesian
     }
 
     #[test]
+    #[ignore = "May fail on CI"]
     fn test_print_all_modes() {
         let vibs: PrintAllVibFreqs = _generate_vibration().into();
         let fmtstr = format!("{}", vibs);
