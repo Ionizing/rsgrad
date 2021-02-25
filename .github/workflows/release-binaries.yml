@@ -33,7 +33,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          asset_name: rsgrad-${{ github.event.release.tag-name }}-linux-x86_64-musl.tar.gz
+          asset_name: rsgrad-${{ github.event.release.tag_name }}-linux-x86_64-musl.tar.gz
           asset_path: target/x86_64-unknown-linux-musl/release/rsgrad.tar.gz
           upload_url: ${{ github.event.release.upload_url }}
           asset_content_type: application/zip
@@ -67,7 +67,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          asset_name: rsgrad-${{ github.event.release.tag-name }}-linux-x86_64.tar.gz
+          asset_name: rsgrad-${{ github.event.release.tag_name }}-linux-x86_64.tar.gz
           asset_path: target/release/rsgrad.tar.gz
           upload_url: ${{ github.event.release.upload_url }}
           asset_content_type: application/zip
@@ -95,7 +95,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          asset_name: rsgrad-${{ github.event.release.tag-name }}-macos-x86_64
+          asset_name: rsgrad-${{ github.event.release.tag_name }}-macos-x86_64
           asset_path: target/release/rsgrad
           upload_url: ${{ github.event.release.upload_url }}
           asset_content_type: application
@@ -123,7 +123,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          asset_name: rsgrad-${{ github.event.release.tag-name }}-windows-x86_64.exe
+          asset_name: rsgrad-${{ github.event.release.tag_name }}-windows-x86_64.exe
           asset_path: target/release/rsgrad.exe
           upload_url: ${{ github.event.release.upload_url }}
           asset_content_type: application/zip
