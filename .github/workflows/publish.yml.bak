@@ -12,9 +12,12 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: ubuntu-16.04
+          - os: ubuntu-latest
             artifact_name: rsgrad
             asset_name: rsgrad-linux-amd64
+          - os: ubuntu-16.04
+            artifact_name: rsgrad
+            asset_name: rsgrad-linux-amd64-musl
           - os: windows-latest
             artifact_name: rsgrad.exe
             asset_name: rsgrad-windows-amd64
