@@ -1,0 +1,129 @@
+name: release-binaries
+on:
+  release:
+    types: [published]
+
+jobs:
+  linux-x86_64-musl:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          default: true
+
+      - name: Build binary
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release --target x86_64-unknown-linux-musl
+          use-cross: true
+
+      - name: Optimize and package binary
+        run: |
+          cd target/x86_64-unknown-linux-musl/release
+          strip rsgrad
+          chmod +x rsgrad
+          tar -c rsgrad | gzip > rsgrad.tar.gz
+      - name: Upload binary
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          asset_name: rsgrad-${{ github.event.release.tag-name }}-linux-x86_64-musl.tar.gz
+          asset_path: target/x86_64-unknown-linux-musl/release/rsgrad.tar.gz
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_content_type: application/zip
+
+  linux-x86_64:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          default: true
+
+      - name: Build binary
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release
+          use-cross: true
+
+      - name: Optimize and package binary
+        run: |
+          cd target/release
+          strip rsgrad
+          chmod +x rsgrad
+          tar -c rsgrad | gzip > rsgrad.tar.gz
+      - name: Upload binary
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          asset_name: rsgrad-${{ github.event.release.tag-name }}-linux-x86_64.tar.gz
+          asset_path: target/release/rsgrad.tar.gz
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_content_type: application/zip
+
+  macos-x86_64:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v1
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          default: true
+
+      - name: Build binary
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release
+          use-cross: true
+
+      - name: Upload binary
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          asset_name: rsgrad-${{ github.event.release.tag-name }}-macos-x86_64
+          asset_path: target/release/rsgrad
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_content_type: application
+
+  windows-x86_64:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v1
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          default: true
+
+      - name: Build binary
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release
+          use-cross: true
+
+      - name: Upload binary
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          asset_name: rsgrad-${{ github.event.release.tag-name }}-windows-x86_64.exe
+          asset_path: target/release/rsgrad.exe
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_content_type: application/zip
