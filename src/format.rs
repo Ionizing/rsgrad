@@ -145,7 +145,7 @@ impl fmt::Display for IonicIterationsFormat {
             if self.print_log10de { line += &format!(" {:4.1}", de.abs().log10()); }
 
             let fsize = it.forces.iter()
-                                   .map(|f| (f[0]*f[0] + f[1]*f[1] * f[2]*f[2]).sqrt())
+                                   .map(|f| (f[0]*f[0] + f[1]*f[1] + f[2]*f[2]).sqrt())
                                    .collect::<Vec<_>>();
 
             if self.print_favg {
