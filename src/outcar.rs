@@ -226,7 +226,7 @@ impl Outcar {
     }
 
     fn parse_cputime(context: &str) -> Vec<f64> {
-        Regex::new(r"LOOP\+:  cpu time .* real time\s*(\S+)")
+        Regex::new(r"LOOP\+:  cpu time.* real time\s*(\S+)")
             .unwrap()
             .captures_iter(context)
             .map(|x| {
@@ -304,12 +304,12 @@ impl Outcar {
 
     fn parse_efermi(context: &str) -> f64 {
         let start_pos = context
-            .rmatch_indices(" E-fermi : ")
+            .rmatch_indices(" E-fermi :")
             .next()
             .expect("Fermi level info not found")
             .0;
 
-        Regex::new(r" E-fermi : \s+(\S+)")
+        Regex::new(r" E-fermi :\s*(\S+)")
             .unwrap()
             .captures(&context[start_pos ..])
             .expect("Fermi level info not found")
@@ -688,8 +688,9 @@ mod tests{
      LOOP+:  cpu time    2.0921: real time    2.0863
      LOOP+:  cpu time    1.2021: real time    1.1865
      LOOP+:  cpu time 1543.2679: real time 1544.6603
+     LOOP+:  cpu time11866.4177: real time11898.1576
      LOOP+:  cpu time    1.2788: real time    1.2670"#;
-        let output = vec![2.0863, 1.1865, 1544.6603, 1.2670];
+        let output = vec![2.0863, 1.1865, 1544.6603, 11898.1576, 1.2670];
         assert_eq!(Outcar::parse_cputime(&input), output);
     }
 
@@ -809,8 +810,9 @@ mod tests{
  E-fermi :  -0.7865     XC(G=0):  -2.0223     alpha+bet : -0.5051
  E-fermi :  -1.7865     XC(G=0):  -2.0223     alpha+bet : -0.5051
  E-fermi :  -2.7865     XC(G=0):  -2.0223     alpha+bet : -0.5051
+ E-fermi :-200.7865     XC(G=0):  -2.0223     alpha+bet : -0.5051
 "#;
-        let output = -2.7865f64;
+        let output = -200.7865f64;
         assert_eq!(Outcar::parse_efermi(&input), output);
     }
 
