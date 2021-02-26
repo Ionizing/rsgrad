@@ -309,7 +309,7 @@ impl Outcar {
             .expect("Fermi level info not found")
             .0;
 
-        Regex::new(r" E-fermi :\s+(\S+)")
+        Regex::new(r" E-fermi :\s*(\S+)")
             .unwrap()
             .captures(&context[start_pos ..])
             .expect("Fermi level info not found")
