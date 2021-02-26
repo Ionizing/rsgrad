@@ -23,7 +23,7 @@ use structopt::clap::AppSettings;
 #[derive(Debug, StructOpt)]
 #[structopt(name = "rsgrad",
             about = "A tool used to tracking the relaxation or MD progress of VASP calculation",
-            author = "@Ionizing  https://github.com/Ionizing/rsgrad",
+            author = "@Ionizing  github.com/Ionizing/rsgrad",
             setting = AppSettings::ColoredHelp,
             setting = AppSettings::ColorAuto)]
 struct Opt {
