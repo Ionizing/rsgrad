@@ -358,11 +358,10 @@ impl Outcar {
     }
 
     fn parse_opt_cells(context: &str) -> Vec<Mat33<f64>> {
-        let skip_cnt: usize = if context.find(" old parameters").is_some() {
-            2
-        } else {
-            1
-        };
+        let skip_cnt: usize = 1 +
+            context.find(" old parameters").is_some() as usize +
+            context.find("Primitive cell").is_some() as usize;
+
         Regex::new(r"direct lattice vectors")
             .unwrap()
             .find_iter(context)
@@ -850,6 +849,14 @@ mod tests{
      0.000000000  0.000000000  8.000000000     0.000000000  0.000000000  0.125000000
 --
  old parameters found on file WAVECAR:
+      direct lattice vectors                 reciprocal lattice vectors
+     4.001368000  0.000000000  0.000000000     0.249914529  0.000000000  0.000000000
+     0.000000000  4.001368000  0.000000000     0.000000000  0.249914529  0.000000000
+     0.000000000  0.000000000  4.215744000     0.000000000  0.000000000  0.237206054
+--
+                                     Primitive cell
+
+  volume of cell :   47993.5183
       direct lattice vectors                 reciprocal lattice vectors
      4.001368000  0.000000000  0.000000000     0.249914529  0.000000000  0.000000000
      0.000000000  4.001368000  0.000000000     0.000000000  0.249914529  0.000000000

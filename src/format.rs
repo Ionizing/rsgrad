@@ -118,6 +118,21 @@ impl IonicIterationsFormat {
 
 impl fmt::Display for IonicIterationsFormat {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let nions = self._data[0].forces.len();
+        let dynamics =
+            if let Ok(poscar) = Poscar::from_path("POSCAR") {
+                info!("POSCAR was read. Filtering relaxed ions... {}",
+                      "Note: the force info listed below doesn't contain fixed atoms");
+                let dynamics = poscar.into_raw().dynamics.unwrap_or(vec![[true; 3]; nions]);
+                assert_eq!(nions, dynamics.len(), "Inconsistent ion numbers from POSCAR and OUTCAR");
+                dynamics
+            } else { vec![[true; 3]; nions] }
+        .into_iter()
+        .map(|v| {
+            [v[0] as i32 as f64, v[1] as i32 as f64, v[2] as i32 as f64]
+        })
+        .collect::<Vec<_>>();
+
         let mut ce: f64 = 0.0;
 
         // Prepare Header
@@ -145,8 +160,9 @@ impl fmt::Display for IonicIterationsFormat {
             if self.print_log10de { line += &format!(" {:4.1}", de.abs().log10()); }
 
             let fsize = it.forces.iter()
-                                   .map(|f| (f[0]*f[0] + f[1]*f[1] + f[2]*f[2]).sqrt())
-                                   .collect::<Vec<_>>();
+                                 .zip(dynamics.iter())
+                                 .map(|(f, d)| (f[0]*f[0]*d[0] + f[1]*f[1]*d[1] + f[2]*f[2]*d[2]).sqrt())
+                                 .collect::<Vec<_>>();
 
             if self.print_favg {
                 line += &format!(" {:6.3}", fsize.iter().sum::<f64>() / it.forces.len() as f64);
