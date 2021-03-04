@@ -121,6 +121,8 @@ impl fmt::Display for IonicIterationsFormat {
         let nions = self._data[0].forces.len();
         let dynamics =
             if let Ok(poscar) = Poscar::from_path("POSCAR") {
+                info!("Opened POSCAR and filtering relaxed ions. {}",
+                      "Note: the force info listed below doesn't contains fixed atoms".yellow());
                 let dynamics = poscar.into_raw().dynamics.unwrap_or(vec![[true; 3]; nions]);
                 assert_eq!(nions, dynamics.len(), "Inconsistent ion numbers from POSCAR and OUTCAR");
                 dynamics
@@ -159,7 +161,7 @@ impl fmt::Display for IonicIterationsFormat {
 
             let fsize = it.forces.iter()
                                  .zip(dynamics.iter())
-                                 .map(|(f, d)| (f[0]*f[0]*d[0] + f[1]*f[1]*d[1] + f[2]*f[2]*d[1]).sqrt())
+                                 .map(|(f, d)| (f[0]*f[0]*d[0] + f[1]*f[1]*d[1] + f[2]*f[2]*d[2]).sqrt())
                                  .collect::<Vec<_>>();
 
             if self.print_favg {
