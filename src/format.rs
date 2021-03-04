@@ -122,7 +122,7 @@ impl fmt::Display for IonicIterationsFormat {
         let dynamics =
             if let Ok(poscar) = Poscar::from_path("POSCAR") {
                 info!("POSCAR was read. Filtering relaxed ions... {}",
-                      "Note: the force info listed below doesn't contains fixed atoms");
+                      "Note: the force info listed below doesn't contain fixed atoms");
                 let dynamics = poscar.into_raw().dynamics.unwrap_or(vec![[true; 3]; nions]);
                 assert_eq!(nions, dynamics.len(), "Inconsistent ion numbers from POSCAR and OUTCAR");
                 dynamics
