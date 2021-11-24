@@ -18,7 +18,7 @@ use itertools::multizip;
 // DONE magmom
 // DONE E-fermi
 // DONE scf
-// DONE viberation
+// DONE vibration
 // DONE LSORBIT
 // DONE IBRION
 // DONE ion masses
@@ -61,7 +61,7 @@ impl Vibration {
     pub fn new(freq: f64, dxdydz: MatX3<f64>, is_imagine: bool) -> Self {
         Self {freq, dxdydz, is_imagine}
     }
-    // The parsing process is done withon `impl Outcar`
+    // The parsing process is done within `impl Outcar`
 }
 
 
@@ -152,7 +152,7 @@ impl Outcar {
             })
             .collect::<Vec<IonicIteration>>();
 
-        let vib = Self::parse_viberations(&context);
+        let vib = Self::parse_vibrations(&context);
 
         Ok(
             Self {
@@ -489,7 +489,7 @@ impl Outcar {
             })
     }
 
-    fn parse_viberations(context: &str) -> Option<Vec<Vibration>> {
+    fn parse_vibrations(context: &str) -> Option<Vec<Vibration>> {
         let massess_sqrt = Self::parse_ion_masses(context)
             .iter()
             .map(|x| x.sqrt())
@@ -540,7 +540,7 @@ impl Outcar {
             .as_str() {
                 "  " => false,
                 "/i" => true,
-                _ => unreachable!("Invalid viberation frequency indicator")
+                _ => unreachable!("Invalid vibration frequency indicator")
             };
 
 
@@ -570,14 +570,13 @@ impl Outcar {
     }
 
     fn _parse_dof(context: &str) -> Option<i32> {
-        Regex::new(r"(?m)^   Degrees of freedom DOF   = \s*(\S+)$")
+        Regex::new(r"(?m)\s*(\d+) f.* 2PiTHz.* cm-1")
             .unwrap()
-            .captures(context)?
-            .get(1)
-            .unwrap()
-            .as_str()
-            .parse::<i32>()
-            .ok()
+            .captures_iter(context)
+            .map(|cap| cap.get(1).unwrap())
+            .map(|s| s.as_str().parse::<i32>().ok())
+            .max()
+            .flatten()
     }
 }
 
@@ -1119,9 +1118,10 @@ mod tests{
     #[test]
     fn test_parse_dof() {
         let input = r#"
-   Step               POTIM =    1.4999999999999999E-002
-   Degrees of freedom DOF   =           3
-  LATTYP: Found a simple orthorhombic cell. "#;
+   1 f  =  108.762017 THz   683.371905 2PiTHz 3627.910256 cm-1   449.803706 meV
+   2 f  =  108.545068 THz   682.008775 2PiTHz 3620.673620 cm-1   448.906478 meV
+   3 f  =  102.881683 THz   646.424679 2PiTHz 3431.763448 cm-1   425.484593 meV
+        "#;
         let output = Some(3i32);
         assert_eq!(Outcar::_parse_dof(&input), output);
     }
@@ -1160,7 +1160,7 @@ mod tests{
     }
 
     #[test]
-    fn test_parse_viberations() {
+    fn test_parse_vibrations() {
         let input = r#"
    RPACOR =    0.000    partial core radius
    POMASS =    1.000; ZVAL   =    1.000    mass and valenz
@@ -1200,7 +1200,7 @@ mod tests{
       2.122800  4.015200  4.000000     0.577337   -0.346802   -0.000001
       3.000000  3.500000  4.000000    -0.304117   -0.000127   -0.000000
 
-  10 f/i=    0.022552 THz     0.141700 2PiTHz    0.752260 cm-1     0.093268 meV
+   3 f/i=    0.022552 THz     0.141700 2PiTHz    0.752260 cm-1     0.093268 meV
              X         Y         Z           dx          dy          dz
       3.877200  4.015200  4.000000    -0.000213    0.242665   -0.002062
       3.000000  2.482900  4.000000    -0.000118    0.242678   -0.002057
@@ -1227,7 +1227,7 @@ mod tests{
       2.122800  4.015200  4.000000     0.577337   -0.346802   -0.000001
       3.000000  3.500000  4.000000    -0.081276   -0.000034   -0.000000
 
-  10 f/i=    0.022552 THz     0.141700 2PiTHz    0.752260 cm-1     0.093268 meV
+   3 f/i=    0.022552 THz     0.141700 2PiTHz    0.752260 cm-1     0.093268 meV
              X         Y         Z           dx          dy          dz
       3.877200  4.015200  4.000000    -0.000213    0.242665   -0.002062
       3.000000  2.482900  4.000000    -0.000118    0.242678   -0.002057
@@ -1265,7 +1265,7 @@ mod tests{
                  .collect::<Vec<_>>()
         );
 
-        assert_eq!(Outcar::parse_viberations(&input), output);
+        assert_eq!(Outcar::parse_vibrations(&input), output);
 
 
         let input = r#"
@@ -1290,6 +1290,6 @@ mod tests{
   LATTYP: Found a simple orthorhombic cell.
 "#;
         let output = None;
-        assert_eq!(Outcar::parse_viberations(&input), output);
+        assert_eq!(Outcar::parse_vibrations(&input), output);
     }
 }
