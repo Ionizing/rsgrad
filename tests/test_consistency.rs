@@ -274,5 +274,10 @@ fn test_vib_outcar() -> io::Result<()> {
                     [ 0.000004/imass[2].sqrt(),  0.000001/imass[2].sqrt(), -0.511993/imass[2].sqrt()],
                     [ 0.000000/imass[3].sqrt(), -0.000002/imass[3].sqrt(),  0.419014/imass[3].sqrt()]]);
 
+
+    let fname = get_fpath_in_current_dir!("OUTCAR_vibrations_dfpt_multik");
+    let outcar = Outcar::from_file(&fname)?;
+
+    assert_eq!(outcar.vib.as_ref().unwrap().len(), 384);
     Ok(())
 }
