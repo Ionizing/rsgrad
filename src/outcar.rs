@@ -338,14 +338,14 @@ impl Outcar {
     }
 
     fn parse_cell(context: &str) -> Mat33<f64> {
-        let pos = Regex::new(r"direct lattice vectors")
+        let pos = Regex::new(r"volume of cell : .*\n[ ]*direct lattice vectors")
             .unwrap()
             .find(context)
             .expect("Lattice vectors info not found in current OUTCAR")
             .start();
         let v = &context[pos..]
             .lines()
-            .skip(1)
+            .skip(2)
             .take(3)
             .map(|l| {
                 let v = l.split_whitespace()
@@ -359,10 +359,9 @@ impl Outcar {
 
     fn parse_opt_cells(context: &str) -> Vec<Mat33<f64>> {
         let skip_cnt: usize = 1 +
-            context.find(" old parameters").is_some() as usize +
-            context.find("Primitive cell").is_some() as usize;
+            context.find(" old parameters").is_some() as usize;
 
-        Regex::new(r"direct lattice vectors")
+        Regex::new(r"volume of cell : .*\n[ ]*direct lattice vectors")
             .unwrap()
             .find_iter(context)
             .map(|x| x.start())
@@ -842,12 +841,14 @@ mod tests{
     #[test]
     fn test_parse_opt_cells() {
         let input = r#"
+  volume of cell :      336.00
       direct lattice vectors                 reciprocal lattice vectors
      6.000000000  0.000000000  0.000000000     0.166666667  0.000000000  0.000000000
      0.000000000  7.200000000  0.000000000     0.000000000  0.142857143  0.000000000
      0.000000000  0.000000000  8.000000000     0.000000000  0.000000000  0.125000000
 --
  old parameters found on file WAVECAR:
+  volume of cell :      336.00
       direct lattice vectors                 reciprocal lattice vectors
      4.001368000  0.000000000  0.000000000     0.249914529  0.000000000  0.000000000
      0.000000000  4.001368000  0.000000000     0.000000000  0.249914529  0.000000000
@@ -856,16 +857,19 @@ mod tests{
                                      Primitive cell
 
   volume of cell :   47993.5183
+
       direct lattice vectors                 reciprocal lattice vectors
      4.001368000  0.000000000  0.000000000     0.249914529  0.000000000  0.000000000
      0.000000000  4.001368000  0.000000000     0.000000000  0.249914529  0.000000000
      0.000000000  0.000000000  4.215744000     0.000000000  0.000000000  0.237206054
 --
+  volume of cell :      336.00
       direct lattice vectors                 reciprocal lattice vectors
      6.000000000  0.000000000  0.000000000     0.166666667  0.000000000  0.000000000
      0.000000000  7.000000000  0.000000000     0.000000000  0.142857143  0.000000000
      0.000000000  0.000000000  8.000000000     0.000000000  0.000000000  0.125000000
 --
+  volume of cell :      336.00
       direct lattice vectors                 reciprocal lattice vectors
      6.000000000  0.000000000  0.000000000     0.166666667  0.000000000  0.000000000
      0.000000000  7.000000000  0.000000000     0.000000000  0.142857143  0.000000000
