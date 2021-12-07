@@ -348,9 +348,15 @@ impl Outcar {
             .skip(2)
             .take(3)
             .map(|l| {
-                let v = l.split_whitespace()
-                         .map(|x| x.parse::<f64>().expect("Cannot parse lattice vectors as float values"))
-                         .collect::<Vec<f64>>();
+                let v = Regex::new(r"[+-]?([0-9]*[.])?[0-9]+").unwrap()
+                    .captures_iter(l)
+                    .take(3)
+                    .map(|x| x.get(0)
+                              .expect("Cannot parse lattice vector as float numbers")
+                              .as_str()
+                              .parse::<f64>()
+                              .unwrap())
+                    .collect::<Vec<f64>>();
                 [v[0], v[1], v[2]]
             })
             .collect::<Vec<[f64; 3]>>();
@@ -835,6 +841,18 @@ mod tests{
         let output = [[6.0, 0.0, 0.0],
                       [0.0, 7.0, 0.0],
                       [0.0, 0.0, 8.0]];
+        assert_eq!(Outcar::parse_cell(&input), output);
+
+        let input = r#"
+  energy-cutoff  :      194.45
+  volume of cell :    30194.61
+      direct lattice vectors                 reciprocal lattice vectors
+    32.525610787-18.778670143  0.000000000     0.030745003  0.000000000  0.000000000
+     0.000000000 37.557340287  0.000000000     0.015372501  0.026625954  0.000000000
+     0.000000000  0.000000000 24.717759990     0.000000000  0.000000000  0.040456740 "#;
+        let output = [[32.525610787, -18.778670143,         0.0],
+                      [         0.0,  37.557340287,         0.0],
+                      [         0.0,   0.0        , 24.71775999]];
         assert_eq!(Outcar::parse_cell(&input), output);
     }
 
