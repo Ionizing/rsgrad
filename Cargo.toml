@@ -20,6 +20,8 @@ colored = "2"
 tempdir = "0.3"
 log = "0.4"
 env_logger = "0.8"
+ndarray = "0.15"
+anyhow = "1.0"
 
 [profile.release]
 incremental = true

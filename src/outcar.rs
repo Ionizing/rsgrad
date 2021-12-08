@@ -1,6 +1,3 @@
-pub type MatX3<T> = Vec<[T;3]>;  // Nx3 matrix
-pub type Mat33<T> = [[T;3];3];   // 3x3 matrix
-
 use std::{
     path::{Path, PathBuf},
     io::{self, Write},
@@ -13,6 +10,12 @@ use log::info;
 use rayon;
 use regex::Regex;
 use itertools::multizip;
+
+use crate::types::{
+    MatX3,
+    Mat33,
+    Structure,
+};
 
 // DONE ISPIN
 // DONE ions per type
@@ -145,6 +148,7 @@ impl Outcar {
 
         // Do some check
         let len = totenv.len();
+        assert!(len > 0, "At least one complete ionic step is needed.");
         assert_eq!(nscfv.len()    , len, "Init failed due to incomplete OUTCAR");
         assert_eq!(toten_zv.len() , len, "Init failed due to incomplete OUTCAR");
         assert_eq!(cputimev.len() , len, "Init failed due to incomplete OUTCAR");
@@ -212,7 +216,8 @@ impl Outcar {
                  .unwrap()
                  .as_str()
                  .parse::<f64>()
-                    .expect("Cannot parse TOTEN as float value")
+                    .expect(&format!("Cannot parse TOTEN as float value: \"{}\"", 
+                                     x.get(0).unwrap().as_str()))
             })
             .collect()
     }
@@ -226,7 +231,8 @@ impl Outcar {
                  .unwrap()
                  .as_str()
                  .parse::<f64>()
-                    .expect("Cannot parse TOTENZ as float value")
+                    .expect(&format!("Cannot parse TOTENZ as float value: \"{}\"",
+                                     x.get(0).unwrap().as_str()))
             })
             .collect()
     }
@@ -240,7 +246,8 @@ impl Outcar {
                  .unwrap()
                  .as_str()
                  .parse::<f64>()
-                    .expect("Cannot parse CPU time as float value")
+                    .expect(&format!("Cannot parse CPU time as float value: \"{}\"",
+                                     x.get(0).unwrap().as_str()))
             })
             .collect()
     }
@@ -266,7 +273,8 @@ impl Outcar {
             .unwrap()
             .split_whitespace()
             .skip(5)
-            .map(|x| x.trim().parse::<f64>().expect("Cannot parse magmom as float value"))
+            .map(|x| x.trim().parse::<f64>()
+                 .expect(&format!("Cannot parse magmom as float value: \"{}\"", x)))
             .collect::<Vec<_>>();
         match ret.len() {
             0 => None,
@@ -278,9 +286,8 @@ impl Outcar {
         Regex::new(r"(?m)^ POSITION \s+ TOTAL-FORCE \(eV/Angst\)")
             .expect("TOTAL-FORCE info not found in this OUTCAR")
             .find_iter(context)
-            .map(|x| x.start())
             .map(|x| {
-                Self::_parse_posforce_single_iteration(&context[x..])
+                Self::_parse_posforce_single_iteration(&context[x.start()..])
             })
             .fold((vec![], vec![]), |mut acc, (p, f)| {
                 acc.0.push(p);
@@ -297,7 +304,7 @@ impl Outcar {
                .map(|x| {
                    x.split_whitespace()
                     .map(|x| x.parse::<f64>()
-                         .expect("Cannot parse position and force info as float value")
+                         .expect(&format!("Cannot parse position and force info as float value: \"{}\"", x))
                     )
                     .collect::<Vec<f64>>()
                })
@@ -315,15 +322,16 @@ impl Outcar {
             .expect("Fermi level info not found")
             .0;
 
-        Regex::new(r" E-fermi :\s*(\S+)")
+        let x = Regex::new(r" E-fermi :\s*(\S+)")
             .unwrap()
             .captures(&context[start_pos ..])
-            .expect("Fermi level info not found")
-            .get(1)
+            .expect("Fermi level info not found");
+        x.get(1)
             .unwrap()
             .as_str()
             .parse::<f64>()
-            .expect("Cannot parse E-fermi as float value")
+            .expect(&format!("Cannot parse E-fermi as float value: \"{}\"",
+                             x.get(0).unwrap().as_str()))
     }
 
     fn parse_nkpts_nbands(context: &str) -> (i32, i32) {
@@ -357,11 +365,11 @@ impl Outcar {
                 let v = Regex::new(r"[+-]?([0-9]*[.])?[0-9]+").unwrap()
                     .captures_iter(l)
                     .take(3)
-                    .map(|x| x.get(0)
-                              .expect("Cannot parse lattice vector as float numbers")
+                    .map(|x| x.get(0).unwrap()
                               .as_str()
                               .parse::<f64>()
-                              .unwrap())
+                              .expect(&format!("Cannot parse lattice vector as float numbers: \"{}\"",
+                                               x.get(0).unwrap().as_str())))
                     .collect::<Vec<f64>>();
                 [v[0], v[1], v[2]]
             })
@@ -390,7 +398,7 @@ impl Outcar {
             .as_str()
             .split_whitespace()
             .skip(4)
-            .map(|x| x.parse::<i32>().expect("Cannot parse ions per type as integer values"))
+            .map(|x| x.parse::<i32>().expect(&format!("Cannot parse ions per type as integer values: \"{}\"", x)))
             .collect()
     }
 
@@ -402,7 +410,7 @@ impl Outcar {
                 l.as_str()
                  .split_whitespace()
                  .nth(2)
-                 .expect("Parsing element symbols failed")
+                 .expect(&format!("Parsing element symbols failed: \"{}\"", l.as_str()))
                  .to_owned()
             })
             .collect::<Vec<String>>();
@@ -428,15 +436,16 @@ impl Outcar {
             .unwrap()
             .0;
         let context = &context[pos..];
-        Regex::new(r"Iteration\s*\d+\(\s*(\d+)\)")
+        let x = Regex::new(r"Iteration\s*\d+\(\s*(\d+)\)")
             .unwrap()
             .captures(context)
-            .expect("SCF iteration header not found")
-            .get(1)
+            .expect("SCF iteration header not found");
+        x.get(1)
             .unwrap()
             .as_str()
             .parse::<i32>()
-            .expect("Cannot parse number of SCF iterations in current OUTCAR")
+            .expect(&format!("Cannot parse number of SCF iterations in current OUTCAR: \"{}\"",
+                             x.get(0).unwrap().as_str()))
     }
 
     fn parse_stress(context: &str) -> Vec<f64> {
@@ -448,21 +457,22 @@ impl Outcar {
                  .unwrap()
                  .as_str()
                  .parse::<f64>()
-                    .expect("Cannot parse external pressure info as float value")
+                    .expect(&format!("Cannot parse external pressure info as float value: \"{}\"",
+                                     x.get(0).unwrap().as_str()))
             })
             .collect()
     }
 
     fn parse_ibrion(context: &str) -> i32 {
-        Regex::new(r"IBRION = \s*(\S+) ")
+        let x = Regex::new(r"IBRION = \s*(\S+) ")
             .unwrap()
             .captures(context)
-            .expect("IBRION line not found")
-            .get(1)
+            .expect("IBRION line not found");
+        x.get(1)
             .unwrap()
             .as_str()
             .parse::<i32>()
-            .expect("Cannot parse IBRION value")
+            .expect(&format!("Cannot parse IBRION value: \"{}\"", x.get(0).unwrap().as_str()))
     }
 
     fn parse_lsorbit(context: &str) -> bool {
@@ -802,16 +812,6 @@ impl fmt::Display for IonicIterationsFormat {
         Ok(())
     }
 
-}
-
-
-#[derive(Clone)]
-pub struct Structure {
-    pub cell          : Mat33<f64>,
-    pub ion_types     : Vec<String>,
-    pub ions_per_type : Vec<i32>,
-    pub car_pos       : MatX3<f64>,
-    pub frac_pos      : MatX3<f64>,
 }
 
 
