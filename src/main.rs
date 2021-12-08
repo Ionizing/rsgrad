@@ -10,12 +10,13 @@ use log::{
 use colored::Colorize;
 use structopt::StructOpt;
 use rayon::prelude::*;
-use rsgrad::outcar::Outcar;
-use rsgrad::format::{
+
+use rsgrad::outcar::{
     IonicIterationsFormat,
     Vibrations,
     Trajectory,
     PrintAllVibFreqs,
+    Outcar,
 };
 
 use structopt::clap::AppSettings;
