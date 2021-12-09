@@ -1,6 +1,6 @@
 use std::{
     path::{Path, PathBuf},
-    io::{self, Write},
+    io::{Write},
     fs,
     fmt,
 };
@@ -608,7 +608,7 @@ impl Outcar {
 
 
 // ---------------------------- Output stuff -----------------------
-fn _save_as_xsf_helper(fname: &Path, structure: &Structure, forces: &MatX3<f64>) -> io::Result<()> {
+fn _save_as_xsf_helper(fname: &Path, structure: &Structure, forces: &MatX3<f64>) -> Result<()> {
     let mut f = fs::OpenOptions::new()
         .create(true)
         .truncate(true)
@@ -839,7 +839,7 @@ impl Outcar {
         }
     }
 
-    pub fn save_ionic_step_as_xsf(&self, index: usize, path: &(impl AsRef<Path> + ?Sized)) -> io::Result<()> {
+    pub fn save_ionic_step_as_xsf(&self, index: usize, path: &(impl AsRef<Path> + ?Sized)) -> Result<()> {
         // index starts from 1
         let len = self.ion_iters.len();
         assert!(1 <= index && index <= len, "Index out of bound.");
@@ -901,7 +901,7 @@ fn _calc_inv_3x3(cell: &Mat33<f64>) -> Mat33<f64> {
 pub struct Trajectory(pub Vec<Structure>);
 
 impl Trajectory {
-    pub fn save_as_xdatcar(&self, path: &(impl AsRef<Path> + ?Sized)) -> io::Result<()> {
+    pub fn save_as_xdatcar(&self, path: &(impl AsRef<Path> + ?Sized)) -> Result<()> {
         let mut fname = PathBuf::new();
         fname.push(path);
         if !fname.is_dir() {
@@ -964,7 +964,7 @@ impl Trajectory {
         Ok(())
     }
 
-    pub fn save_as_poscar(&self, index: usize, path: &(impl AsRef<Path> + ?Sized)) -> io::Result<()> {
+    pub fn save_as_poscar(&self, index: usize, path: &(impl AsRef<Path> + ?Sized)) -> Result<()> {
         // index starts from 1
         let len = self.0.len();
         assert!(1 <= index && index <=len, "Index out of bound.");
@@ -988,7 +988,7 @@ impl Trajectory {
         Ok(())
     }
 
-    pub fn _save_into_seperated_dirs(self, _path: &(impl AsRef<Path> + ?Sized)) -> io::Result<()> {
+    pub fn _save_into_seperated_dirs(self, _path: &(impl AsRef<Path> + ?Sized)) -> Result<()> {
         todo!();
     }
 }
@@ -1038,13 +1038,14 @@ impl From<Structure> for Poscar {
 
 
 impl Structure {
-    pub fn save_as_poscar(self, path: &(impl AsRef<Path> + ?Sized)) -> io::Result<()> {
+    pub fn save_as_poscar(self, path: &(impl AsRef<Path> + ?Sized)) -> Result<()> {
         let mut f = fs::OpenOptions::new()
             .create(true)
             .truncate(true)
             .write(true)
             .open(path)?;
-        write!(f, "{:.9}", Poscar::from(self))
+        write!(f, "{:.9}", Poscar::from(self))?;
+        Ok(())
     }
 }
 
@@ -1068,7 +1069,7 @@ impl From<Outcar> for Vibrations {
 
 
 impl Vibrations {
-    pub fn save_as_xsf(&self, index: usize, path: &(impl AsRef<Path> + ?Sized)) -> io::Result<()> {
+    pub fn save_as_xsf(&self, index: usize, path: &(impl AsRef<Path> + ?Sized)) -> Result<()> {
         // index starts from 1
         let len = self.modes.len();
         assert!(1 <= index && index <= len, "Index out of bound.");
@@ -1134,18 +1135,18 @@ impl GetEFermi for str {
         let start_pos = self
             .rmatch_indices(" E-fermi :")
             .next()
-            .context(|| "Fermi level info not found")?
+            .context("Fermi level info not found")?
             .0;
 
         let x = Regex::new(r" E-fermi :\s*(\S+)")
             .unwrap()
             .captures(&self[start_pos ..])
-            .context(|| "Fermi level info not found")?;
+            .context("Fermi level info not found")?;
         x.get(1)
             .unwrap()
             .as_str()
             .parse::<f64>()
-            .context(|| format!("Cannot parse E-fermi as float value: \"{}\"",
+            .context(format!("Cannot parse E-fermi as float value: \"{}\"",
                              x.get(0).unwrap().as_str()))
     }
 }

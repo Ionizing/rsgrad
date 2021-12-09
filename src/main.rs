@@ -1,4 +1,3 @@
-use std::io::Result;
 use std::path::PathBuf;
 use std::time;
 use env_logger;
@@ -10,6 +9,10 @@ use log::{
 use colored::Colorize;
 use structopt::StructOpt;
 use rayon::prelude::*;
+use anyhow::{
+    Result,
+    //Context,
+};
 
 use rsgrad::outcar::{
     IonicIterationsFormat,

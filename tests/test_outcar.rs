@@ -1,8 +1,8 @@
 use std::path::PathBuf;
-use std::io;
 use std::fs;
 use vasp_poscar::Poscar;
 use tempdir::TempDir;
+use anyhow::Result;
 
 use rsgrad::outcar::{
     Outcar,
@@ -21,7 +21,7 @@ macro_rules! get_fpath_in_current_dir {
 }
 
 #[test]
-fn test_normal_outcar() -> io::Result<()> {
+fn test_normal_outcar() -> Result<()> {
     let fname = get_fpath_in_current_dir!("OUTCAR_multiple_ionic_steps");
     let outcar = Outcar::from_file(&fname)?;
 
@@ -79,7 +79,7 @@ fn test_normal_outcar() -> io::Result<()> {
 
 
 #[test]
-fn test_unfinished_outcar() -> io::Result<()> {
+fn test_unfinished_outcar() -> Result<()> {
     let fname = get_fpath_in_current_dir!("OUTCAR_unfinished");
     let outcar = Outcar::from_file(&fname)?;
 
@@ -130,7 +130,7 @@ fn test_unfinished_outcar() -> io::Result<()> {
 
 
 #[test]
-fn test_ispin2_outcar() -> io::Result<()> {
+fn test_ispin2_outcar() -> Result<()> {
     let fname = get_fpath_in_current_dir!("OUTCAR_ispin2");
     let outcar = Outcar::from_file(&fname)?;
 
@@ -186,7 +186,7 @@ fn test_ispin2_outcar() -> io::Result<()> {
 
 
 #[test]
-fn test_ncl_outcar() -> io::Result<()> {
+fn test_ncl_outcar() -> Result<()> {
     let fname = get_fpath_in_current_dir!("OUTCAR_ncl");
     let outcar = Outcar::from_file(&fname)?;
 
@@ -237,7 +237,7 @@ fn test_ncl_outcar() -> io::Result<()> {
 }
 
 #[test]
-fn test_vib_outcar() -> io::Result<()> {
+fn test_vib_outcar() -> Result<()> {
     let fname = get_fpath_in_current_dir!("OUTCAR_vibrations");
     let outcar = Outcar::from_file(&fname)?;
 
@@ -299,7 +299,7 @@ fn test_vib_outcar() -> io::Result<()> {
 
 
 #[test]
-fn test_save_as_xdatcar() -> io::Result<()> {
+fn test_save_as_xdatcar() -> Result<()> {
     let fname = get_fpath_in_current_dir!("OUTCAR_another_rlx");
     let outcar = Outcar::from_file(&fname)?;
     let traj = Trajectory::from(outcar);
@@ -316,7 +316,7 @@ fn test_save_as_xdatcar() -> io::Result<()> {
 }
 
 #[test]
-fn test_save_as_poscar() -> io::Result<()> {
+fn test_save_as_poscar() -> Result<()> {
     let fname = get_fpath_in_current_dir!("OUTCAR_another_rlx");
     let outcar = Outcar::from_file(&fname)?;
     let traj = Trajectory::from(outcar);
@@ -329,15 +329,15 @@ fn test_save_as_poscar() -> io::Result<()> {
 
     // Validation
     let entries = fs::read_dir(tmpdir)?
-        .map(|res| res.map(|e| e.path()))
-        .collect::<Result<Vec<_>, io::Error>>()?;
+        .map(|res| res.map(|e| e.path()).unwrap())
+        .collect::<Vec<_>>();
 
     assert!(entries.iter().all(|f| Poscar::from_path(f).is_ok()));
     Ok(())
 }
 
 #[test]
-fn test_save_as_single_xsf() -> io::Result<()> {
+fn test_save_as_single_xsf() -> Result<()> {
     let fname = get_fpath_in_current_dir!("OUTCAR_vibrations");
     let outcar = Outcar::from_file(&fname)?;
     let vibs = Vibrations::from(outcar);
