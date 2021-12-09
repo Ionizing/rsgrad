@@ -10,6 +10,10 @@ use log::info;
 use rayon;
 use regex::Regex;
 use itertools::multizip;
+use anyhow::{
+    Context,
+    Result,
+};
 
 use crate::types::{
     MatX3,
@@ -93,7 +97,7 @@ pub struct Outcar {
 
 
 impl Outcar {
-    pub fn from_file(path: &(impl AsRef<Path> + ?Sized)) -> io::Result<Self> {
+    pub fn from_file(path: &(impl AsRef<Path> + ?Sized)) -> Result<Self> {
         let context: String = fs::read_to_string(path)?;
 
         let mut lsorbit         = false;
@@ -1112,6 +1116,37 @@ impl fmt::Display for PrintAllVibFreqs {
 impl From<Vibrations> for PrintAllVibFreqs {
     fn from(vibs: Vibrations) -> Self {
         Self(vibs.modes)
+    }
+}
+
+
+
+pub trait GetEFermi {
+    fn get_efermi(&self) -> Result<f64>;
+}
+
+impl GetEFermi for Outcar {
+    fn get_efermi(&self) -> Result<f64> { Ok(self.efermi) }
+}
+
+impl GetEFermi for str {
+    fn get_efermi(&self) -> Result<f64> { 
+        let start_pos = self
+            .rmatch_indices(" E-fermi :")
+            .next()
+            .context(|| "Fermi level info not found")?
+            .0;
+
+        let x = Regex::new(r" E-fermi :\s*(\S+)")
+            .unwrap()
+            .captures(&self[start_pos ..])
+            .context(|| "Fermi level info not found")?;
+        x.get(1)
+            .unwrap()
+            .as_str()
+            .parse::<f64>()
+            .context(|| format!("Cannot parse E-fermi as float value: \"{}\"",
+                             x.get(0).unwrap().as_str()))
     }
 }
 
