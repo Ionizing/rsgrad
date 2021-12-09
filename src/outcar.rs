@@ -1,6 +1,6 @@
 use std::{
     path::{Path, PathBuf},
-    io::{Write},
+    io::Write,
     fs,
     fmt,
 };
@@ -10,6 +10,10 @@ use log::info;
 use rayon;
 use regex::Regex;
 use itertools::multizip;
+use structopt::{
+    StructOpt,
+    clap::AppSettings,
+};
 use anyhow::{
     Context,
     Result,
@@ -21,20 +25,55 @@ use crate::types::{
     Structure,
 };
 
-// DONE ISPIN
-// DONE ions per type
-// DONE element symbol
-// DONE NKPTS
-// DONE stress
-// DONE cell
-// DONE positions and forces
-// DONE magmom
-// DONE E-fermi
-// DONE scf
-// DONE vibration
-// DONE LSORBIT
-// DONE IBRION
-// DONE ion masses
+
+#[derive(Debug, StructOpt)]
+enum OutcarCommand {
+    #[structopt(setting = AppSettings::ColoredHelp,
+                setting = AppSettings::ColorAuto)]
+    /// Tracking relaxation or MD progress.
+    ///
+    /// Contains the evolution of energy, maximum of Hellmann-Feynman forces, 
+    /// magnetic moments and time usage of each ionic step.
+    ///
+    /// Hint: This command may require POSCAR for atom constraints information.
+    Rlx {},
+
+    #[structopt(setting = AppSettings::ColoredHelp,
+                setting = AppSettings::ColorAuto,
+                setting = AppSettings::AllowNegativeNumbers)]
+    /// Tracking vibration information.
+    ///
+    /// For systems enabled vibration mode calculation, this command can extract
+    /// phonon eigenvalues and phonon eigenvectors at Gamma point.
+    Vib {},
+
+    #[structopt(setting = AppSettings::ColoredHelp,
+                setting = AppSettings::ColorAuto,
+                setting = AppSettings::AllowNegativeNumbers)]
+    /// Process the relaxation or MD trajectory.
+    ///
+    /// This command can save the trajectory as individual structure files in
+    /// POSCAR or XSF format or combine them as a single XDATCAR if you like.
+    ///
+    /// Hint: This command may require POSCAR for atom constraints information.
+    Trj {},
+
+    #[structopt(setting = AppSettings::ColoredHelp,
+                setting = AppSettings::ColorAuto)]
+    /// Lists the brief info of current OUTCAR.
+    ///
+    /// This command parses whole OUTCAR and prints these tags:
+    /// - IBRION
+    /// - NKPTS
+    /// - NIONS
+    /// - NSW
+    /// - ISPIN
+    /// - LSORBIT
+    /// - EFERMI
+    /// - NBANDS
+    List,
+}
+
 
 
 #[derive(Clone, PartialEq, Debug)]
