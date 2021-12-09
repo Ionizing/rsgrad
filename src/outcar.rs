@@ -78,6 +78,33 @@ impl Vibration {
 }
 
 
+pub trait GetEFermi {
+    fn get_efermi(&self) -> Result<f64>;
+}
+
+impl GetEFermi for str {
+    fn get_efermi(&self) -> Result<f64> { 
+        let start_pos = self
+            .rmatch_indices(" E-fermi :")
+            .next()
+            .context("Fermi level info not found")?
+            .0;
+
+        let x = Regex::new(r" E-fermi :\s*(\S+)")
+            .unwrap()
+            .captures(&self[start_pos ..])
+            .context("Fermi level info not found")?;
+        x.get(1)
+            .unwrap()
+            .as_str()
+            .parse::<f64>()
+            .context(format!("Cannot parse E-fermi as float value: \"{}\"",
+                             x.get(0).unwrap().as_str()))
+    }
+}
+
+
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Outcar {
     pub lsorbit       : bool,
@@ -320,22 +347,7 @@ impl Outcar {
     }
 
     fn parse_efermi(context: &str) -> f64 {
-        let start_pos = context
-            .rmatch_indices(" E-fermi :")
-            .next()
-            .expect("Fermi level info not found")
-            .0;
-
-        let x = Regex::new(r" E-fermi :\s*(\S+)")
-            .unwrap()
-            .captures(&context[start_pos ..])
-            .expect("Fermi level info not found");
-        x.get(1)
-            .unwrap()
-            .as_str()
-            .parse::<f64>()
-            .expect(&format!("Cannot parse E-fermi as float value: \"{}\"",
-                             x.get(0).unwrap().as_str()))
+        context.get_efermi().unwrap()
     }
 
     fn parse_nkpts_nbands(context: &str) -> (i32, i32) {
@@ -1122,33 +1134,8 @@ impl From<Vibrations> for PrintAllVibFreqs {
 
 
 
-pub trait GetEFermi {
-    fn get_efermi(&self) -> Result<f64>;
-}
-
 impl GetEFermi for Outcar {
     fn get_efermi(&self) -> Result<f64> { Ok(self.efermi) }
-}
-
-impl GetEFermi for str {
-    fn get_efermi(&self) -> Result<f64> { 
-        let start_pos = self
-            .rmatch_indices(" E-fermi :")
-            .next()
-            .context("Fermi level info not found")?
-            .0;
-
-        let x = Regex::new(r" E-fermi :\s*(\S+)")
-            .unwrap()
-            .captures(&self[start_pos ..])
-            .context("Fermi level info not found")?;
-        x.get(1)
-            .unwrap()
-            .as_str()
-            .parse::<f64>()
-            .context(format!("Cannot parse E-fermi as float value: \"{}\"",
-                             x.get(0).unwrap().as_str()))
-    }
 }
 
 
