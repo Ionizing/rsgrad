@@ -6,7 +6,11 @@ use std::{
 };
 use colored::Colorize;
 use vasp_poscar::{self, Poscar};
-use log::info;
+use log::{
+    info,
+    warn,
+    debug,
+};
 use rayon;
 use regex::Regex;
 use itertools::multizip;
@@ -36,7 +40,7 @@ pub struct OutcarOpt {
     #[structopt(default_value = "./POSCAR")]
     /// Specify the input POSCAR file path. 
     ///
-    /// POSCAR contains the atom constraints info that OUTCAR doesn't have.
+    /// POSCAR contains the atom constraints info that this command needs.
     poscar: PathBuf,
 
     #[structopt(subcommand)]
@@ -185,7 +189,20 @@ enum Command {
 
 impl OptProcess for OutcarOpt {
     fn process(&self) -> Result<()> {
-        
+        info!("Parsing file \"{:?}\" and \"{:?}\"", self.outcar, self.poscar);
+        debug!("    OUTCAR file path = {:?}\n    POSCAR file path = {:?}", 
+               fs::canonicalize(&self.outcar), fs::canonicalize(&self.poscar));
+
+        let mut outcar = Outcar::from_file(&self.outcar)?;
+
+        if let Ok(poscar) = vasp_poscar::Poscar::from_path(&self.poscar) {
+            if let Some(constraints) = poscar.into_raw().dynamics {
+                outcar.set_constraints(constraints);
+            }
+        } else {
+            warn!("Reading POSCAR file from \"{:?}\" failed", &self.poscar);
+        }
+
         Ok(())
     }
 }
@@ -276,6 +293,7 @@ pub struct Outcar {
     pub ion_masses    : Vec<f64>,  // .len() == nions
     pub ion_iters     : Vec<IonicIteration>,
     pub vib           : Option<Vec<Vibration>>, // .len() == degrees of freedom
+    pub constraints   : MatX3<bool>,
 }
 
 
@@ -350,6 +368,7 @@ impl Outcar {
             .collect::<Vec<IonicIteration>>();
 
         let vib = Self::parse_vibrations(&context);
+        let constraints = vec![[true, true, true]; nions as usize];
 
         Ok(
             Self {
@@ -365,9 +384,15 @@ impl Outcar {
                 ion_types,
                 ion_masses,
                 ion_iters,
-                vib
+                vib,
+                constraints,
             }
         )
+    }
+
+    pub fn set_constraints(&mut self, constraints: MatX3<bool>) {
+        assert_eq!(self.nions, constraints.len() as i32);
+        self.constraints = constraints;
     }
 
     fn parse_ispin(context: &str) -> i32 {
@@ -815,6 +840,7 @@ fn _save_as_xsf_helper(fname: &Path, structure: &Structure, forces: &MatX3<f64>)
 #[derive(Clone)]
 pub struct IonicIterationsFormat {
     _data            : Vec<IonicIteration>,
+    _constraints     : MatX3<bool>,
 
     print_energy     : bool,
     print_energyz    : bool,
@@ -829,10 +855,23 @@ pub struct IonicIterationsFormat {
     print_volume     : bool,
 }
 
-impl From<Vec<IonicIteration>> for IonicIterationsFormat {
-    fn from(data: Vec<IonicIteration>) -> Self {
+
+macro_rules! impl_builder_item {
+    ($t: tt) => {
+        pub fn $t(mut self, arg: bool) -> Self {
+            self.$t = arg;
+            self
+        }
+    };
+}
+
+
+// Use non-consuming builder pattern
+impl IonicIterationsFormat {
+    pub fn from_outcar(outcar: &Outcar) -> Self {
         Self {
-            _data            : data,
+            _data            : outcar.ion_iters.clone(),
+            _constraints     : outcar.constraints.clone(),
             print_energy     : false,
             print_energyz    : true,
             print_log10de    : false,
@@ -846,19 +885,7 @@ impl From<Vec<IonicIteration>> for IonicIterationsFormat {
             print_volume     : false,
         }
     }
-}
 
-macro_rules! impl_builder_item {
-    ($t: tt) => {
-        pub fn $t(mut self, arg: bool) -> Self {
-            self.$t = arg;
-            self
-        }
-    };
-}
-
-// Use non-consuming builder pattern
-impl IonicIterationsFormat {
     impl_builder_item!(print_energy);
     impl_builder_item!(print_energyz);
     impl_builder_item!(print_log10de);
@@ -874,17 +901,10 @@ impl IonicIterationsFormat {
 
 impl fmt::Display for IonicIterationsFormat {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let nions = self._data[0].forces.len();
         let dynamics =
-            if let Ok(poscar) = Poscar::from_path("POSCAR") {
-                info!("POSCAR was read. Filtering relaxed ions... {}",
-                      "Note: the force info listed below doesn't contain fixed atoms");
-                let dynamics = poscar.into_raw().dynamics.unwrap_or(vec![[true; 3]; nions]);
-                assert_eq!(nions, dynamics.len(), "Inconsistent ion numbers from POSCAR and OUTCAR");
-                dynamics
-            } else { vec![[true; 3]; nions] }
-        .into_iter()
-        .map(|v| {
+            self._constraints
+            .iter()
+            .map(|v| {
             [v[0] as i32 as f64, v[1] as i32 as f64, v[2] as i32 as f64]
         })
         .collect::<Vec<_>>();
