@@ -24,10 +24,28 @@ use crate::types::{
     Mat33,
     Structure,
 };
+use crate::traits::OptProcess;
 
 
 #[derive(Debug, StructOpt)]
-enum OutcarCommand {
+pub struct OutcarOpt {
+    #[structopt(default_value = "./OUTCAR")]
+    /// Specify the input OUTCAR file path.
+    outcar: PathBuf,
+
+    #[structopt(default_value = "./POSCAR")]
+    /// Specify the input POSCAR file path. 
+    ///
+    /// POSCAR contains the atom constraints info that OUTCAR doesn't have.
+    poscar: PathBuf,
+
+    #[structopt(subcommand)]
+    command: Command,
+}
+
+
+#[derive(Debug, StructOpt)]
+enum Command {
     #[structopt(setting = AppSettings::ColoredHelp,
                 setting = AppSettings::ColorAuto)]
     /// Tracking relaxation or MD progress.
@@ -36,7 +54,51 @@ enum OutcarCommand {
     /// magnetic moments and time usage of each ionic step.
     ///
     /// Hint: This command may require POSCAR for atom constraints information.
-    Rlx {},
+    Rlx {
+        #[structopt(short = "e", long = "toten")]
+        /// Prints TOTEN in eV
+        print_energy: bool,
+
+        #[structopt(short = "a", long = "favg")]
+        /// Prints averaged total force in eV/A
+        print_favg: bool,
+
+        #[structopt(short = "x", long = "fmaxis")]
+        /// Prints the axis where the strongest total force component lies on. [XYZ]
+        print_fmax_axis: bool,
+
+        #[structopt(short = "i" ,long = "fmidx")]
+        /// Prints the index of ion with maximum total force load. Starts from 1
+        print_fmax_index: bool,
+
+        #[structopt(short = "v", long = "volume")]
+        /// Prints lattice volume in A^3
+        print_volume: bool,
+
+        #[structopt(long = "no-fmax")]
+        /// Don't print maximum total force in A^3
+        no_print_fmax: bool,
+
+        #[structopt(long = "no-totenz")]
+        /// Don't print TOTEN without entropy in eV
+        no_print_energyz: bool,
+
+        #[structopt(long = "no-lgde")]
+        /// Don't print Log10(delta(TOTEN without entropy))
+        no_print_lgde: bool,
+
+        #[structopt(long = "no-magmom")]
+        /// Don't print total magnetic moment in muB
+        no_print_magmom: bool,
+
+        #[structopt(long = "no-nscf")]
+        /// Don't print number of SCF iteration for each ionic step
+        no_print_nscf: bool,
+
+        #[structopt(long = "no-time")]
+        /// Don't print time elapsed for each ionic step in minutes
+        no_print_time: bool,
+    },
 
     #[structopt(setting = AppSettings::ColoredHelp,
                 setting = AppSettings::ColorAuto,
@@ -45,7 +107,28 @@ enum OutcarCommand {
     ///
     /// For systems enabled vibration mode calculation, this command can extract
     /// phonon eigenvalues and phonon eigenvectors at Gamma point.
-    Vib {},
+    Vib {
+        #[structopt(short, long)]
+        /// Shows vibration modes in brief
+        list: bool,
+
+        #[structopt(short = "x", long)]
+        /// Saves each selected modes to XSF file
+        save_as_xsfs: bool,
+
+        #[structopt(short = "i", long)]
+        /// Selects the indices to operate.
+        ///
+        /// Step indices start from '1', if '0' is given, all the structures will be selected.
+        /// Step indices can be negative, where negative index means counting reversely.
+        /// E.g. "--save-as-poscars -2 -1 1 2 3" means saving the last two and first three
+        /// steps.
+        select_indices: Option<Vec<i32>>,
+
+        #[structopt(long, default_value = ".")]
+        /// Define where the files would be saved
+        save_in: PathBuf,
+    },
 
     #[structopt(setting = AppSettings::ColoredHelp,
                 setting = AppSettings::ColorAuto,
@@ -56,7 +139,32 @@ enum OutcarCommand {
     /// POSCAR or XSF format or combine them as a single XDATCAR if you like.
     ///
     /// Hint: This command may require POSCAR for atom constraints information.
-    Trj {},
+    Trj {
+        #[structopt(short = "i", long)]
+        /// Selects the indices to operate.
+        ///
+        /// Step indices start from '1', if '0' is given, all the structures will be selected.
+        /// Step indices can be negative, where negative index means counting reversely.
+        /// E.g. "--save-as-poscars -2 -1 1 2 3" means saving the last two and first three
+        /// steps.
+        select_indices: Option<Vec<i32>>,
+
+        #[structopt(short = "d", long)]
+        /// Saves total trajectory in XDATCAR format
+        save_as_xdatcar: bool,
+
+        #[structopt(short = "p", long)]
+        /// Saves structures of given steps as POSCARs
+        save_as_poscars: bool,
+
+        #[structopt(short = "x", long)]
+        /// Saves structures of given steps as XSFs
+        save_as_xsfs: bool,
+
+        #[structopt(long, default_value = ".")]
+        /// Defines where the files would be saved
+        save_in: PathBuf,
+    },
 
     #[structopt(setting = AppSettings::ColoredHelp,
                 setting = AppSettings::ColorAuto)]
@@ -73,6 +181,15 @@ enum OutcarCommand {
     /// - NBANDS
     List,
 }
+
+
+impl OptProcess for OutcarOpt {
+    fn process(&self) -> Result<()> {
+        
+        Ok(())
+    }
+}
+
 
 
 
