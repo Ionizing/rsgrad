@@ -204,11 +204,11 @@ mod test {
     use super::*;
     use ndarray::{s, arr1, arr2};
 
-    const TXT_STD: &str = include_str!("../tests/PROCAR");
-    const TXT_SMP: &str = include_str!("../tests/PROCAR.simple");
-    const TXT_544: &str = include_str!("../tests/PROCAR.new_format_5.4.4");
-    const TXT_PHS: &str = include_str!("../tests/PROCAR.phase");
-    const TXT_NCL: &str = include_str!("../tests/PROCAR.ncl");
+    const TXT_STD: &str = include_str!("../../tests/PROCAR");
+    const TXT_SMP: &str = include_str!("../../tests/PROCAR.simple");
+    const TXT_544: &str = include_str!("../../tests/PROCAR.new_format_5.4.4");
+    const TXT_PHS: &str = include_str!("../../tests/PROCAR.phase");
+    const TXT_NCL: &str = include_str!("../../tests/PROCAR.ncl");
 
     #[test]
     fn test_parse_lsorbit() -> Result<()> {

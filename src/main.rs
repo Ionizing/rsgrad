@@ -156,140 +156,140 @@ enum Command {
 
 
 fn main() -> Result<()> {
-    let now = time::Instant::now();
+    //let now = time::Instant::now();
 
-    let env = env_logger::Env::new().filter_or("RSGRAD_LOG", "info");
-    env_logger::init_from_env(env);
+    //let env = env_logger::Env::new().filter_or("RSGRAD_LOG", "info");
+    //env_logger::init_from_env(env);
 
-    let opt = Opt::from_args();
-    debug!("{:?}", opt);
+    //let opt = Opt::from_args();
+    //debug!("{:?}", opt);
 
-    info!("Parsing input file {:?} ...", &opt.input);
-    let outcar = Outcar::from_file(&opt.input)?;
+    //info!("Parsing input file {:?} ...", &opt.input);
+    //let outcar = Outcar::from_file(&opt.input)?;
 
-    let _index_transform_helper = |v: Vec<i32>, len: usize| -> Vec<usize> {
-        if v.contains(&0) {
-            (1..=len).collect()
-        } else {
-            v.into_iter()
-             .map(|i| {
-                 if i < 0 {
-                     i.rem_euclid(len as i32) as usize + 1
-                 } else {
-                     i as usize
-                 }
-             })
-             .collect()
-        }
-    };
+    //let _index_transform_helper = |v: Vec<i32>, len: usize| -> Vec<usize> {
+        //if v.contains(&0) {
+            //(1..=len).collect()
+        //} else {
+            //v.into_iter()
+             //.map(|i| {
+                 //if i < 0 {
+                     //i.rem_euclid(len as i32) as usize + 1
+                 //} else {
+                     //i as usize
+                 //}
+             //})
+             //.collect()
+        //}
+    //};
 
-    match opt.command {
-        Command::Rlx { print_energy,
-                       print_favg,
-                       print_fmax_axis,
-                       print_fmax_index,
-                       print_volume,
-                       no_print_fmax,
-                       no_print_energyz,
-                       no_print_lgde,
-                       no_print_magmom,
-                       no_print_nscf,
-                       no_print_time } => {
-            let iif = IonicIterationsFormat::from(outcar.ion_iters)
-                .print_energy     (print_energy)
-                .print_energyz    (!no_print_energyz)
-                .print_log10de    (!no_print_lgde)
-                .print_favg       (print_favg)
-                .print_fmax       (!no_print_fmax)
-                .print_fmax_axis  (print_fmax_axis)
-                .print_fmax_index (print_fmax_index)
-                .print_nscf       (!no_print_nscf)
-                .print_time_usage (!no_print_time)
-                .print_magmom     (!no_print_magmom)
-                .print_volume     (print_volume);
-            print!("{}", iif);
-        },
-        Command::Vib { list,
-                       save_as_xsfs,
-                       select_indices,
-                       save_in } => {
-            if list {
-                let paf: PrintAllVibFreqs = Vibrations::from(outcar).into();
-                print!("{}", paf);
-                return Ok(());
-            }
+    //match opt.command {
+        //Command::Rlx { print_energy,
+                       //print_favg,
+                       //print_fmax_axis,
+                       //print_fmax_index,
+                       //print_volume,
+                       //no_print_fmax,
+                       //no_print_energyz,
+                       //no_print_lgde,
+                       //no_print_magmom,
+                       //no_print_nscf,
+                       //no_print_time } => {
+            //let iif = IonicIterationsFormat::from(outcar.ion_iters)
+                //.print_energy     (print_energy)
+                //.print_energyz    (!no_print_energyz)
+                //.print_log10de    (!no_print_lgde)
+                //.print_favg       (print_favg)
+                //.print_fmax       (!no_print_fmax)
+                //.print_fmax_axis  (print_fmax_axis)
+                //.print_fmax_index (print_fmax_index)
+                //.print_nscf       (!no_print_nscf)
+                //.print_time_usage (!no_print_time)
+                //.print_magmom     (!no_print_magmom)
+                //.print_volume     (print_volume);
+            //print!("{}", iif);
+        //},
+        //Command::Vib { list,
+                       //save_as_xsfs,
+                       //select_indices,
+                       //save_in } => {
+            //if list {
+                //let paf: PrintAllVibFreqs = Vibrations::from(outcar).into();
+                //print!("{}", paf);
+                //return Ok(());
+            //}
 
-            if save_as_xsfs {
-                let select_indices = select_indices.unwrap_or_default();
-                if select_indices.len() == 0 {
-                    warn!("No modes are selected to operate!");
-                    return Ok(());
-                }
+            //if save_as_xsfs {
+                //let select_indices = select_indices.unwrap_or_default();
+                //if select_indices.len() == 0 {
+                    //warn!("No modes are selected to operate!");
+                    //return Ok(());
+                //}
 
-                let vibs = Vibrations::from(outcar);
-                let len = vibs.modes.len();
+                //let vibs = Vibrations::from(outcar);
+                //let len = vibs.modes.len();
 
-                let inds: Vec<usize> = _index_transform_helper(select_indices, len);
+                //let inds: Vec<usize> = _index_transform_helper(select_indices, len);
 
-                inds.par_iter()
-                    .map(|i| {
-                        vibs.save_as_xsf(*i, &save_in)?;
-                        Ok(())
-                    })
-                    .collect::<Result<()>>()?;
-            }
-        },
-        Command::Trj { select_indices,
-                       save_as_xdatcar,
-                       save_as_poscars,
-                       save_as_xsfs,
-                       save_in } => {
+                //inds.par_iter()
+                    //.map(|i| {
+                        //vibs.save_as_xsf(*i, &save_in)?;
+                        //Ok(())
+                    //})
+                    //.collect::<Result<()>>()?;
+            //}
+        //},
+        //Command::Trj { select_indices,
+                       //save_as_xdatcar,
+                       //save_as_poscars,
+                       //save_as_xsfs,
+                       //save_in } => {
 
-            let traj = Trajectory::from(outcar.clone());
+            //let traj = Trajectory::from(outcar.clone());
 
-            if save_as_xdatcar {
-                traj.save_as_xdatcar(&save_in)?;
-                return Ok(())
-            }
+            //if save_as_xdatcar {
+                //traj.save_as_xdatcar(&save_in)?;
+                //return Ok(())
+            //}
 
-            let select_indices = select_indices.unwrap_or_default();
-            if select_indices.len() == 0 {
-                warn!("No steps are selected to operate !");
-                return Ok(());
-            }
-            let inds = _index_transform_helper(select_indices, traj.0.len());
+            //let select_indices = select_indices.unwrap_or_default();
+            //if select_indices.len() == 0 {
+                //warn!("No steps are selected to operate !");
+                //return Ok(());
+            //}
+            //let inds = _index_transform_helper(select_indices, traj.0.len());
 
-            if save_as_poscars {
-                inds.par_iter()
-                    .map(|i| {
-                        traj.save_as_poscar(*i, &save_in)?;
-                        Ok(())
-                    })
-                    .collect::<Result<()>>()?;
-            }
+            //if save_as_poscars {
+                //inds.par_iter()
+                    //.map(|i| {
+                        //traj.save_as_poscar(*i, &save_in)?;
+                        //Ok(())
+                    //})
+                    //.collect::<Result<()>>()?;
+            //}
 
-            if save_as_xsfs {
-                inds.par_iter()
-                    .map(|i| {
-                        outcar.save_ionic_step_as_xsf(*i, &save_in)?;
-                        Ok(())
-                    })
-                    .collect::<Result<()>>()?;
-            }
+            //if save_as_xsfs {
+                //inds.par_iter()
+                    //.map(|i| {
+                        //outcar.save_ionic_step_as_xsf(*i, &save_in)?;
+                        //Ok(())
+                    //})
+                    //.collect::<Result<()>>()?;
+            //}
 
-        },
-        Command::List => {
-            println!("{:>10} = {:10}", "IBRION".bright_green(), outcar.ibrion);
-            println!("{:>10} = {:10}", "NKPTS".bright_green(), outcar.nkpts);
-            println!("{:>10} = {:10}", "NIONS".bright_green(), outcar.nions);
-            println!("{:>10} = {:10}", "NSW".bright_green(), outcar.ion_iters.len());
-            println!("{:>10} = {:10}", "ISPIN".bright_green(), outcar.ispin);
-            println!("{:>10} = {:>10}", "LSORBIT".bright_green(), outcar.lsorbit);
-            println!("{:>10} = {:10.4}", "EFERMI".bright_green(), outcar.efermi);
-            println!("{:>10} = {:10}", "NBANDS".bright_green(), outcar.nbands);
-        }
-    }
+        //},
+        //Command::List => {
+            //println!("{:>10} = {:10}", "IBRION".bright_green(), outcar.ibrion);
+            //println!("{:>10} = {:10}", "NKPTS".bright_green(), outcar.nkpts);
+            //println!("{:>10} = {:10}", "NIONS".bright_green(), outcar.nions);
+            //println!("{:>10} = {:10}", "NSW".bright_green(), outcar.ion_iters.len());
+            //println!("{:>10} = {:10}", "ISPIN".bright_green(), outcar.ispin);
+            //println!("{:>10} = {:>10}", "LSORBIT".bright_green(), outcar.lsorbit);
+            //println!("{:>10} = {:10.4}", "EFERMI".bright_green(), outcar.efermi);
+            //println!("{:>10} = {:10}", "NBANDS".bright_green(), outcar.nbands);
+        //}
+    //}
 
-    info!("Time used: {:?}", now.elapsed());
+    //info!("Time used: {:?}", now.elapsed());
     Ok(())
 }

@@ -4,7 +4,7 @@ use vasp_poscar::Poscar;
 use tempdir::TempDir;
 use anyhow::Result;
 
-use rsgrad::outcar::{
+use rsgrad::vasp_parsers::outcar::{
     Outcar,
     Trajectory,
     Vibrations,
