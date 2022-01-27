@@ -17,7 +17,7 @@ use crate::types::{
     Matrix,
     Cube,
 };
-use crate::kpoints::Kpoints;
+use crate::vasp_parsers::kpoints::Kpoints;
 
 #[derive(Clone)]
 pub struct ProjectedDOS {

@@ -14,7 +14,7 @@ use anyhow::{
     //Context,
 };
 
-use rsgrad::outcar::{
+use rsgrad::vasp_parsers::outcar::{
     IonicIterationsFormat,
     Vibrations,
     Trajectory,
