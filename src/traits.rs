@@ -1,4 +1,4 @@
-use anyhow::Result;
+pub type Result<T> = anyhow::Result<T>;
 
 pub trait OptProcess {
     fn process(&self) -> Result<()>;
