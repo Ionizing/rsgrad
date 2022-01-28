@@ -37,9 +37,11 @@ use crate::{
 /// Hint: This command may require POSCAR for atom constraints information.
 pub struct Rlx {
     #[structopt(short = "o", long = "outcar", default_value = "./OUTCAR")]
+    /// Specify the input OUTCAR file
     outcar: PathBuf,
 
     #[structopt(short = "p", long = "poscar", default_value = "./POSCAR")]
+    /// Specify the input POSCAR file
     poscar: PathBuf,
 
     #[structopt(short = "e", long = "toten")]
@@ -100,7 +102,7 @@ impl OptProcess for Rlx {
                 outcar.set_constraints(constraints);
             }
         } else {
-            warn!("Reading connstraints from POSCAR file {:?} failed", &self.poscar);
+            warn!("Reading constraints from POSCAR file {:?} failed", &self.poscar);
         }
 
         let iif = IonicIterationsFormat::from_outcar(&outcar)

@@ -1059,6 +1059,7 @@ impl Structure {
 }
 
 
+#[derive(Clone)]
 pub struct Vibrations{
     pub modes: Vec<Vibration>,
     pub structure: Structure

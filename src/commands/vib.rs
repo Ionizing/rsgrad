@@ -1,13 +1,10 @@
 use std::{
-    path::{Path, PathBuf},
-    io::Write,
+    path::PathBuf,
     fs,
-    fmt,
 };
-use colored::Colorize;
+use rayon::prelude::*;
 use log::{
     info,
-    warn,
     debug,
 };
 use structopt::{
@@ -17,9 +14,14 @@ use structopt::{
 use crate::{
     traits::{
         Result,
-        OptProcess
+        OptProcess,
+        index_transform,
     },
-    vasp_parsers::outcar
+    vasp_parsers::outcar::{
+        Outcar,
+        PrintAllVibFreqs,
+        Vibrations,
+    }
 };
 
 
@@ -34,6 +36,10 @@ pub struct Vib {
     #[structopt(short, long)]
     /// Shows vibration modes in brief
     list: bool,
+
+    #[structopt(short = "o", long = "outcar", default_value = "./OUTCAR")]
+    /// Specify the input OUTCAR file
+    outcar: PathBuf,
 
     #[structopt(short = "x", long)]
     /// Saves each selected modes to XSF file
@@ -56,6 +62,29 @@ pub struct Vib {
 
 impl OptProcess for Vib {
     fn process(&self) -> Result<()> {
+        info!("Parsing file {:?}", &self.outcar);
+        debug!("    OUTCAR file path = {:?}", fs::canonicalize(&self.outcar));
+
+        let outcar = Outcar::from_file(&self.outcar)?;
+        let vibs = Vibrations::from(outcar);
+
+        if self.list {
+            let paf: PrintAllVibFreqs = vibs.clone().into();
+            print!("{}", paf);
+        }
+
+        if self.save_as_xsfs {
+            let len = vibs.modes.len();
+            let inds: Vec<usize> = index_transform(self.select_indices.clone().unwrap_or_default(), len);
+            
+            inds.into_par_iter()
+                .map(|i| {
+                    vibs.save_as_xsf(i, &self.save_in)?;
+                    Ok(())
+                })
+                .collect::<Result<()>>()?;
+        }
+
         Ok(())
     }
 }
