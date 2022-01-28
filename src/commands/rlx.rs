@@ -19,7 +19,10 @@ use crate::{
         Result,
         OptProcess
     },
-    vasp_parsers::outcar::Outcar
+    vasp_parsers::outcar::{
+        Outcar,
+        IonicIterationsFormat,
+    }
 };
 
 
@@ -87,7 +90,7 @@ pub struct Rlx {
 
 impl OptProcess for Rlx {
     fn process(&self) -> Result<()> {
-        info!("Parsing file \"{:?}\" and \"{:?}\"", &self.outcar, &self.poscar);
+        info!("Parsing file {:?} and {:?}", &self.outcar, &self.poscar);
         debug!("    OUTCAR file path = {:?}\n    POSCAR file path = {:?}",
                fs::canonicalize(&self.outcar), fs::canonicalize(&self.poscar));
 
@@ -97,9 +100,22 @@ impl OptProcess for Rlx {
                 outcar.set_constraints(constraints);
             }
         } else {
-            warn!("Reading connstraints from POSCAR file \"{:?}\" failed", &self.poscar);
+            warn!("Reading connstraints from POSCAR file {:?} failed", &self.poscar);
         }
 
+        let iif = IonicIterationsFormat::from_outcar(&outcar)
+            .print_energy     ( self.print_energy)
+            .print_energyz    (!self.no_print_energyz)
+            .print_log10de    (!self.no_print_lgde)
+            .print_favg       ( self.print_favg)
+            .print_fmax       (!self.no_print_fmax)
+            .print_fmax_axis  ( self.print_fmax_axis)
+            .print_fmax_index ( self.print_fmax_index)
+            .print_nscf       (!self.no_print_nscf)
+            .print_time_usage (!self.no_print_time)
+            .print_magmom     (!self.no_print_magmom)
+            .print_volume     ( self.print_volume);
+        print!("{}", iif);
         Ok(())
     }
 }
