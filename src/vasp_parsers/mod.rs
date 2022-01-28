@@ -1,3 +1,4 @@
+pub mod poscar;
 pub mod outcar;
 pub mod kpoints;
 pub mod procar;
