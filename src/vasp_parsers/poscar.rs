@@ -78,6 +78,9 @@ impl Poscar {
             if numbers.len() != ion_types.len() {
                 return Err(anyhow!("[POSCAR]: Inconsistent element types and atom counts."));
             }
+            if numbers.iter().any(|x| x <= &0) {
+                return Err(anyhow!("[POSCAR]: Atom counts cannot be zero or negative."));
+            }
             numbers
         };
 
@@ -103,6 +106,164 @@ impl Poscar {
             }
         };
 
+        let mut coords: MatX3<f64> = vec![];
+        let mut constraints: Option<MatX3<bool>> = if has_constraints { Some(vec![]) } else { None };
+        while let Some(line) = lines.next() {
+            if line.trim().is_empty() {
+                break;
+            }
+            let v = line.split_whitespace().collect::<Vec<_>>();
+            coords.push( [ v[0].parse::<f64>().context("[POSCAR]: Coordinates value invalid.")?,
+                           v[1].parse::<f64>().context("[POSCAR]: Coordinates value invalid.")?,
+                           v[2].parse::<f64>().context("[POSCAR]: Coordinates value invalid.")?, ]);
+
+            if let Some(c) = &mut constraints {
+                let mut _c = [true; 3];
+                for i in 0..3 {
+                    _c[i] = match v[i+3].chars().next().unwrap() {
+                        't' | 'T' => true,
+                        'f' | 'F' => false,
+                        _ => return Err(anyhow!("[POSCAR]: Constraints should be either 'T' or 'F'")),
+                    };
+                }
+                c.push(_c);
+            }
+        }
+
+        if coords.len() as i32 != ions_per_type.iter().sum() {
+            return Err(anyhow!("[POSCAR]: Count of coordinates inconsistent with sum of atom counts."));
+        }
+
+        let (pos_cart, pos_frac): (MatX3<f64>, MatX3<f64>) = {
+            if is_direct {
+                               
+            } else {
+                
+            }
+            todo!()
+        };
+
+        // TODO parse velocity, may be implemented later, if needed.
+
         todo!()
+    }
+
+
+    #[inline]
+    fn mat33_det(mat: &Mat33<f64>) -> f64 {
+        return mat[0][0] * (mat[1][1] * mat[2][2] - mat[2][1] * mat[1][2])
+             - mat[0][1] * (mat[1][0] * mat[2][2] - mat[1][2] * mat[2][0])
+             + mat[0][2] * (mat[1][0] * mat[2][1] - mat[1][1] * mat[2][0]);
+    }
+
+
+    fn mat33_inv(mat: &Mat33<f64>) -> Option<Mat33<f64>> {
+        let det = Self::mat33_det(mat);
+        if det.abs() < 1E-5 { return None; }
+        let invdet = 1.0 / det;
+        let mut bmat: Mat33<f64> = [[0.0; 3]; 3];
+        bmat[0][0] = (mat[1][1] * mat[2][2]  -  mat[2][1] * mat[1][2]) * invdet;
+        bmat[0][1] = (mat[0][2] * mat[2][1]  -  mat[0][1] * mat[2][2]) * invdet;
+        bmat[0][2] = (mat[0][1] * mat[1][2]  -  mat[0][2] * mat[1][1]) * invdet;
+        bmat[1][0] = (mat[1][2] * mat[2][0]  -  mat[1][0] * mat[2][2]) * invdet;
+        bmat[1][1] = (mat[0][0] * mat[2][2]  -  mat[0][2] * mat[2][0]) * invdet;
+        bmat[1][2] = (mat[1][0] * mat[0][2]  -  mat[0][0] * mat[1][2]) * invdet;
+        bmat[2][0] = (mat[1][0] * mat[2][1]  -  mat[2][0] * mat[1][1]) * invdet;
+        bmat[2][1] = (mat[2][0] * mat[0][1]  -  mat[0][0] * mat[2][1]) * invdet;
+        bmat[2][2] = (mat[0][0] * mat[1][1]  -  mat[1][0] * mat[0][1]) * invdet;
+        Some(bmat)
+    }
+
+
+    fn matx3_mul_mat33(matx3: &MatX3<f64>, mat33: &Mat33<f64>) -> MatX3<f64> {
+        let len = matx3.len();
+        let mut ret = vec![[0.0; 3]; len];
+        for i in 0..len {
+            // manual loop unroll
+            ret[i][0] += matx3[i][0] * mat33[0][0];
+            ret[i][0] += matx3[i][1] * mat33[1][0];
+            ret[i][0] += matx3[i][2] * mat33[2][0];
+
+            ret[i][1] += matx3[i][0] * mat33[0][1];
+            ret[i][1] += matx3[i][1] * mat33[1][1];
+            ret[i][1] += matx3[i][2] * mat33[2][1];
+
+            ret[i][2] += matx3[i][0] * mat33[0][2];
+            ret[i][2] += matx3[i][1] * mat33[1][2];
+            ret[i][2] += matx3[i][2] * mat33[2][2];
+        }
+        ret
+    }
+
+
+    fn convert_cart_to_frac(cell: Mat33<f64>, cart: &MatX3<f64>) -> MatX3<f64> {
+
+
+        todo!();
+    }
+
+
+    fn convert_frac_to_cart(cell: Mat33<f64>, cart: &MatX3<f64>) -> MatX3<f64> {
+        todo!();
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_mat33_det() {
+        let mat = [[ 1.0, 2.0, 3.0], 
+                   [ 4.0, 5.0, 6.0],
+                   [ 7.0, 8.0, 9.0]];
+        assert_eq!(Poscar::mat33_det(&mat), 0.0);
+
+        let mat = [[ 1.0, 3.0, 4.0], 
+                   [ 2.0, 1.0, 5.0],
+                   [ 5.0, 3.0, 0.0]];
+        assert_eq!(Poscar::mat33_det(&mat), 64.0);
+    }
+
+    #[test]
+    fn test_mat33_inv() {
+        let mat = [[ 1.0, 2.0, 3.0], 
+                   [ 4.0, 5.0, 6.0],
+                   [ 7.0, 8.0, 9.0]];
+        assert_eq!(Poscar::mat33_inv(&mat), None);
+
+        let mat = [[ 1.0, 3.0, 4.0], 
+                   [ 2.0, 1.0, 5.0],
+                   [ 5.0, 3.0, 0.0]];
+        assert_eq!(Poscar::mat33_inv(&mat), 
+                   Some([[-0.234375,  0.1875,  0.171875],
+                         [ 0.390625, -0.3125,  0.046875],
+                         [ 0.015625,  0.1875, -0.078125]]));
+    }
+
+    #[test]
+    fn test_matx3_mul_mat33() {
+        let matx3 = vec![[ 1.0, 2.0, 3.0], 
+                         [ 4.0, 5.0, 6.0],
+                         [ 7.0, 8.0, 9.0]];
+        let mat33 = [[ 1.0, 3.0, 4.0], 
+                     [ 2.0, 1.0, 5.0],
+                     [ 5.0, 3.0, 0.0]];
+        assert_eq!(Poscar::matx3_mul_mat33(&matx3, &mat33), 
+                   vec![[20., 14., 14.],
+                        [44., 35., 41.],
+                        [68., 56., 68.]]);
+    }
+
+
+    #[test]
+    fn test_convert_cart_to_frac() {
+        todo!();
+    }
+
+    #[test]
+    fn test_convert_frac_to_cart() {
+        todo!();
     }
 }
