@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 use std::fs;
-use vasp_poscar::Poscar;
+use rsgrad::vasp_parsers::poscar::Poscar;
 use tempdir::TempDir;
 use anyhow::Result;
 
@@ -332,7 +332,7 @@ fn test_save_as_poscar() -> Result<()> {
         .map(|res| res.map(|e| e.path()).unwrap())
         .collect::<Vec<_>>();
 
-    assert!(entries.iter().all(|f| Poscar::from_path(f).is_ok()));
+    assert!(entries.iter().all(|f| Poscar::from_file(f).is_ok()));
     Ok(())
 }
 

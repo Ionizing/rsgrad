@@ -1,5 +1,8 @@
-use std::cmp::Ordering;
-
+use std::{
+    cmp::Ordering,
+    path::Path,
+    fs,
+};
 use anyhow::{anyhow, Context};
 use crate::traits::Result;
 use crate::types::{
@@ -21,7 +24,12 @@ pub struct Poscar {  // I have no plan to support vasp4 format
 
 
 impl Poscar {
-    fn from_str(txt: &str) -> Result<Self> {
+    pub fn from_file(path: &(impl AsRef<Path> + ?Sized)) -> Result<Self> {
+        let txt: String = fs::read_to_string(path)?;
+        Self::from_str(&txt)
+    }
+
+    pub fn from_str(txt: &str) -> Result<Self> {
         let mut lines = txt.lines();
         let comment: String = lines.next().context("[POSCAR]: File may be blank.")?.trim().to_string();
         let scale: f64 = lines.next().context("[POSCAR]: Cannot parse scale constant.")?
