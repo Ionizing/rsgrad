@@ -2,6 +2,10 @@ use std::{
     cmp::Ordering,
     path::Path,
     fs,
+    io::{
+        BufReader, 
+        BufRead,
+    },
 };
 use anyhow::{anyhow, Context};
 use crate::traits::Result;
@@ -25,7 +29,14 @@ pub struct Poscar {  // I have no plan to support vasp4 format
 
 impl Poscar {
     pub fn from_file(path: &(impl AsRef<Path> + ?Sized)) -> Result<Self> {
-        let txt: String = fs::read_to_string(path)?;
+        //  Read to the first emtpy line then parse it.
+        let f = fs::File::open(path)?;
+        let txt = BufReader::new(f).lines()
+            .take_while(|x| x.is_ok())
+            .map(|x| x.unwrap())
+            .take_while(|x| !x.trim().is_empty())
+            .collect::<Vec<_>>()
+            .join("\n");
         Self::from_str(&txt)
     }
 
