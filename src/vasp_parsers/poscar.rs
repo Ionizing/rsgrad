@@ -225,6 +225,24 @@ impl Poscar {
     }
 
 
+    pub fn normalization(mut self) -> Self {
+        for i in 0..3 {
+            for j in 0..3 {
+                self.cell[i][j] *= self.scale;
+            }
+        }
+
+        for i in 0..self.pos_cart.len() {
+            for j in 0..3 {
+                self.pos_cart[i][j] *= self.scale;
+            }
+        }
+        self.scale = 1.0;
+
+        self
+    }
+
+
     pub fn get_natoms(&self) -> i32 {
         self.ions_per_type.iter().sum()
     }
@@ -297,6 +315,14 @@ impl Poscar {
         Self::matx3_mul_mat33(frac, cell)
     }
 }
+
+
+impl From<Structure> for Poscar {
+    fn from(s: Structure) -> Self {
+        Self::from_structure(s)
+    }
+}
+
 
 
 #[cfg(test)]
