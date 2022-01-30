@@ -1,3 +1,6 @@
+// TODO: switch to homemade Poscar parser
+
+
 use std::{
     path::{Path, PathBuf},
     io::Write,
@@ -1006,7 +1009,6 @@ impl Trajectory {
 impl From<Outcar> for Trajectory {
     fn from(o: Outcar) -> Self {
         let len = o.ion_iters.len();
-        // todo!();
         Self (
             multizip((o.ion_iters, vec![o.ion_types; len], vec![o.ions_per_type; len]))
                 .map(|(ii, it, ipt)| -> Structure {
