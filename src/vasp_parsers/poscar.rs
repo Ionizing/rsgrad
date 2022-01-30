@@ -194,8 +194,49 @@ impl Poscar {
     }
 
 
-    pub fn list_info(&self) {
-        todo!()
+    pub fn get_cell_params(&self) -> ([f64; 3], [f64; 3]) {
+        let lengths = {
+            let a = &self.cell;
+            let mut ret = [0.0; 3];
+            ret[0] = f64::sqrt(a[0][0] * a[0][0] + a[0][1] * a[0][1] + a[0][2] * a[0][2]) * self.scale;
+            ret[1] = f64::sqrt(a[1][0] * a[1][0] + a[1][1] * a[1][1] + a[1][2] * a[1][2]) * self.scale;
+            ret[2] = f64::sqrt(a[2][0] * a[2][0] + a[2][1] * a[2][1] + a[2][2] * a[2][2]) * self.scale;
+            ret
+        };
+
+        let product = |a: &[f64; 3], b: &[f64; 3]| {
+            a[0] * b[0]
+          + a[1] * b[1]
+          + a[2] * b[2]
+        };
+
+        let angles = {
+            let a = &self.cell;
+            let alpha = f64::acos(product(&a[1], &a[2]) * self.scale.powi(2) / (lengths[1] * lengths[2])) * 
+                        180.0 / std::f64::consts::PI;
+            let beta  = f64::acos(product(&a[0], &a[2]) * self.scale.powi(2) / (lengths[0] * lengths[2])) * 
+                        180.0 / std::f64::consts::PI;
+            let gamma = f64::acos(product(&a[0], &a[1]) * self.scale.powi(2) / (lengths[0] * lengths[1])) * 
+                        180.0 / std::f64::consts::PI;
+            [alpha, beta, gamma]
+        };
+
+        (lengths, angles)
+    }
+
+
+    pub fn get_natoms(&self) -> i32 {
+        self.ions_per_type.iter().sum()
+    }
+
+
+    pub fn get_ntypes(&self) -> i32 {
+        self.ion_types.len() as i32
+    }
+
+
+    pub fn get_volume(&self) -> f64 {
+        Self::mat33_det(&self.cell) * self.scale.powi(3)
     }
 
 
