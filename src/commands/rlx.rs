@@ -17,12 +17,11 @@ use structopt::{
 use crate::{
     traits::{
         Result,
-        OptProcess
     },
-    vasp_parsers::outcar::{
-        Outcar,
-        IonicIterationsFormat,
-    }
+    OptProcess,
+    Outcar,
+    IonicIterationsFormat,
+    Poscar,
 };
 
 
@@ -87,6 +86,10 @@ pub struct Rlx {
     #[structopt(long = "no-time")]
     /// Don't print time elapsed for each ionic step in minutes
     no_print_time: bool,
+
+    #[structopt(long = "no-add-symbol-tags")]
+    /// Don't add chemical symbol to each line of coordinates
+    no_add_symbol_tags: bool,
 }
 
 
@@ -97,8 +100,8 @@ impl OptProcess for Rlx {
                fs::canonicalize(&self.outcar), fs::canonicalize(&self.poscar));
 
         let mut outcar = Outcar::from_file(&self.outcar)?;
-        if let Ok(poscar) = vasp_poscar::Poscar::from_path(&self.poscar) {
-            if let Some(constraints) = poscar.into_raw().dynamics {
+        if let Ok(poscar) = Poscar::from_file(&self.poscar) {
+            if let Some(constraints) = poscar.constraints {
                 outcar.set_constraints(constraints);
             }
         } else {
