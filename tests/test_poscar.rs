@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 use rsgrad::traits::Result;
 use rsgrad::vasp_parsers::poscar::Poscar;
+use tempdir::TempDir;
 
 
 macro_rules! get_fpath_in_current_dir {
@@ -37,6 +38,9 @@ fn test_read_poscar() -> Result<()> {
         ("POSCAR.tricky_symmetry",      301.92747145565284,
             [ 2.97098261,  2.97098176, 34.27053249], [ 92.4856315 , 92.48554312, 89.9971654]),
     ];
+
+    let tmpdir = TempDir::new("poscar_test")?.into_path();
+
     for (f, v, l, a) in fnames {
         println!("testing {}", f);
         let pos = Poscar::from_file(&get_fpath_in_current_dir!(f))?;
@@ -51,6 +55,26 @@ fn test_read_poscar() -> Result<()> {
         assert!((ang[0] - a[0]).abs() < THRESHOLD);
         assert!((ang[1] - a[1]).abs() < THRESHOLD);
         assert!((ang[2] - a[2]).abs() < THRESHOLD);
+
+        if vec!["POSCAR.O2"].contains(&f) {
+            assert!(pos.constraints.is_some());
+            let constraints = pos.constraints.as_ref().unwrap();
+            assert_eq!(constraints[0], [true, true, false]);
+            assert_eq!(constraints[4], [true, false, true]);
+            assert_eq!(constraints[7], [false, true, true]);
+        } else {
+            assert!(pos.constraints.is_none());
+        }
+
+        let mut path = tmpdir.clone();
+        path.push(f);
+        println!("{:?}", &path);
+        pos.into_formatter()
+            .preserve_constraints(true)
+            .fraction_coordinates(true)
+            .add_symbol_tags(false)
+            .to_file(&path)?;
+        Poscar::from_file(&path)?;
     }
 
     Ok(())

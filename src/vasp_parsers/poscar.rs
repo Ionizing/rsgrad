@@ -206,11 +206,7 @@ impl Poscar {
 
 
     pub fn into_formatter(self) -> PoscarFormatter {
-        PoscarFormatter {
-            poscar: self,
-            fraction_coordinates: true,
-            preserve_constraints: true,
-        }
+        PoscarFormatter::new(self)
     }
 
 
@@ -348,10 +344,20 @@ pub struct PoscarFormatter {
     pub poscar: Poscar,
     pub preserve_constraints: bool,
     pub fraction_coordinates: bool,
+    pub add_symbol_tags: bool,
 }
 
 
 impl PoscarFormatter {
+    pub fn new(poscar: Poscar) -> Self {
+        Self {
+            poscar,
+            preserve_constraints: true,
+            fraction_coordinates: true,
+            add_symbol_tags: true,
+        }
+    }
+
     pub fn preserve_constraints(mut self, flag: bool) -> Self {
         self.preserve_constraints = flag;
         self
@@ -359,6 +365,11 @@ impl PoscarFormatter {
 
     pub fn fraction_coordinates(mut self, flag: bool) -> Self {
         self.fraction_coordinates = flag;
+        self
+    }
+
+    pub fn add_symbol_tags(mut self, flag: bool) -> Self {
+        self.add_symbol_tags = flag;
         self
     }
 
@@ -386,8 +397,8 @@ impl std::string::ToString for PoscarFormatter {
             let mut count_line = String::with_capacity(8);
 
             for (t, c) in poscar.ion_types.iter().zip(poscar.ions_per_type.iter()) {
-                symbol_line += &format!(" {:6}", t);
-                count_line += &format!(" {:6}", c);
+                symbol_line += &format!(" {:>6}", t);
+                count_line += &format!(" {:>6}", c);
             }
 
             format!("{}\n{}\n", symbol_line, count_line)
@@ -400,7 +411,7 @@ impl std::string::ToString for PoscarFormatter {
             for (symbol, count) in poscar.ion_types.iter().zip(poscar.ions_per_type.iter()) {
                 for i in 1..=*count {
                     ind += 1;
-                    ret.push(format!("{:6}-{:03}  {:3}", symbol, i, ind));
+                    ret.push(format!("{:>6}-{:03}  {:3}", symbol, i, ind));
                 }
             }
             ret
@@ -430,7 +441,10 @@ impl std::string::ToString for PoscarFormatter {
                 }
             }
 
-            ret += &atom_symbol_index[i];
+            if self.add_symbol_tags {
+                ret += "! ";
+                ret += &atom_symbol_index[i];
+            }
             ret += "\n";
         }
 
