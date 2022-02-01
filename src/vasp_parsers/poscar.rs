@@ -194,6 +194,26 @@ impl Poscar {
     }
 
 
+    pub fn into_structure(self) -> Structure {
+        Structure {
+            cell: self.cell,
+            ion_types: self.ion_types,
+            ions_per_type: self.ions_per_type,
+            car_pos: self.pos_cart,
+            frac_pos: self.pos_frac,
+        }
+    }
+
+
+    pub fn into_formatter(self) -> PoscarFormatter {
+        PoscarFormatter {
+            poscar: self,
+            fraction_coordinates: true,
+            preserve_constraints: true,
+        }
+    }
+
+
     pub fn get_cell_params(&self) -> ([f64; 3], [f64; 3]) {
         let lengths = {
             let a = &self.cell;
@@ -225,7 +245,7 @@ impl Poscar {
     }
 
 
-    pub fn normalization(mut self) -> Self {
+    pub fn normalize(mut self) -> Self {
         for i in 0..3 {
             for j in 0..3 {
                 self.cell[i][j] *= self.scale;
@@ -320,6 +340,101 @@ impl Poscar {
 impl From<Structure> for Poscar {
     fn from(s: Structure) -> Self {
         Self::from_structure(s)
+    }
+}
+
+
+pub struct PoscarFormatter {
+    pub poscar: Poscar,
+    pub preserve_constraints: bool,
+    pub fraction_coordinates: bool,
+}
+
+
+impl PoscarFormatter {
+    pub fn preserve_constraints(mut self, flag: bool) -> Self {
+        self.preserve_constraints = flag;
+        self
+    }
+
+    pub fn fraction_coordinates(mut self, flag: bool) -> Self {
+        self.fraction_coordinates = flag;
+        self
+    }
+
+    pub fn to_file(&self, path: &(impl AsRef<Path> + ?Sized)) -> Result<()> {
+        fs::write(path, self.to_string())?;
+        Ok(())
+    }
+}
+
+
+impl std::string::ToString for PoscarFormatter {
+    fn to_string(&self) -> String {
+        let poscar = &self.poscar;
+        let mut ret = String::with_capacity(512);
+
+        ret += &poscar.comment; ret += "\n";
+        ret += &format!("  {:10.7}\n", poscar.scale);
+
+        for i in 0..3 {
+            ret += &format!("   {:15.9}   {:15.9}   {:15.9}\n", poscar.cell[i][0], poscar.cell[i][1], poscar.cell[i][2]);
+        }
+
+        ret += &{
+            let mut symbol_line = String::with_capacity(8);
+            let mut count_line = String::with_capacity(8);
+
+            for (t, c) in poscar.ion_types.iter().zip(poscar.ions_per_type.iter()) {
+                symbol_line += &format!(" {:6}", t);
+                count_line += &format!(" {:6}", c);
+            }
+
+            format!("{}\n{}\n", symbol_line, count_line)
+        };
+
+        let atom_symbol_index = {
+            let mut ret = vec![String::new(); 0];
+            let mut ind = 0;
+            
+            for (symbol, count) in poscar.ion_types.iter().zip(poscar.ions_per_type.iter()) {
+                for i in 1..=*count {
+                    ind += 1;
+                    ret.push(format!("{:6}-{:03}  {:3}", symbol, i, ind));
+                }
+            }
+            ret
+        };
+
+        let (write_constraints, constr) = if poscar.constraints.is_some() && self.preserve_constraints {
+            ret += "Selective Dynamics\n";
+            (true, poscar.constraints.as_ref().unwrap().clone())
+        } else {
+            (false, vec![[true, true, true]; 0])
+        };
+
+        let coords = if self.fraction_coordinates {
+            ret += "Direct\n";
+            &poscar.pos_frac
+        } else {
+            ret += "Cartesian\n";
+            &poscar.pos_cart
+        };
+
+        for i in 0..coords.len() {
+            ret += &format!("  {:16.10}  {:16.10}  {:16.10} ", coords[i][0], coords[i][1], coords[i][2]);
+
+            if write_constraints {
+                for c in constr[i] {
+                    ret += if c { "  T " } else { "  F " };
+                }
+            }
+
+            ret += &atom_symbol_index[i];
+            ret += "\n";
+        }
+
+        ret
     }
 }
 
