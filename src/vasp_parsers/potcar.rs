@@ -2,7 +2,6 @@ use anyhow::{
     Context,
     Result,
 };
-use vasp_poscar::Poscar;
 
 
 pub struct AtomPotcar {

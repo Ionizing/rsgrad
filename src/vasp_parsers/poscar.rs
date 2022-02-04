@@ -6,6 +6,7 @@ use std::{
         BufReader, 
         BufRead,
     },
+    fmt,
 };
 use anyhow::{anyhow, Context};
 use crate::traits::Result;
@@ -380,19 +381,18 @@ impl PoscarFormatter {
 }
 
 
-impl std::string::ToString for PoscarFormatter {
-    fn to_string(&self) -> String {
+impl fmt::Display for PoscarFormatter {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let poscar = &self.poscar;
-        let mut ret = String::with_capacity(512);
 
-        ret += &poscar.comment; ret += "\n";
-        ret += &format!("  {:10.7}\n", poscar.scale);
+        writeln!(f, "{}", &poscar.comment)?;
+        writeln!(f, "{:10.7}", poscar.scale)?;
 
         for i in 0..3 {
-            ret += &format!("   {:15.9}   {:15.9}   {:15.9}\n", poscar.cell[i][0], poscar.cell[i][1], poscar.cell[i][2]);
+            writeln!(f, "   {:15.9}   {:15.9}   {:15.9}", poscar.cell[i][0], poscar.cell[i][1], poscar.cell[i][2])?;
         }
 
-        ret += &{
+        {
             let mut symbol_line = String::with_capacity(8);
             let mut count_line = String::with_capacity(8);
 
@@ -401,8 +401,8 @@ impl std::string::ToString for PoscarFormatter {
                 count_line += &format!(" {:>6}", c);
             }
 
-            format!("{}\n{}\n", symbol_line, count_line)
-        };
+            write!(f, "{}\n{}\n", symbol_line, count_line)?;
+        }
 
         let atom_symbol_index = {
             let mut ret = vec![String::new(); 0];
@@ -418,37 +418,36 @@ impl std::string::ToString for PoscarFormatter {
         };
 
         let (write_constraints, constr) = if poscar.constraints.is_some() && self.preserve_constraints {
-            ret += "Selective Dynamics\n";
+            f.write_str("Selective Dynamics\n")?;
             (true, poscar.constraints.as_ref().unwrap().clone())
         } else {
             (false, vec![[true, true, true]; 0])
         };
 
         let coords = if self.fraction_coordinates {
-            ret += "Direct\n";
+            f.write_str("Direct\n")?;
             &poscar.pos_frac
         } else {
-            ret += "Cartesian\n";
+            f.write_str("Cartesian\n")?;
             &poscar.pos_cart
         };
 
         for i in 0..coords.len() {
-            ret += &format!("  {:16.10}  {:16.10}  {:16.10} ", coords[i][0], coords[i][1], coords[i][2]);
+            write!(f, "  {:16.10}  {:16.10}  {:16.10} ", coords[i][0], coords[i][1], coords[i][2])?;
 
             if write_constraints {
                 for c in constr[i] {
-                    ret += if c { "  T " } else { "  F " };
+                    f.write_str(if c { "  T " } else { "  F " })?;
                 }
             }
 
             if self.add_symbol_tags {
-                ret += "! ";
-                ret += &atom_symbol_index[i];
+                write!(f, "! {}", &atom_symbol_index[i])?;
             }
-            ret += "\n";
+            writeln!(f)?;
         }
 
-        ret
+        Ok(())
     }
 }
 
