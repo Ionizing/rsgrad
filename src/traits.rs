@@ -4,6 +4,9 @@ pub trait OptProcess {
     fn process(&self) -> Result<()>;
 }
 
+/// Index array containing negative indices => Index array full of positive indices.
+/// `-1` means the last index,
+/// If `v` contains `0`, selecting the total indices,  `1..=len` is returned.
 pub fn index_transform(v: Vec<i32>, len: usize) -> Vec<usize> {
     if v.contains(&0) {
         (1 ..= len).collect()

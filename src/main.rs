@@ -29,6 +29,11 @@ enum Opt {
     #[structopt(setting = AppSettings::ColoredHelp,
                 setting = AppSettings::ColorAuto)]
     Traj(commands::traj::Traj),
+
+
+    #[structopt(setting = AppSettings::ColoredHelp,
+                setting = AppSettings::ColorAuto)]
+    Pos(commands::pos::Pos),
 }
 
 
@@ -42,6 +47,7 @@ fn main() -> Result<()> {
         Opt::Rlx(cmd) => cmd.process()?,
         Opt::Vib(cmd) => cmd.process()?,
         Opt::Traj(cmd) => cmd.process()?,
+        Opt::Pos(cmd) => cmd.process()?,
     }
 
     info!("Time used: {:?}", now.elapsed());

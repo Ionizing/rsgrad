@@ -17,11 +17,9 @@ use crate::{
         OptProcess,
         index_transform,
     },
-    vasp_parsers::outcar::{
-        Outcar,
-        PrintAllVibFreqs,
-        Vibrations,
-    }
+    Outcar,
+    Vibrations,
+    vasp_parsers::outcar::PrintAllVibFreqs,
 };
 
 
