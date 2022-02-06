@@ -31,27 +31,27 @@ use crate::{
 /// Operations about relaxation/MD trajectory, POSCAR is needed if you want to preserve the
 /// constraints when saving frames to POSCAR.
 pub struct Traj {
-    #[structopt(short = "o", long = "outcar", default_value = "./OUTCAR")]
+    #[structopt(short = "o", long, default_value = "./OUTCAR")]
     /// Specify the input OUTCAR file
     outcar: PathBuf,
 
-    #[structopt(short = "p", long = "poscar", default_value = "./POSCAR")]
+    #[structopt(short = "p", long, default_value = "./POSCAR")]
     /// Specify the input POSCAR file
     poscar: PathBuf,
 
-    #[structopt(short = "x", long = "save-as-xsf")]
+    #[structopt(short = "x", long)]
     /// Saves each selected modes to XSF file, this file includes each atom's force information
     save_as_xsfs: bool,
 
-    #[structopt(short = "s", long = "save-as-poscar")]
+    #[structopt(short = "s", long)]
     /// Save selected steps as POSCARs
     save_as_poscar: bool,
 
-    #[structopt(short = "d", long = "save-as-xdatcar")]
+    #[structopt(short = "d", long)]
     /// Save whole trajectory in XDATCAR format
     save_as_xdatcar: bool,
 
-    #[structopt(short = "i", long = "indices")]
+    #[structopt(short = "i", long)]
     /// Selects the indices to operate.
     ///
     /// Step indices start from '1', if '0' is given, all the structures will be selected.

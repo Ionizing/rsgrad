@@ -30,11 +30,11 @@ use crate::{
 ///
 /// Hint: This command may require POSCAR for atom constraints information.
 pub struct Rlx {
-    #[structopt(short = "o", long = "outcar", default_value = "./OUTCAR")]
+    #[structopt(short = "o", long, default_value = "./OUTCAR")]
     /// Specify the input OUTCAR file
     outcar: PathBuf,
 
-    #[structopt(short = "p", long = "poscar", default_value = "./POSCAR")]
+    #[structopt(short = "p", long, default_value = "./POSCAR")]
     /// Specify the input POSCAR file
     poscar: PathBuf,
 

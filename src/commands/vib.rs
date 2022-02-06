@@ -37,7 +37,7 @@ pub struct Vib {
     /// Shows vibration modes in brief
     list: bool,
 
-    #[structopt(short = "o", long = "outcar", default_value = "./OUTCAR")]
+    #[structopt(short = "o", long, default_value = "./OUTCAR")]
     /// Specify the input OUTCAR file
     outcar: PathBuf,
 
