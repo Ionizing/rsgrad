@@ -1,4 +1,7 @@
+use std::time;
+
 use env_logger;
+use log::info;
 use rsgrad::traits::Result;
 use structopt::StructOpt;
 use structopt::clap::AppSettings;
@@ -30,13 +33,17 @@ enum Opt {
 
 
 fn main() -> Result<()> {
+    let now = time::Instant::now();
+
     env_logger::init_from_env(
         env_logger::Env::new().filter_or("RSGRAD_LOG", "info"));
 
-    let opt = Opt::from_args();
-    match opt {
-        Opt::Rlx(cmd) => cmd.process(),
-        Opt::Vib(cmd) => cmd.process(),
-        Opt::Traj(cmd) => cmd.process(),
+    match Opt::from_args() {
+        Opt::Rlx(cmd) => cmd.process()?,
+        Opt::Vib(cmd) => cmd.process()?,
+        Opt::Traj(cmd) => cmd.process()?,
     }
+
+    info!("Time used: {:?}", now.elapsed());
+    Ok(())
 }
