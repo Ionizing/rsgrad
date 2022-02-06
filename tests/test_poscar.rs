@@ -69,7 +69,7 @@ fn test_read_poscar() -> Result<()> {
         let mut path = tmpdir.clone();
         path.push(f);
         println!("{:?}", &path);
-        pos.into_formatter()
+        pos.to_formatter()
             .preserve_constraints(true)
             .fraction_coordinates(true)
             .add_symbol_tags(false)

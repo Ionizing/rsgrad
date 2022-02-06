@@ -324,7 +324,7 @@ fn test_save_as_poscar() -> Result<()> {
     let tmpdir = TempDir::new("rsgrad_test")?;
     let len = traj.0.len();
     for i in 1..=len {
-        traj.save_as_poscar(i, tmpdir.path())?;
+        traj.save_as_poscar(i, tmpdir.path(), true, true, true)?;
     }
 
     // Validation

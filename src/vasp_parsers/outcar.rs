@@ -974,7 +974,7 @@ impl Trajectory {
         Ok(())
     }
 
-    pub fn save_as_poscar(&self, index: usize, path: &(impl AsRef<Path> + ?Sized)) -> Result<()> {
+    pub fn save_as_poscar(&self, index: usize, path: &(impl AsRef<Path> + ?Sized), frac: bool, constr: bool, symbol: bool) -> Result<()> {
         // index starts from 1
         let len = self.0.len();
         assert!(1 <= index && index <=len, "Index out of bound.");
@@ -993,7 +993,11 @@ impl Trajectory {
             .truncate(true)
             .write(true)
             .open(&fname)?;
-        write!(f, "{}", Poscar::from(self.0[index].clone()).into_formatter())?;
+        write!(f, "{}", Poscar::from(self.0[index].clone()).to_formatter()
+               .fraction_coordinates(frac)
+               .preserve_constraints(constr)
+               .add_symbol_tags(symbol)
+        )?;
 
         Ok(())
     }
@@ -1854,7 +1858,7 @@ mod tests{
       1
 Direct
       0.0000000000      0.0000000000      0.0000000000 !      H-001    1
-"#, format!("{}", Poscar::from(s).into_formatter()));
+"#, format!("{}", Poscar::from(s).to_formatter()));
     }
 
     #[test]

@@ -1,10 +1,7 @@
 use std::{
-    path::{Path, PathBuf},
-    io::Write,
+    path::PathBuf,
     fs,
-    fmt,
 };
-use colored::Colorize;
 use log::{
     info,
     warn,
@@ -15,9 +12,7 @@ use structopt::{
     clap::AppSettings,
 };
 use crate::{
-    traits::{
-        Result,
-    },
+    traits::Result,
     OptProcess,
     Outcar,
     IonicIterationsFormat,
@@ -86,10 +81,6 @@ pub struct Rlx {
     #[structopt(long = "no-time")]
     /// Don't print time elapsed for each ionic step in minutes
     no_print_time: bool,
-
-    #[structopt(long = "no-add-symbol-tags")]
-    /// Don't add chemical symbol to each line of coordinates
-    no_add_symbol_tags: bool,
 }
 
 

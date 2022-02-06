@@ -206,8 +206,8 @@ impl Poscar {
     }
 
 
-    pub fn into_formatter(self) -> PoscarFormatter {
-        PoscarFormatter::new(self)
+    pub fn to_formatter(&self) -> PoscarFormatter<'_> {
+        PoscarFormatter::new(&self)
     }
 
 
@@ -341,18 +341,18 @@ impl From<Structure> for Poscar {
 }
 
 
-pub struct PoscarFormatter {
-    pub poscar: Poscar,
+pub struct PoscarFormatter<'a> {
+    pub poscar: &'a Poscar,
     pub preserve_constraints: bool,
     pub fraction_coordinates: bool,
     pub add_symbol_tags: bool,
 }
 
 
-impl PoscarFormatter {
-    pub fn new(poscar: Poscar) -> Self {
+impl<'a> PoscarFormatter<'a> {
+    pub fn new(poscar: &'a Poscar) -> Self {
         Self {
-            poscar,
+            poscar: &poscar,
             preserve_constraints: true,
             fraction_coordinates: true,
             add_symbol_tags: true,
@@ -381,7 +381,7 @@ impl PoscarFormatter {
 }
 
 
-impl fmt::Display for PoscarFormatter {
+impl<'a> fmt::Display for PoscarFormatter<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let poscar = &self.poscar;
 
