@@ -28,8 +28,9 @@ use crate::{
 #[structopt(setting = AppSettings::ColoredHelp,
             setting = AppSettings::ColorAuto,
             setting = AppSettings::AllowNegativeNumbers)]
-/// Operations about relaxation/MD trajectory, POSCAR is needed if you want to preserve the
-/// constraints when saving frames to POSCAR.
+/// Operations about relaxation/MD trajectory.
+///
+/// POSCAR is needed if you want to preserve the constraints when saving frames to POSCAR.
 pub struct Traj {
     #[structopt(short = "o", long, default_value = "./OUTCAR")]
     /// Specify the input OUTCAR file
