@@ -28,10 +28,8 @@ use crate::{
 #[structopt(setting = AppSettings::ColoredHelp,
             setting = AppSettings::ColorAuto,
             setting = AppSettings::AllowNegativeNumbers)]
-/// Tracking vibration information.
-///
-/// For systems enabled vibration mode calculation, this command can extract
-/// phonon eigenvalues and phonon eigenvectors at Gamma point.
+/// Operations about relaxation/MD trajectory, POSCAR is needed if you want to preserve the
+/// constraints when saving frames to POSCAR.
 pub struct Traj {
     #[structopt(short = "o", long = "outcar", default_value = "./OUTCAR")]
     /// Specify the input OUTCAR file
