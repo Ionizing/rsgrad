@@ -125,6 +125,11 @@ jobs:
           args: --release
           use-cross: true
 
+      - name: Optimize and package binary
+        run: |
+          cd target/release
+          7z a rsgrad.zip rsgrad
+
       - name: Upload binary
         uses: actions/upload-release-asset@v1
         env:
