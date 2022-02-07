@@ -135,7 +135,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          asset_name: rsgrad-${{ github.event.release.tag_name }}-windows-x86_64.exe
-          asset_path: target/release/rsgrad.exe
+          asset_name: rsgrad-${{ github.event.release.tag_name }}-windows-x86_64.zip
+          asset_path: target/release/rsgrad.zip
           upload_url: ${{ github.event.release.upload_url }}
           asset_content_type: application/zip
