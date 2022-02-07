@@ -838,7 +838,7 @@ impl Outcar {
 
         let cell     = self.ion_iters[index].cell.clone();
         let car_pos  = self.ion_iters[index].positions.clone();
-        let frac_pos = _car_to_frac(&cell, &car_pos);
+        let frac_pos = Poscar::convert_cart_to_frac(&car_pos, &cell).unwrap();
 
         Structure {
             cell,
@@ -866,45 +866,6 @@ impl Outcar {
         info!("Saving ionic step to {:?} ...", fname);
         _save_as_xsf_helper(&fname, s, f)
     }
-}
-
-fn _car_to_frac(cell: &Mat33<f64>, carpos: &MatX3<f64>) -> MatX3<f64> {
-    let convmat = _calc_inv_3x3(cell);
-    carpos.iter()
-          .map(|v| {
-              [
-                  //                    [B11, B12, B13]
-                  // carpos [x, y, z] x [B21, B22, B23]
-                  //                    [B31, B32, B33]
-                  convmat[0][0] * v[0] + convmat[1][0] * v[1] + convmat[2][0] * v[2],
-                  convmat[0][1] * v[0] + convmat[1][1] * v[1] + convmat[2][1] * v[2],
-                  convmat[0][2] * v[0] + convmat[1][2] * v[1] + convmat[2][2] * v[2],
-              ]
-          }).collect()
-}
-
-fn _calc_inv_3x3(cell: &Mat33<f64>) -> Mat33<f64> {
-    let a = cell[0][0];
-    let b = cell[0][1];
-    let c = cell[0][2];
-    let d = cell[1][0];
-    let e = cell[1][1];
-    let f = cell[1][2];
-    let g = cell[2][0];
-    let h = cell[2][1];
-    let i = cell[2][2];
-
-    // [a b c]
-    // [d e f]
-    // [g h i]
-
-    let det = a*(e*i - f*h) - b*(d*i - f*g) + c*(d*h - e*g);
-    assert!(det.abs() > 1.0e-5, "Cell volume too small, check your lattice.");
-    let detdiv = 1.0 / det;
-
-    [[(e*i - f*h) * detdiv, (c*h - b*i) * detdiv, (b*f - c*e) * detdiv],
-     [(f*g - d*i) * detdiv, (a*i - c*g) * detdiv, (c*d - a*f) * detdiv],
-     [(d*h - e*g) * detdiv, (b*g - a*h) * detdiv, (a*e - b*d) * detdiv]]
 }
 
 #[derive(Clone)]
@@ -1016,7 +977,7 @@ impl From<Outcar> for Trajectory {
                 .map(|(ii, it, ipt)| -> Structure {
                     let cell = ii.cell;
                     let car_pos = ii.positions;
-                    let frac_pos = _car_to_frac(&cell, &car_pos);
+                    let frac_pos = Poscar::convert_cart_to_frac(&car_pos, &cell).unwrap();
                     Structure {
                         cell,
                         ion_types: it,
@@ -1051,8 +1012,8 @@ impl From<Outcar> for Vibrations {
 
 
 impl Vibrations {
+    /// Index starts from 1
     pub fn save_as_xsf(&self, index: usize, path: &(impl AsRef<Path> + ?Sized)) -> Result<()> {
-        // index starts from 1
         let len = self.modes.len();
         assert!(1 <= index && index <= len, "Index out of bound.");
         let index = index - 1;
@@ -1065,13 +1026,53 @@ impl Vibrations {
 
         fname.push(
             if self.modes[index].is_imagine {
-                format!("mode_{:04}_{:011.5}cm-1_imag.xsf", index+1, self.modes[index].freq)
+                format!("mode_{:04}_{:07.2}cm-1_imag.xsf", index+1, self.modes[index].freq)
             } else {
-                format!("mode_{:04}_{:011.5}cm-1.xsf", index+1, self.modes[index].freq)
+                format!("mode_{:04}_{:07.2}cm-1.xsf", index+1, self.modes[index].freq)
             }
         );
         info!("Saving mode #{:4} as {:?} ...", index+1, &fname);
         _save_as_xsf_helper(&fname, &self.structure, &self.modes[index].dxdydz)
+    }
+
+    /// Index starts from 1
+    pub fn modulate(&self, index: usize, amplitude: f64, fracpos: bool, 
+                    constrants: Option<Vec<[bool; 3]>>, path: &(impl AsRef<Path> + ?Sized)) -> Result<()> {
+        let len = self.modes.len();
+        assert!(1 <= index && index <= len, "Index out of bound.");
+        let index = index - 1;
+        assert!(amplitude.abs() >= 0.001, "Modulation amplitude coeff too small.");
+
+        let mut fname = PathBuf::new();
+        fname.push(path);
+        if !fname.is_dir() {
+            fs::create_dir_all(&fname)?;
+        }
+
+        fname.push(
+            if self.modes[index].is_imagine {
+                format!("mode_{:04}_{:07.2}cm-1_{:04.3}_imag.vasp", index+1, self.modes[index].freq, amplitude)
+            } else {
+                format!("mode_{:04}_{:07.2}cm-1_{:04.3}.vasp", index+1, self.modes[index].freq, amplitude)
+            }
+        );
+        info!("Saving modulated POSCAR of mode #{:4} with amplitude coeff {:04.3} as {:?} ...", index+1, amplitude, &fname);
+
+        let mut structure = self.structure.clone();
+        for i in 0 .. structure.car_pos.len() {
+            structure.car_pos[i][0] += self.modes[index].dxdydz[i][0] * amplitude;
+            structure.car_pos[i][1] += self.modes[index].dxdydz[i][1] * amplitude;
+            structure.car_pos[i][2] += self.modes[index].dxdydz[i][2] * amplitude;
+        }
+
+        structure.frac_pos = Poscar::convert_cart_to_frac(&structure.car_pos, &structure.cell).unwrap();
+        let mut poscar = Poscar::from_structure(structure);
+        poscar.constraints = constrants;
+        poscar.to_formatter()
+            .preserve_constraints(true)
+            .fraction_coordinates(fracpos)
+            .add_symbol_tags(true)
+            .to_file(&fname)
     }
 }
 
@@ -1079,7 +1080,7 @@ pub struct PrintAllVibFreqs(Vec<Vibration>);
 
 impl fmt::Display for PrintAllVibFreqs {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "# {:-^64} #", " Viberation modes for this system ".bright_yellow())?;
+        writeln!(f, "# {:-^64} #", " Vibration modes for this system ".bright_yellow())?;
         for (i, v) in self.0.iter().enumerate() {
             let idxstr = format!("{:4}", i+1).bright_magenta();
             let freqstr = format!("{:12.5}", v.freq).bright_green();
@@ -1861,25 +1862,6 @@ Direct
 "#, format!("{}", Poscar::from(s).to_formatter()));
     }
 
-    #[test]
-    fn test_calc_inv_3x3() {
-        let cell = [[1.0, 2.0, 3.0],
-                    [0.0, 1.0, 4.0],
-                    [5.0, 6.0, 0.0]];
-        assert_eq!(_calc_inv_3x3(&cell), [[-24.0,  18.0,  5.0],
-                                          [ 20.0, -15.0, -4.0],
-                                          [ -5.0,   4.0,  1.0]]);
-    }
-
-    #[test]
-    #[should_panic]
-    fn test_inv_3x3_singular() {
-        let cell = [[1.0, 2.0, 3.0],
-                    [4.0, 5.0, 6.0],
-                    [7.0, 8.0, 9.0]];
-        let _ = _calc_inv_3x3(&cell);
-    }
-
     fn _generate_structure() -> Structure {
         Structure{
             cell: [[6.0, 0.0, 0.0],
@@ -1901,32 +1883,6 @@ Direct
             ],
         }
     }
-
-    #[test]
-    fn test_car_to_frac() {
-        let cell = [[1.0, 2.0, 3.0],
-                    [0.0, 1.0, 4.0],
-                    [5.0, 6.0, 0.0]];
-        let car = vec![[0.0, 0.0, 0.0],
-                       [0.5, 1.0, 1.5],
-                       [0.0, 0.5, 2.0],
-                       [2.5, 3.0, 0.0],
-                       [11.0, 45.0, 14.0]];
-        let frac = vec![[0.0, 0.0, 0.0],
-                        [0.5, 0.0, 0.0],
-                        [0.0, 0.5, 0.0],
-                        [0.0, 0.0, 0.5],
-                        [566.0, -421.0, -111.0]];
-        assert_eq!(frac, _car_to_frac(&cell, &car));
-
-        let s = _generate_structure();
-        let cell = s.cell;
-        let car = s.car_pos;
-        let frac = s.frac_pos;
-
-        assert_eq!(frac, _car_to_frac(&cell, &car));
-    }
-
 
     fn _generate_vibration() -> Vibrations {
         let masses_sqrt = vec![1.0f64, 1.0, 1.0, 14.001]
@@ -1963,7 +1919,7 @@ Direct
     fn test_print_all_modes() {
         let vibs: PrintAllVibFreqs = _generate_vibration().into();
         let fmtstr = format!("{}", vibs);
-        let refstr = "# \u{1b}[93m--------------- Viberation modes for this system ---------------\u{1b}[0m #
+        let refstr = "# \u{1b}[93m--------------- Vibration modes for this system ---------------\u{1b}[0m #
   ModeIndex: \u{1b}[95m   1\u{1b}[0m  Frequency/cm-1:  \u{1b}[92m  3627.91026\u{1b}[0m  IsImagine: \u{1b}[92mFalse\u{1b}[0m
   ModeIndex: \u{1b}[95m   2\u{1b}[0m  Frequency/cm-1:  \u{1b}[92m  3620.67362\u{1b}[0m  IsImagine: \u{1b}[92mFalse\u{1b}[0m
   ModeIndex: \u{1b}[95m   3\u{1b}[0m  Frequency/cm-1:  \u{1b}[92m     0.75226\u{1b}[0m  IsImagine: \u{1b}[93m True\u{1b}[0m

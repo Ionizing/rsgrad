@@ -196,12 +196,14 @@ impl Poscar {
 
 
     pub fn into_structure(self) -> Structure {
+        let self2 = self.normalize();
+
         Structure {
-            cell: self.cell,
-            ion_types: self.ion_types,
-            ions_per_type: self.ions_per_type,
-            car_pos: self.pos_cart,
-            frac_pos: self.pos_frac,
+            cell: self2.cell,
+            ion_types: self2.ion_types,
+            ions_per_type: self2.ions_per_type,
+            car_pos: self2.pos_cart,
+            frac_pos: self2.pos_frac,
         }
     }
 
@@ -322,13 +324,13 @@ impl Poscar {
     }
 
 
-    fn convert_cart_to_frac(cart: &MatX3<f64>, cell: &Mat33<f64>) -> Option<MatX3<f64>> {
+    pub fn convert_cart_to_frac(cart: &MatX3<f64>, cell: &Mat33<f64>) -> Option<MatX3<f64>> {
         let inv = Self::mat33_inv(cell)?;
         Some(Self::matx3_mul_mat33(cart, &inv))
     }
 
 
-    fn convert_frac_to_cart(frac: &MatX3<f64>, cell: &Mat33<f64>) -> MatX3<f64> {
+    pub fn convert_frac_to_cart(frac: &MatX3<f64>, cell: &Mat33<f64>) -> MatX3<f64> {
         Self::matx3_mul_mat33(frac, cell)
     }
 }
