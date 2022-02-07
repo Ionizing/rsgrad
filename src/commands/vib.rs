@@ -25,7 +25,8 @@ use crate::{
 
 #[derive(Debug, StructOpt)]
 #[structopt(setting = AppSettings::ColoredHelp,
-            setting = AppSettings::ColorAuto)]
+            setting = AppSettings::ColorAuto,
+            setting = AppSettings::AllowNegativeNumbers)]
 /// Tracking vibration information.
 ///
 /// For systems enabled vibration mode calculation, this command can extract
