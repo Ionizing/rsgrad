@@ -105,7 +105,7 @@ jobs:
           asset_name: rsgrad-${{ github.event.release.tag_name }}-macos-x86_64.tar.gz
           asset_path: target/release/rsgrad.tar.gz
           upload_url: ${{ github.event.release.upload_url }}
-          asset_content_type: application
+          asset_content_type: application/zip
 
   windows-x86_64:
     runs-on: windows-latest
