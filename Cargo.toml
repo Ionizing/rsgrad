@@ -14,13 +14,15 @@ path = "src/main.rs"
 rayon = "1"
 regex = "1"
 itertools = "0.10"
-#vasp-poscar = "0.3"
 structopt = "0.3"
 colored = "2"
 log = "0.4"
 env_logger = "0.8"
 ndarray = "0.15"
 anyhow = "1.0"
+config = { git = "https://github.com/mehcode/config-rs", rev = "68e00251318cc17b1ccfa227f1b108ccab22d5de"}
+directories = "4.0"
+serde = "1.0"
 
 [dev-dependencies]
 tempdir = "0.3"
