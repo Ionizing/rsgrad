@@ -128,7 +128,7 @@ jobs:
       - name: Optimize and package binary
         run: |
           cd target/release
-          7z a rsgrad.zip rsgrad
+          7z a rsgrad.zip rsgrad.exe
 
       - name: Upload binary
         uses: actions/upload-release-asset@v1
