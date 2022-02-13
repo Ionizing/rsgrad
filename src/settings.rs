@@ -55,7 +55,7 @@ impl Settings {
         Ok(settings)
     }
 
-    pub fn from_config() -> Result<Self> {
+    pub fn from_default() -> Result<Self> {
         let mut path: PathBuf = BaseDirs::new()
             .context("Home directory not found.")?
             .home_dir().to_path_buf();
@@ -151,8 +151,8 @@ PAW_LDA = "~/apps/vasp/potpaw_LDA.54"
 
     #[test]
     #[ignore]
-    fn test_from_config() -> Result<()> {
-        Settings::from_config()?;
+    fn test_from_default() -> Result<()> {
+        Settings::from_default()?;
         Ok(())
     }
 }
