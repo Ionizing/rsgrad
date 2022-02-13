@@ -32,7 +32,7 @@ use crate::{
 ///
 /// POSCAR is needed if you want to preserve the constraints when saving frames to POSCAR.
 pub struct Traj {
-    #[structopt(short = "o", long, default_value = "./OUTCAR")]
+    #[structopt(default_value = "./OUTCAR")]
     /// Specify the input OUTCAR file
     outcar: PathBuf,
 

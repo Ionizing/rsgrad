@@ -25,7 +25,7 @@ use crate::{
             setting = AppSettings::AllowNegativeNumbers)]
 /// Operation(s) about POSCAR, including split it into two POSCARs.
 pub struct Pos {
-    #[structopt(short = "p", long, default_value = "./POSCAR")]
+    #[structopt(default_value = "./POSCAR")]
     /// Specify the input POSCAR file
     poscar: PathBuf,
 
@@ -38,11 +38,11 @@ pub struct Pos {
     select_indices: Option<Vec<i32>>,
 
     #[structopt(short = "a", long, default_value = "POSCAR_A")]
-    /// Specify the splitted POSCAR path with selected atoms
+    /// Splitted POSCAR path with selected atoms
     a_name: PathBuf,
 
     #[structopt(short = "b", long, default_value = "POSCAR_B")]
-    /// Specify the splitted POSCAR path with complement of `a_name`
+    /// Splitted POSCAR path with complement of `a_name`
     b_name: PathBuf,
 
     #[structopt(long)]

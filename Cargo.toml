@@ -20,6 +20,7 @@ log = "0.4"
 env_logger = "0.8"
 ndarray = "0.15"
 anyhow = "1.0"
+flate2 = "1.0"
 config = { git = "https://github.com/mehcode/config-rs", rev = "68e00251318cc17b1ccfa227f1b108ccab22d5de"}
 directories = "4.0"
 serde = "1.0"
