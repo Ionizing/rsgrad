@@ -151,7 +151,7 @@ impl Poscar {
             }
         }
 
-        if coords.len() as i32 != ions_per_type.iter().sum() {
+        if coords.len() as i32 != ions_per_type.iter().sum::<i32>() {
             return Err(anyhow!("[POSCAR]: Count of coordinates inconsistent with sum of atom counts."));
         }
 

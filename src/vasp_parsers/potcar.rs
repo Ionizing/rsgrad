@@ -5,8 +5,8 @@ use anyhow::{
 
 
 pub enum FunctionalType {
-    PAW_PBE,
-    PAW_LDA,
+    PawPbe,
+    PawLda,
 }
 
 
