@@ -190,7 +190,7 @@ impl Poscar {
             ions_per_type: s.ions_per_type,
             pos_cart: s.car_pos,
             pos_frac: s.frac_pos,
-            constraints: None,
+            constraints: s.constr,
         }
     }
 
@@ -204,6 +204,7 @@ impl Poscar {
             ions_per_type: self2.ions_per_type,
             car_pos: self2.pos_cart,
             frac_pos: self2.pos_frac,
+            constr: self2.constraints,
         }
     }
 

@@ -18,4 +18,5 @@ pub struct Structure {
     pub ions_per_type : Vec<i32>,
     pub car_pos       : MatX3<f64>,
     pub frac_pos      : MatX3<f64>,
+    pub constr        : Option<MatX3<bool>>,
 }
