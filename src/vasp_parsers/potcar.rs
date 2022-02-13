@@ -4,14 +4,21 @@ use anyhow::{
 };
 
 
-pub struct AtomPotcar {
-    pub symbol: String,  // Element symbol, H, He, Li, Be, B, C ...
-    pub functional: String,  // functional type, GGA, LDA, PBE, GW ...
-    pub content: String,  // raw content of single element POTCAR
+pub enum FunctionalType {
+    PAW_PBE,
+    PAW_LDA,
 }
 
 
-impl AtomPotcar {
+pub struct AtomicPotcar {
+    pub symbol: String,                 // Element symbol, H, He, Li, Be, B, C ...
+    pub functional: FunctionalType,     // Functional type, LDA, PBE
+    pub valence_type: Vec<String>,      // Valence annotation '_sv', '_GW', '_AE' ...
+    pub content: String,                // Raw content of single element POTCAR
+}
+
+
+impl AtomicPotcar {
     fn from_config() -> Self {
         todo!();
     }
@@ -19,5 +26,5 @@ impl AtomPotcar {
 
 
 pub struct Potcar {
-    pub data: Vec<AtomPotcar>,
+    pub data: Vec<AtomicPotcar>,
 }
