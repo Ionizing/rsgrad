@@ -8,6 +8,7 @@ use anyhow::{
     Result,
 };
 use flate2::read::GzDecoder;
+use log::info;
 
 use crate::settings::FunctionalPath;
 
@@ -45,7 +46,7 @@ impl AtomicPotcar {
             _ret.canonicalize().unwrap()
         };
 
-        println!("{:?}", &path);
+        info!("Reading POTCAR from {:?}", &path);
 
         let content = if path.is_file() {
             read_to_string(&path)?
@@ -82,6 +83,32 @@ pub struct Potcar {
 }
 
 
+impl Potcar {
+    pub fn from_config(symbols: &Vec<String>,
+                       functional: &FunctionalType,
+                       specific_types: &Vec<String>,
+                       prefix: &FunctionalPath) -> Result<Self> {
+        let mut inner = Vec::<AtomicPotcar>::new();
+
+        for (sym, spec) in symbols.iter().zip(specific_types.iter()) {
+            inner.push(AtomicPotcar::from_config(sym, functional, spec, prefix)?);
+        }
+
+        Ok(Self { inner })
+    }
+
+
+    /// Concatenate all the AtomicPotcar.content into a String
+    pub fn to_txt(&self) -> String {
+        self.inner.iter()
+            .fold(String::new(), |mut accum, item| {
+                accum.push_str(&item.content);
+                accum
+            })
+    }
+}
+
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -96,5 +123,15 @@ mod tests {
         let prefix = &Settings::from_default().unwrap().functional_path;
         print!("{}", AtomicPotcar::from_config(symbol, &functional, specific_type, &prefix).unwrap()
                .content);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_potcar_from_config() {
+        let symbols = vec!["Ag".to_owned(), "K".to_owned(), "N".to_owned()];
+        let functional = FunctionalType::PAW_PBE;
+        let specific_types = vec!["".to_owned(), "_sv".to_owned(), "".to_owned()];
+        let prefix = &Settings::from_default().unwrap().functional_path;
+        print!("{}", Potcar::from_config(&symbols, &functional, &specific_types, &prefix).unwrap().to_txt());
     }
 }
