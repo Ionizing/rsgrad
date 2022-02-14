@@ -974,7 +974,6 @@ impl Trajectory {
 
 impl From<Outcar> for Trajectory {
     fn from(o: Outcar) -> Self {
-        let len = o.ion_iters.len();
         let ion_types = o.ion_types.clone();
         let ions_per_type = o.ions_per_type.clone();
         let constr = o.constraints.clone();

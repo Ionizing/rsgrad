@@ -24,7 +24,7 @@ use colored::Colorize;
 pub struct Settings {
     #[serde(rename(serialize   = "functional-path",
                    deserialize = "functional-path"))]
-    functional_path: FunctionalPath,
+    pub functional_path: FunctionalPath,
 }
 
 
@@ -45,10 +45,14 @@ impl Settings {
         info!("Reading rsgrad settings from {:?} ...", path.as_ref());
         Self::check_file_availability(path)?;
         
-        let settings = Config::builder()
+        let mut settings = Config::builder()
             .add_source(config::File::new(path.as_ref().to_str().unwrap(), config::FileFormat::Toml))
             .build()?
             .try_deserialize::<Settings>()?;
+
+        settings.functional_path.paw_lda = Self::expand_home_dir(&settings.functional_path.paw_lda);
+        settings.functional_path.paw_pbe = Self::expand_home_dir(&settings.functional_path.paw_pbe);
+
         debug!("Configuration file {:?} content: {:#?}", path.as_ref(), settings);
         settings.check_availability()?;
 
@@ -105,6 +109,24 @@ Please replace {} with actual path of corresponding PP's directory, for example:
             bail!("File {:?} not available. It should be a regular file.", path.as_ref())
         } else {
             Ok(())
+        }
+    }
+
+    // copied from https://stackoverflow.com/a/70926549/8977923
+    fn expand_home_dir<'a, P: AsRef<Path> + ?Sized>(path: &'a P) -> PathBuf {
+        let path = path.as_ref();
+
+        if !path.starts_with("~") {
+            path.to_path_buf()
+        } else {
+            BaseDirs::new()
+                .unwrap()
+                .home_dir()
+                .to_path_buf()
+                .join(
+                    path.strip_prefix("~")
+                    .unwrap()
+                    )
         }
     }
 }
