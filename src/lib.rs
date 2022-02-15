@@ -19,3 +19,13 @@ pub use vasp_parsers::outcar::{
     Vibrations,
     Trajectory,
 };
+
+pub use vasp_parsers::potcar::{
+    Potcar,
+    AtomicPotcar,
+};
+
+pub use settings::{
+    Settings,
+    FunctionalPath,
+};

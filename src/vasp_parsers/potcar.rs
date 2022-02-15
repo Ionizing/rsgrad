@@ -1,11 +1,13 @@
 use std::{
     io::prelude::*,
+    path::Path,
     fs::read_to_string,
 };
 
 use anyhow::{
     Context,
     Result,
+    bail,
 };
 use flate2::read::GzDecoder;
 use log::info;
@@ -19,6 +21,35 @@ pub enum FunctionalType {
     PAW_PBE,
     PAW_LDA,
 }
+
+
+impl std::fmt::Display for FunctionalType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            FunctionalType::PAW_PBE => "PAW_PBE",
+            FunctionalType::PAW_LDA => "PAW_LDA",
+        };
+        write!(f, "{}", s)
+    }
+}
+
+
+impl std::str::FromStr for FunctionalType {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self> {
+        let ret = match s {
+            "PAW_PBE" | "paw_pbe" => Self::PAW_PBE,
+            "PAW_LDA" | "paw_lda" => Self::PAW_LDA,
+            _ => {
+                bail!(r#"``{}` cannot be converted into FunctionalType.
+Available functionals are `PAW_PBE`(or `paw_pbe`) and `PAW_LDA`(or `paw_lda`)."#, s);
+            }
+        };
+        Ok(ret)
+    }
+}
+
 
 #[derive(Clone, Debug)]
 pub struct AtomicPotcar {
@@ -106,6 +137,13 @@ impl Potcar {
                 accum
             })
     }
+
+
+    pub fn to_file(&self, path: &(impl AsRef<Path> + ?Sized)) -> Result<()> {
+        info!("Writing POTCAR to {:?}", path.as_ref());
+        std::fs::write(path, self.to_txt())?;
+        Ok(())
+    }
 }
 
 
@@ -121,8 +159,11 @@ mod tests {
         let functional = FunctionalType::PAW_PBE;
         let specific_type = "_sv";
         let prefix = &Settings::from_default().unwrap().functional_path;
-        print!("{}", AtomicPotcar::from_config(symbol, &functional, specific_type, &prefix).unwrap()
-               .content);
+
+        let potcar = AtomicPotcar::from_config(symbol, &functional, specific_type, &prefix)
+            .unwrap()
+            .content;
+        print!("{}", potcar);
     }
 
     #[test]
@@ -132,6 +173,8 @@ mod tests {
         let functional = FunctionalType::PAW_PBE;
         let specific_types = vec!["".to_owned(), "_sv".to_owned(), "".to_owned()];
         let prefix = &Settings::from_default().unwrap().functional_path;
-        print!("{}", Potcar::from_config(&symbols, &functional, &specific_types, &prefix).unwrap().to_txt());
+
+        let potcar = Potcar::from_config(&symbols, &functional, &specific_types, &prefix).unwrap().to_txt();
+        print!("{}", potcar);
     }
 }

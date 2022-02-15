@@ -34,6 +34,11 @@ enum Opt {
     #[structopt(setting = AppSettings::ColoredHelp,
                 setting = AppSettings::ColorAuto)]
     Pos(commands::pos::Pos),
+
+
+    #[structopt(setting = AppSettings::ColoredHelp,
+                setting = AppSettings::ColorAuto)]
+    Pot(commands::pot::Pot),
 }
 
 
@@ -48,6 +53,7 @@ fn main() -> Result<()> {
         Opt::Vib(cmd) => cmd.process()?,
         Opt::Traj(cmd) => cmd.process()?,
         Opt::Pos(cmd) => cmd.process()?,
+        Opt::Pot(cmd) => cmd.process()?,
     }
 
     info!("Time used: {:?}", now.elapsed());
