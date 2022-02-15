@@ -140,7 +140,6 @@ impl Potcar {
 
 
     pub fn to_file(&self, path: &(impl AsRef<Path> + ?Sized)) -> Result<()> {
-        info!("Writing POTCAR to {:?}", path.as_ref());
         std::fs::write(path, self.to_txt())?;
         Ok(())
     }

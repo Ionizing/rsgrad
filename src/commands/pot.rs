@@ -90,11 +90,12 @@ impl OptProcess for Pot {
 
         let fname = self.save_in.with_file_name("POTCAR");
         if fname.is_file() {
-            warn!("Found `POTCAR` in specified dir, renaming it to POTCAR.bak");
+            warn!("Found `POTCAR` in specified dir, renaming it to `POTCAR.bak`");
             let renamed_fname = fname.with_extension("bak");
             std::fs::rename(&fname, &renamed_fname)?;
         }
 
+        info!("Writing POTCAR to {:?} ...", &fname);
         pot.to_file(&fname)?;
 
         Ok(())
