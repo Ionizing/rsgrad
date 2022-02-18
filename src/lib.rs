@@ -25,6 +25,8 @@ pub use vasp_parsers::potcar::{
     AtomicPotcar,
 };
 
+pub use vasp_parsers::chg;
+
 pub use settings::{
     Settings,
     FunctionalPath,
