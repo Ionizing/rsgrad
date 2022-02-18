@@ -66,7 +66,7 @@ impl Poscar {
                     return Err(anyhow!("[POSCAR]: Cell lines incomplete."));
                 }
                 for (j, x) in row.into_iter().enumerate() {
-                    let val = x.parse::<f64>().context("[POSCAR]: Cell lines contain invalid value.")?;
+                    let val = x.parse::<f64>().context(format!("[POSCAR]: Cell lines contain invalid value: `{}` .", x))?;
                     if val.is_nan() {
                         return Err(anyhow!("[POSCAR]: Cell lines contain NaN value."));
                     }
@@ -134,9 +134,9 @@ impl Poscar {
                 break;
             }
             let v = line.split_whitespace().collect::<Vec<_>>();
-            coords.push( [ v[0].parse::<f64>().context("[POSCAR]: Coordinates value invalid.")?,
-                           v[1].parse::<f64>().context("[POSCAR]: Coordinates value invalid.")?,
-                           v[2].parse::<f64>().context("[POSCAR]: Coordinates value invalid.")?, ]);
+            coords.push( [ v[0].parse::<f64>().context(format!("[POSCAR]: Coordinates value invalid: `{}` .", v[0]))?,
+                           v[1].parse::<f64>().context(format!("[POSCAR]: Coordinates value invalid: `{}` .", v[1]))?,
+                           v[2].parse::<f64>().context(format!("[POSCAR]: Coordinates value invalid: `{}` .", v[2]))?, ]);
 
             if let Some(c) = &mut constraints {
                 let mut _c = [true; 3];
@@ -161,7 +161,7 @@ impl Poscar {
                 (cart, coords)
             } else {
                 let frac = Self::convert_cart_to_frac(&coords, &cell)
-                    .context("[POSCAR]: Cell is singular.")?;
+                    .context("[POSCAR]: Cell matrix is singular.")?;
                 (coords, frac)
             }
         };
