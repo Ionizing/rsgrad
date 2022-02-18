@@ -15,9 +15,9 @@ use structopt::{
 use crate::{
     traits::{
         Result,
-        OptProcess,
         index_transform,
     },
+    OptProcess,
     Outcar,
     Poscar,
     Vibrations,

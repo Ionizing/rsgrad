@@ -5,7 +5,7 @@ use log::info;
 use rsgrad::traits::Result;
 use structopt::StructOpt;
 use structopt::clap::AppSettings;
-use rsgrad::traits::OptProcess;
+use rsgrad::OptProcess;
 use rsgrad::commands;
 
 #[derive(Debug, StructOpt)]
