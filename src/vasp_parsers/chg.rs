@@ -260,12 +260,16 @@ augmentation occupancies 2 15
         let chg = ChargeDensity::read_chg(&SAMPLE[200..]).unwrap();
         assert_eq!(chg.shape(), &[2usize, 3, 4]);
         assert_eq!(chg[[1, 2, 3]], 0.10568153616E+01);
+        assert_eq!(chg[[0, 0, 0]], 0.44062142953E+00);
     }
 
     #[test]
     fn test_read_raw_aug() {
         let aug = ChargeDensity::read_raw_aug(SAMPLE);
         assert!(aug.is_some());
+        let aug = aug.unwrap();
+        assert!(aug.starts_with("augmentation occupancies 1 15"));
+        assert!(aug.ends_with("-0.2068344E-05\n"));
     }
 
     #[test]
