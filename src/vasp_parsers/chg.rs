@@ -190,7 +190,8 @@ impl ChargeDensity {
     ///
     ///  The augmentation part is dropped
     fn read_chg(txt: &str) -> Result<Array3<f64>> {
-        let mat = Regex::new(r"(?m)^\s+\d+\s+\d+\s+\d+\s*$").unwrap().find(txt).unwrap();
+        let _regex = Regex::new(r"(?m)^\s+\d+\s+\d+\s+\d+\s*$").unwrap();
+        let mat = _regex.find(txt).unwrap();
         let ngrid = {
             let mut v = vec![0usize; 3];
             for (i, s) in txt[mat.start() .. mat.end()].split_whitespace()
@@ -202,9 +203,14 @@ impl ChargeDensity {
         };
         
         let start_pos = mat.end();
-        let aug_pos = txt.find("augmentation").unwrap_or(txt.len());
+        let end_pos = txt.find("augmentation")  // end_pos should be the start of augmentation or next NGXF NGYF NGZF or end of txt
+            .or_else(|| {
+                let mat = _regex.find(&txt[start_pos ..])?;
+                Some(mat.start() + start_pos)
+            })
+            .unwrap_or(txt.len());
 
-        let chg_vec = txt[start_pos .. aug_pos]
+        let chg_vec = txt[start_pos .. end_pos]
             .split_whitespace()
             .map(|s| s.parse::<f64>().expect(&format!("[CHG]: Cannot parse {} into float number", s)))
             .collect::<Vec<f64>>();
@@ -250,7 +256,14 @@ impl fmt::Display for ChargeDensity {
 
         writeln!(f, "{}", self.pos.to_formatter())?;  // contains the empty line for seperation already
 
-        for (c, a) in chg.iter().zip(self.aug.iter()) {
+        let empty_aug = vec!["".to_string()];
+        let aug = if self.aug.len() != 0 {
+            &self.aug
+        } else {
+            &empty_aug
+        };
+
+        for (c, a) in chg.iter().zip(aug.iter().cycle()) {
             // write NGFX NGFY NGFZ
             writeln!(f, " {:5} {:5} {:5}", self.ngrid[0], self.ngrid[1], self.ngrid[2])?;
             
@@ -275,7 +288,7 @@ impl fmt::Display for ChargeDensity {
 mod test {
     use super::*;
 
-    const SAMPLE: &'static str = "\
+    const SAMPLE_CHGCAR: &'static str = "\
 unknown system
    1.00000000000000
      2.969072   -0.000523   -0.000907
@@ -316,35 +329,73 @@ augmentation occupancies 2 15
   0.5875445E-05 -0.7209739E-05 -0.3625569E-05  0.1019266E-04 -0.0038244E-05
 ";
     
+
+    const SAMPLE_CHG: &'static str = "\
+unknown system
+   1.00000000000000
+     2.969072   -0.000523   -0.000907
+    -0.987305    2.800110    0.000907
+    -0.987305   -1.402326    2.423654
+   Li
+     1
+Direct
+  0.000000  0.000000  0.000000
+
+    2    3    4
+ 0.44062142953E+00 0.44635237036E+00 0.46294638829E+00 0.48881056285E+00 0.52211506729E+00
+ 0.56203432815E+00 0.60956087775E+00 0.66672131696E+00 0.73417916031E+00 0.80884817972E+00
+ 0.88351172791E+00 0.94912993844E+00 0.10000382501E+01 0.10353398391E+01 0.10568153616E+01
+ 0.10677009023E+01 0.10709392990E+01 0.10677009023E+01 0.10568153616E+01 0.10353398391E+01
+ 0.10677009023E+01 0.10709392990E+01 0.10677009023E+01 0.10568153616E+01
+    2    3    4
+ 0.44062142953E+00 0.44635237036E+00 0.46294638829E+00 0.48881056285E+00 0.52211506729E+00
+ 0.56203432815E+00 0.60956087775E+00 0.66672131696E+00 0.73417916031E+00 0.80884817972E+00
+ 0.88351172791E+00 0.94912993844E+00 0.10000382501E+01 0.10353398391E+01 0.10568153616E+01
+ 0.10677009023E+01 0.10709392990E+01 0.10677009023E+01 0.10568153616E+01 0.10353398391E+01
+ 0.10677009023E+01 0.10709392990E+01 0.10677009023E+01 0.12668153616E+01
+";
+
+
     #[test]
     fn test_read_poscar() {
-        ChargeDensity::read_poscar(SAMPLE).unwrap();
+        ChargeDensity::read_poscar(SAMPLE_CHGCAR).unwrap();
+        ChargeDensity::read_poscar(SAMPLE_CHG).unwrap();
     }
 
     #[test]
     fn test_read_chg() {
-        let chg = ChargeDensity::read_chg(&SAMPLE[200..]).unwrap();
+        let chg = ChargeDensity::read_chg(&SAMPLE_CHGCAR[200..]).unwrap();
         assert_eq!(chg.shape(), &[2usize, 3, 4]);
         assert_eq!(chg[[0, 1, 0]], 0.46294638829E+00);
         assert_eq!(chg[[1, 2, 3]], 0.10568153616E+01);
         assert_eq!(chg[[0, 0, 0]], 0.44062142953E+00);
+
+        ChargeDensity::read_chg(&SAMPLE_CHG[200..]).unwrap();
     }
 
     #[test]
     fn test_read_raw_aug() {
-        let aug = ChargeDensity::read_raw_aug(SAMPLE);
+        let aug = ChargeDensity::read_raw_aug(SAMPLE_CHGCAR);
         assert!(aug.is_some());
         let aug = aug.unwrap();
         assert!(aug.starts_with("augmentation occupancies 1 15"));
         assert!(aug.ends_with("-0.2068344E-05\n"));
+
+        let aug = ChargeDensity::read_raw_aug(SAMPLE_CHG);
+        assert!(aug.is_none());
     }
 
     #[test]
     fn test_from_str() {
-        let chg = ChargeDensity::from_str(SAMPLE, ChargeType::Chgcar).unwrap();
+        let chg = ChargeDensity::from_str(SAMPLE_CHGCAR, ChargeType::Chgcar).unwrap();
         assert_eq!(chg.ngrid, [2, 3, 4]);
         assert_eq!(chg.chg.len(), 2);
         assert_eq!(chg.aug.len(), 2);
+
+        let chg = ChargeDensity::from_str(SAMPLE_CHG, ChargeType::Chgcar).unwrap();
+        assert_eq!(chg.ngrid, [2, 3, 4]);
+        assert_eq!(chg.chg.len(), 2);
+        assert_eq!(chg.aug.len(), 0);
     }
 
     #[test]
@@ -396,7 +447,37 @@ augmentation occupancies 2 15
   0.5875445E-05 -0.7209739E-05 -0.3625569E-05  0.1019266E-04 -0.0038244E-05
 ";
 
-        let chg = ChargeDensity::from_str(SAMPLE, ChargeType::Chgcar).unwrap();
+        let chg = ChargeDensity::from_str(SAMPLE_CHGCAR, ChargeType::Chgcar).unwrap();
         assert_eq!(chg.to_string(), format_expect);
+        ChargeDensity::from_str(format_expect, ChargeType::Chgcar).unwrap();
+        
+        let format_expect = "\
+unknown system
+ 1.0000000
+       2.969072000      -0.000523000      -0.000907000
+      -0.987305000       2.800110000       0.000907000
+      -0.987305000      -1.402326000       2.423654000
+     Li
+      1
+Direct
+      0.0000000000      0.0000000000      0.0000000000 !     Li-001    1
+
+     2     3     4
+  4.40621429530E-1  4.46352370360E-1  4.62946388290E-1  4.88810562850E-1  5.22115067290E-1
+  5.62034328150E-1  6.09560877750E-1  6.66721316960E-1  7.34179160310E-1  8.08848179720E-1
+  8.83511727910E-1  9.49129938440E-1   1.00003825010E0   1.03533983910E0   1.05681536160E0
+   1.06770090230E0   1.07093929900E0   1.06770090230E0   1.05681536160E0   1.03533983910E0
+   1.06770090230E0   1.07093929900E0   1.06770090230E0   1.05681536160E0
+     2     3     4
+  4.40621429530E-1  4.46352370360E-1  4.62946388290E-1  4.88810562850E-1  5.22115067290E-1
+  5.62034328150E-1  6.09560877750E-1  6.66721316960E-1  7.34179160310E-1  8.08848179720E-1
+  8.83511727910E-1  9.49129938440E-1   1.00003825010E0   1.03533983910E0   1.05681536160E0
+   1.06770090230E0   1.07093929900E0   1.06770090230E0   1.05681536160E0   1.03533983910E0
+   1.06770090230E0   1.07093929900E0   1.06770090230E0   1.26681536160E0
+";
+
+        let chg = ChargeDensity::from_str(SAMPLE_CHG, ChargeType::Chgcar).unwrap();
+        assert_eq!(chg.to_string(), format_expect);
+        ChargeDensity::from_str(format_expect, ChargeType::Chgcar).unwrap();
     }
 }
