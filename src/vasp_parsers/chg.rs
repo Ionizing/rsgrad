@@ -22,6 +22,7 @@ use rayon::prelude::*;
 
 use crate::{
     traits::Result,
+    types::MatX3,
     Poscar,
 };
 
@@ -283,6 +284,101 @@ impl fmt::Display for ChargeDensity {
 }
 
 
+impl Add for ChargeDensity {
+    type Output=Result<Self>;
+
+    /// Add two provided ChargeDensity object, they should have same cell and grid size.
+    /// The augmentation part will be dropped.
+    fn add(self, other:Self) -> Self::Output {
+        let mut self0 = self;
+        let mut other0 = other;
+
+        self0.pos = self0.pos.normalize();
+        other0.pos = other0.pos.normalize();
+
+        if self0.chgtype != other0.chgtype {
+            bail!("[CHG_ADD]: Different type of charge densities are provided: {:?} != {:?}",
+                  self0.chgtype, other0.chgtype);
+        }
+
+        if self0.pos.cell != other0.pos.cell {
+            bail!("[CHG_ADD]: Cannot add up two system's charge densities within different lattices: \n{:#?}\n != \n{:#?}\n",
+                  self0.pos.cell, other0.pos.cell);
+        }
+
+        if self0.ngrid != other0.ngrid {
+            bail!("[CHG_ADD]: Cannot add up two system's charge densities within different grids: \n{:#?}\n != \n{:#?}\n",
+                  self0.ngrid, other0.ngrid);
+        }
+
+        if self0.chg.len() == 0 || self0.chg.len() != other0.chg.len() {
+            bail!("[CHG_ADD]: No charge densitie found or two systems' charge densitie set counts not match: {} != {}",
+                  self0.chg.len(), other0.chg.len());
+        }
+
+        if self0.pos.constraints.is_some() != other0.pos.constraints.is_some() {
+            bail!("[CHG_ADD]: Not all provided charge densities have constraints");
+        }
+
+        // Construct POSCAR
+        let pos = {
+            let comment         = "Added charge density. Produced by rsgrad".to_string();
+            let scale           = 1.0f64;
+            let cell            = self0.pos.cell;
+            let ion_types       = self0.pos.ion_types.into_iter()
+                .chain(other0.pos.ion_types.into_iter())
+                .collect::<Vec<_>>();
+            let ions_per_type   = self0.pos.ions_per_type.into_iter()
+                .chain(other0.pos.ions_per_type.into_iter())
+                .collect::<Vec<_>>();
+            
+            let pos_cart        = self0.pos.pos_cart.into_iter()
+                .chain(other0.pos.pos_cart.into_iter())
+                .collect::<Vec<_>>();
+            let pos_frac        = self0.pos.pos_frac.into_iter()
+                .chain(other0.pos.pos_frac.into_iter())
+                .collect::<Vec<_>>();
+            let constraints     = self0.pos.constraints
+                .zip(other0.pos.constraints)
+                .map(|(x, y)| {
+                    x.into_iter()
+                     .chain(y.into_iter()).collect::<Vec<_>>()
+                });
+
+            if ions_per_type.iter().sum::<i32>() != pos_cart.len() as i32 || 
+                pos_cart.len() != pos_frac.len() || 
+                (constraints.is_some() && constraints.as_ref().unwrap().len() != pos_cart.len()) {
+                bail!("[CHG_ADD]: Invalid POSCAR generated. This is a bug, please open an issue on github and the author will help you solve it.");
+            } 
+
+            Poscar {
+                comment,
+                scale,
+                cell,
+                ion_types,
+                ions_per_type,
+                pos_cart,
+                pos_frac,
+                constraints,
+            }
+        };
+
+        let chgtype = self0.chgtype;
+        let ngrid = self0.ngrid;
+        let chg = self0.chg.into_iter().zip(other0.chg.into_iter())
+            .map(|(x, y)| x + y)
+            .collect::<Vec<_>>();
+
+        Ok(Self {
+            chgtype,
+            pos,
+            ngrid,
+            chg,
+            aug: vec![],
+        })
+    }
+}
+
 
 #[cfg(test)]
 mod test {
@@ -479,5 +575,25 @@ Direct
         let chg = ChargeDensity::from_str(SAMPLE_CHG, ChargeType::Chgcar).unwrap();
         assert_eq!(chg.to_string(), format_expect);
         ChargeDensity::from_str(format_expect, ChargeType::Chgcar).unwrap();
+    }
+
+    #[test]
+    fn test_chg_add() {
+        let chg1 = ChargeDensity::from_str(SAMPLE_CHGCAR, ChargeType::Chgcar).unwrap();
+        let chg2 = ChargeDensity::from_str(SAMPLE_CHG, ChargeType::Chgcar).unwrap();
+
+        let chgdat = chg1.chg[0].clone() * 2.0;
+
+        let chg3 = (chg1 + chg2).unwrap();
+        assert_eq!(chg3.pos.get_natoms(), 2);
+        assert_eq!(chg3.chg[0], chgdat);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_chg_add_failed() {
+        let chg1 = ChargeDensity::from_str(SAMPLE_CHGCAR, ChargeType::Chgcar).unwrap();
+        let chg2 = ChargeDensity::from_str(SAMPLE_CHG, ChargeType::Locpot).unwrap();
+        (chg1 + chg2).unwrap();
     }
 }
