@@ -16,6 +16,7 @@ use crate::types::{
     MatX3,
 };
 
+#[derive(Clone, Debug)]
 pub struct Poscar {  // I have no plan to support vasp4 format
     pub comment: String,
     pub scale: f64,

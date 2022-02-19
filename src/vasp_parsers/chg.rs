@@ -1,15 +1,10 @@
 use std::{
-    io::{
-        self,
-        BufRead,
-        Seek,
-        SeekFrom,
-        BufReader,
-    },
     path::Path,
-    fs::{
-        self,
-        File,
+    fs,
+    fmt,
+    ops::{
+        Add,
+        Sub,
     },
 };
 
@@ -17,6 +12,7 @@ use regex::Regex;
 use ndarray::{
     Array1,
     Array3,
+    ShapeBuilder,
 };
 use anyhow::{
     Context,
@@ -28,6 +24,14 @@ use crate::{
     traits::Result,
     Poscar,
 };
+
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ChargeType {
+    Chgcar,
+    Locpot,
+}
+
 
 
 /// Main struct of volumetric data
@@ -98,7 +102,9 @@ use crate::{
 /// Also, CHG stores the total charge density of all the electrons below fermi level in all kpoint,
 /// all bands.
 ///
-struct ChargeDensity {
+#[derive(Clone, Debug)]
+pub struct ChargeDensity {
+    pub chgtype:    ChargeType,
     pub pos:        Poscar,
     pub ngrid:      [usize; 3],
     pub chg:        Vec<Array3<f64>>,
@@ -107,13 +113,15 @@ struct ChargeDensity {
 
 
 impl ChargeDensity {
-    pub fn from_file(path: &(impl AsRef<Path> + ?Sized)) -> Result<Self> {
+    /// Read CHGCAR like volumetric data from file.
+    pub fn from_file(path: &(impl AsRef<Path> + ?Sized), chgtype: ChargeType) -> Result<Self> {
         let txt = fs::read_to_string(path)?;
-        Self::from_str(&txt)
+        Self::from_str(&txt, chgtype)
     }
 
 
-    pub fn from_str(txt: &str) -> Result<Self> {
+    /// Parse CHGCAR like volumetric data from string.
+    pub fn from_str(txt: &str, chgtype: ChargeType) -> Result<Self> {
         let separate_pos = Regex::new(r"(?m)^\s*$").unwrap()
             .find(txt)
             .context("[CHG]: This file has no empty line to separate position data and grid data.")?
@@ -130,9 +138,18 @@ impl ChargeDensity {
             bail!("[CHG]: This file has no grid size data.");
         }
 
-        let chg = chg_starts.par_iter()
+        let mut chg = chg_starts.par_iter()
             .map(|p| Self::read_chg(&txt[*p ..]))
             .collect::<Result<Vec<Array3<f64>>>>()?;
+
+        match chgtype {
+            ChargeType::Chgcar => {
+                let vol = pos.get_volume();
+                chg.par_iter_mut()
+                    .for_each(|charge| *charge /= vol);
+            },
+            ChargeType::Locpot => { }
+        }
 
         let ngrid = {
             let s = chg[0].shape();
@@ -143,7 +160,12 @@ impl ChargeDensity {
             .map(|p| Self::read_raw_aug(&txt[*p ..]))
             .collect::<Option<Vec<String>>>().unwrap_or(vec![]);
 
+        if !aug.is_empty() && chg.len() != aug.len() {
+            bail!("[CHG]: Augmentation data sets' count not consistent with chage densities' : {} != {}", aug.len(), chg.len());
+        }
+
         Ok(Self {
+            chgtype,
             pos,
             ngrid,
             chg,
@@ -182,11 +204,11 @@ impl ChargeDensity {
         let start_pos = mat.end();
         let aug_pos = txt.find("augmentation").unwrap_or(txt.len());
 
-        let chg = txt[start_pos .. aug_pos]
+        let chg_vec = txt[start_pos .. aug_pos]
             .split_whitespace()
             .map(|s| s.parse::<f64>().expect(&format!("[CHG]: Cannot parse {} into float number", s)))
-            .collect::<Array1<f64>>()
-            .into_shape(ngrid)?;
+            .collect::<Vec<f64>>();
+        let chg = Array3::from_shape_vec(ngrid.f(), chg_vec)?;
 
         Ok(chg)
     }
@@ -200,6 +222,50 @@ impl ChargeDensity {
             .unwrap_or(txt.len());
 
         Some( txt[start_pos .. end_pos].to_string() )
+    }
+}
+
+
+impl fmt::Display for ChargeDensity {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+
+        // Flatten chg struct
+        let chg = match self.chgtype {
+            ChargeType::Chgcar => {
+                let chg = self.chg.clone();
+                let vol = self.pos.get_volume();
+                chg.into_par_iter()
+                    .map(|mut charge| {
+                        charge *= vol;
+                        charge.into_raw_vec()
+                    })
+                    .collect::<Vec<_>>()
+            },
+            ChargeType::Locpot => {
+                self.chg.par_iter()
+                    .map(|charge| charge.clone().into_raw_vec())
+                    .collect::<Vec<_>>()
+            }
+        };
+
+        writeln!(f, "{}", self.pos.to_formatter())?;  // contains the empty line for seperation already
+
+        for (c, a) in chg.iter().zip(self.aug.iter()) {
+            // write NGFX NGFY NGFZ
+            writeln!(f, " {:5} {:5} {:5}", self.ngrid[0], self.ngrid[1], self.ngrid[2])?;
+            
+            // write the grid data
+            for chunk in c.chunks(5) {
+                for ch in chunk.iter() {
+                    write!(f, " {:17.11E}", ch)?;
+                }
+                writeln!(f)?;
+            }
+            
+            f.write_str(a)?;
+        }
+
+        Ok(())
     }
 }
 
@@ -252,13 +318,14 @@ augmentation occupancies 2 15
     
     #[test]
     fn test_read_poscar() {
-        let pos = ChargeDensity::read_poscar(SAMPLE).unwrap();
+        ChargeDensity::read_poscar(SAMPLE).unwrap();
     }
 
     #[test]
     fn test_read_chg() {
         let chg = ChargeDensity::read_chg(&SAMPLE[200..]).unwrap();
         assert_eq!(chg.shape(), &[2usize, 3, 4]);
+        assert_eq!(chg[[0, 1, 0]], 0.46294638829E+00);
         assert_eq!(chg[[1, 2, 3]], 0.10568153616E+01);
         assert_eq!(chg[[0, 0, 0]], 0.44062142953E+00);
     }
@@ -274,7 +341,7 @@ augmentation occupancies 2 15
 
     #[test]
     fn test_from_str() {
-        let chg = ChargeDensity::from_str(SAMPLE).unwrap();
+        let chg = ChargeDensity::from_str(SAMPLE, ChargeType::Chgcar).unwrap();
         assert_eq!(chg.ngrid, [2, 3, 4]);
         assert_eq!(chg.chg.len(), 2);
         assert_eq!(chg.aug.len(), 2);
@@ -283,6 +350,53 @@ augmentation occupancies 2 15
     #[test]
     #[ignore]
     fn test_from_file() {
-        let chg = ChargeDensity::from_file("/Users/ionizing/tmp/CHGCAR").unwrap();
+        ChargeDensity::from_file("/Users/ionizing/tmp/CHGCAR", ChargeType::Chgcar).unwrap();
+    }
+
+    #[test]
+    fn test_format() {
+        let format_expect = "\
+unknown system
+ 1.0000000
+       2.969072000      -0.000523000      -0.000907000
+      -0.987305000       2.800110000       0.000907000
+      -0.987305000      -1.402326000       2.423654000
+     Li
+      1
+Direct
+      0.0000000000      0.0000000000      0.0000000000 !     Li-001    1
+
+     2     3     4
+  4.40621429530E-1  4.46352370360E-1  4.62946388290E-1  4.88810562850E-1  5.22115067290E-1
+  5.62034328150E-1  6.09560877750E-1  6.66721316960E-1  7.34179160310E-1  8.08848179720E-1
+  8.83511727910E-1  9.49129938440E-1   1.00003825010E0   1.03533983910E0   1.05681536160E0
+   1.06770090230E0   1.07093929900E0   1.06770090230E0   1.05681536160E0   1.03533983910E0
+   1.06770090230E0   1.07093929900E0   1.06770090230E0   1.05681536160E0
+augmentation occupancies 1 15
+  0.2743786E+00 -0.3307158E-01  0.0000000E+00  0.0000000E+00  0.0000000E+00
+  0.1033253E-02  0.0000000E+00  0.0000000E+00  0.0000000E+00  0.3964234E-01
+  0.5875445E-05 -0.7209739E-05 -0.3625569E-05  0.1019266E-04 -0.2068344E-05
+augmentation occupancies 2 15
+  0.2743786E+00 -0.3307158E-01  0.0000000E+00  0.0000000E+00  0.0000000E+00
+  0.1033253E-02  0.0000000E+00  0.0000000E+00  0.0000000E+00  0.3964234E-01
+  0.5875445E-05 -0.7209739E-05 -0.3625569E-05  0.1019266E-04 -0.2068344E-05
+     2     3     4
+  4.40621429530E-1  4.46352370360E-1  4.62946388290E-1  4.88810562850E-1  5.22115067290E-1
+  5.62034328150E-1  6.09560877750E-1  6.66721316960E-1  7.34179160310E-1  8.08848179720E-1
+  8.83511727910E-1  9.49129938440E-1   1.00003825010E0   1.03533983910E0   1.05681536160E0
+   1.06770090230E0   1.07093929900E0   1.06770090230E0   1.05681536160E0   1.03533983910E0
+   1.06770090230E0   1.07093929900E0   1.06770090230E0   1.26681536160E0
+augmentation occupancies 1 15
+  0.2743786E+00 -0.3307158E-01  0.0000000E+00  0.0000000E+00  0.0000000E+00
+  0.1033253E-02  0.0000000E+00  0.0000000E+00  0.0000000E+00  0.3964234E-01
+  0.5875445E-05 -0.7209739E-05 -0.3625569E-05  0.1019266E-04 -0.2038144E-05
+augmentation occupancies 2 15
+  0.2743786E+00 -0.3307158E-01  0.0000000E+00  0.0000000E+00  0.0000000E+00
+  0.1033253E-02  0.0000000E+00  0.0000000E+00  0.0000000E+00  0.3964234E-01
+  0.5875445E-05 -0.7209739E-05 -0.3625569E-05  0.1019266E-04 -0.0038244E-05
+";
+
+        let chg = ChargeDensity::from_str(SAMPLE, ChargeType::Chgcar).unwrap();
+        assert_eq!(chg.to_string(), format_expect);
     }
 }
