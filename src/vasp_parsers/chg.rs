@@ -7,7 +7,10 @@ use std::{
         BufReader,
     },
     path::Path,
-    fs::File,
+    fs::{
+        self,
+        File,
+    },
 };
 
 use regex::Regex;
@@ -104,6 +107,12 @@ struct ChargeDensity {
 
 
 impl ChargeDensity {
+    pub fn from_file(path: &(impl AsRef<Path> + ?Sized)) -> Result<Self> {
+        let txt = fs::read_to_string(path)?;
+        Self::from_str(&txt)
+    }
+
+
     pub fn from_str(txt: &str) -> Result<Self> {
         let separate_pos = Regex::new(r"(?m)^\s*$").unwrap()
             .find(txt)
@@ -265,5 +274,11 @@ augmentation occupancies 2 15
         assert_eq!(chg.ngrid, [2, 3, 4]);
         assert_eq!(chg.chg.len(), 2);
         assert_eq!(chg.aug.len(), 2);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_from_file() {
+        let chg = ChargeDensity::from_file("/Users/ionizing/tmp/CHGCAR").unwrap();
     }
 }
