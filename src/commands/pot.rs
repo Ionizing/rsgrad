@@ -14,11 +14,8 @@ use crate::{
     Poscar,
     Potcar,
     Settings,
-    FunctionalPath,
-    traits::{
-        Result,
-        OptProcess,
-    },
+    Result,
+    OptProcess,
     vasp_parsers::potcar::FunctionalType,
 };
 

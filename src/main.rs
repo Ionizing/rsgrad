@@ -2,11 +2,15 @@ use std::time;
 
 use env_logger;
 use log::info;
-use rsgrad::traits::Result;
-use structopt::StructOpt;
-use structopt::clap::AppSettings;
-use rsgrad::OptProcess;
-use rsgrad::commands;
+use rsgrad::{
+    Result,
+    OptProcess,
+    commands,
+};
+use structopt::{
+    clap::AppSettings,
+    StructOpt,
+};
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "rsgrad",

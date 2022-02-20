@@ -11,11 +11,9 @@ use log::{
 use anyhow::bail;
 use crate::{
     Poscar,
-    traits::{
-        Result,
-        OptProcess,
-        index_transform,
-    },
+    Result,
+    OptProcess,
+    index_transform,
 };
 
 

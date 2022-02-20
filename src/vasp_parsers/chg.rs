@@ -10,7 +10,6 @@ use std::{
 
 use regex::Regex;
 use ndarray::{
-    Array1,
     Array3,
     ShapeBuilder,
 };
@@ -21,8 +20,7 @@ use anyhow::{
 use rayon::prelude::*;
 
 use crate::{
-    traits::Result,
-    types::MatX3,
+    Result,
     Poscar,
 };
 
@@ -175,10 +173,17 @@ impl ChargeDensity {
     }
 
 
+    pub fn to_file(&self, path: &(impl AsRef<Path> + ?Sized)) -> Result<()> {
+        fs::write(path, self.to_string())?;
+        Ok(())
+    }
+
+
     /// Read CHGCAR header to get POSCAR info
     fn read_poscar(txt: &str) -> Result<Poscar> {
         Poscar::from_str(txt)
     }
+
 
     /// This function reads the grid data.  input str should be like:
     ///
@@ -220,6 +225,8 @@ impl ChargeDensity {
         Ok(chg)
     }
 
+
+    /// All augmentation data is extracted without parsing. The tail linebreaks are preserved.
     fn read_raw_aug(txt: &str) -> Option<String> {
         let start_pos = txt.find("augmentation")?;
         let end_pos = Regex::new(r"(?m)^\s+\d+\s+\d+\s+\d+\s*$")  // find NGX NGY NGZ
@@ -289,34 +296,31 @@ impl Add for ChargeDensity {
 
     /// Add two provided ChargeDensity object, they should have same cell and grid size.
     /// The augmentation part will be dropped.
-    fn add(self, other:Self) -> Self::Output {
-        let mut self0 = self;
-        let mut other0 = other;
+    fn add(mut self, mut other:Self) -> Self::Output {
+        self.pos = self.pos.normalize();
+        other.pos = other.pos.normalize();
 
-        self0.pos = self0.pos.normalize();
-        other0.pos = other0.pos.normalize();
-
-        if self0.chgtype != other0.chgtype {
+        if self.chgtype != other.chgtype {
             bail!("[CHG_ADD]: Different type of charge densities are provided: {:?} != {:?}",
-                  self0.chgtype, other0.chgtype);
+                  self.chgtype, other.chgtype);
         }
 
-        if self0.pos.cell != other0.pos.cell {
-            bail!("[CHG_ADD]: Cannot add up two system's charge densities within different lattices: \n{:#?}\n != \n{:#?}\n",
-                  self0.pos.cell, other0.pos.cell);
+        if self.pos.cell != other.pos.cell {
+            bail!("[CHG_ADD]: Cannot add two system's charge densities within different lattices: \n{:#?}\n != \n{:#?}\n",
+                  self.pos.cell, other.pos.cell);
         }
 
-        if self0.ngrid != other0.ngrid {
-            bail!("[CHG_ADD]: Cannot add up two system's charge densities within different grids: \n{:#?}\n != \n{:#?}\n",
-                  self0.ngrid, other0.ngrid);
+        if self.ngrid != other.ngrid {
+            bail!("[CHG_ADD]: Cannot add two system's charge densities within different grids: \n{:#?}\n != \n{:#?}\n",
+                  self.ngrid, other.ngrid);
         }
 
-        if self0.chg.len() == 0 || self0.chg.len() != other0.chg.len() {
+        if self.chg.len() == 0 || self.chg.len() != other.chg.len() {
             bail!("[CHG_ADD]: No charge densitie found or two systems' charge densitie set counts not match: {} != {}",
-                  self0.chg.len(), other0.chg.len());
+                  self.chg.len(), other.chg.len());
         }
 
-        if self0.pos.constraints.is_some() != other0.pos.constraints.is_some() {
+        if self.pos.constraints.is_some() != other.pos.constraints.is_some() {
             bail!("[CHG_ADD]: Not all provided charge densities have constraints");
         }
 
@@ -324,22 +328,22 @@ impl Add for ChargeDensity {
         let pos = {
             let comment         = "Added charge density. Produced by rsgrad".to_string();
             let scale           = 1.0f64;
-            let cell            = self0.pos.cell;
-            let ion_types       = self0.pos.ion_types.into_iter()
-                .chain(other0.pos.ion_types.into_iter())
+            let cell            = self.pos.cell;
+            let ion_types       = self.pos.ion_types.into_iter()
+                .chain(other.pos.ion_types.into_iter())
                 .collect::<Vec<_>>();
-            let ions_per_type   = self0.pos.ions_per_type.into_iter()
-                .chain(other0.pos.ions_per_type.into_iter())
+            let ions_per_type   = self.pos.ions_per_type.into_iter()
+                .chain(other.pos.ions_per_type.into_iter())
                 .collect::<Vec<_>>();
             
-            let pos_cart        = self0.pos.pos_cart.into_iter()
-                .chain(other0.pos.pos_cart.into_iter())
+            let pos_cart        = self.pos.pos_cart.into_iter()
+                .chain(other.pos.pos_cart.into_iter())
                 .collect::<Vec<_>>();
-            let pos_frac        = self0.pos.pos_frac.into_iter()
-                .chain(other0.pos.pos_frac.into_iter())
+            let pos_frac        = self.pos.pos_frac.into_iter()
+                .chain(other.pos.pos_frac.into_iter())
                 .collect::<Vec<_>>();
-            let constraints     = self0.pos.constraints
-                .zip(other0.pos.constraints)
+            let constraints     = self.pos.constraints
+                .zip(other.pos.constraints)
                 .map(|(x, y)| {
                     x.into_iter()
                      .chain(y.into_iter()).collect::<Vec<_>>()
@@ -363,13 +367,69 @@ impl Add for ChargeDensity {
             }
         };
 
-        let chgtype = self0.chgtype;
-        let ngrid = self0.ngrid;
-        let chg = self0.chg.into_iter().zip(other0.chg.into_iter())
+        let chgtype = self.chgtype;
+        let ngrid = self.ngrid;
+        let chg = self.chg.into_iter().zip(other.chg.into_iter())
             .map(|(x, y)| x + y)
             .collect::<Vec<_>>();
 
         Ok(Self {
+            chgtype,
+            pos,
+            ngrid,
+            chg,
+            aug: vec![],
+        })
+    }
+}
+
+
+impl Sub for ChargeDensity {
+    type Output=Result<Self>;
+
+    /// Subtract self's charge density from other's.
+    fn sub(mut self, mut other: Self) -> Self::Output {
+        self.pos = self.pos.normalize();
+        other.pos = other.pos.normalize();
+
+        if self.chgtype != other.chgtype {
+            bail!("[CHG_SUB]: Different type of charge densities are provided: {:?} != {:?}",
+                  self.chgtype, other.chgtype);
+        }
+
+        if self.pos.cell != other.pos.cell {
+            bail!("[CHG_SUB]: Cannot subtract two system's charge densities within different lattices: \n{:#?}\n != \n{:#?}\n",
+                  self.pos.cell, other.pos.cell);
+        }
+
+        if self.ngrid != other.ngrid {
+            bail!("[CHG_SUB]: Cannot subtract two system's charge densities within different grids: \n{:#?}\n != \n{:#?}\n",
+                  self.ngrid, other.ngrid);
+        }
+
+        if self.chg.len() == 0 || self.chg.len() != other.chg.len() {
+            bail!("[CHG_SUB]: No charge densitie found or two systems' charge densitie set counts not match: {} != {}",
+                  self.chg.len(), other.chg.len());
+        }
+
+        if self.pos.constraints.is_some() != other.pos.constraints.is_some() {
+            bail!("[CHG_SUB]: Not all provided charge densities have constraints");
+        }
+
+        // Construct POSCAR, here we choose the system with more atoms as the final structure.
+        let pos = if self.pos.get_natoms() > other.pos.get_natoms() {
+            self.pos
+        } else {
+            other.pos
+        };
+
+        let chgtype = self.chgtype;
+        let ngrid = self.ngrid;
+        let chg = self.chg.into_iter().zip(other.chg.into_iter())
+            .map(|(x, y)| x - y)
+            .collect::<Vec<_>>();
+
+        Ok(Self{
             chgtype,
             pos,
             ngrid,
@@ -595,5 +655,22 @@ Direct
         let chg1 = ChargeDensity::from_str(SAMPLE_CHGCAR, ChargeType::Chgcar).unwrap();
         let chg2 = ChargeDensity::from_str(SAMPLE_CHG, ChargeType::Locpot).unwrap();
         (chg1 + chg2).unwrap();
+    }
+
+    #[test]
+    fn test_chg_sub() {
+        let chg1 = ChargeDensity::from_str(SAMPLE_CHGCAR, ChargeType::Chgcar).unwrap();
+        let chg2 = ChargeDensity::from_str(SAMPLE_CHG, ChargeType::Chgcar).unwrap();
+        
+        let chg3 = (chg1 - chg2).unwrap();
+        assert!(chg3.chg[0].iter().all(|x| *x == 0.0f64));
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_chg_sub_failed() {
+        let chg1 = ChargeDensity::from_str(SAMPLE_CHGCAR, ChargeType::Chgcar).unwrap();
+        let chg2 = ChargeDensity::from_str(SAMPLE_CHG, ChargeType::Locpot).unwrap();
+        (chg1 - chg2).unwrap();
     }
 }

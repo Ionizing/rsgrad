@@ -1,10 +1,19 @@
 pub mod vasp_parsers;
 pub mod commands;
-pub mod traits;
 pub mod types;
 pub mod settings;
 
-pub use traits::OptProcess;
+pub use types::{
+    OptProcess,
+    Result,
+    index_transform,
+    Vector,
+    Matrix,
+    Cube,
+    MatX3,
+    Mat33,
+    Structure,
+};
 
 pub use vasp_parsers::poscar::{
     Poscar,

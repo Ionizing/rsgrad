@@ -1,7 +1,9 @@
 use std::path::PathBuf;
 
-use rsgrad::traits::Result;
-use rsgrad::vasp_parsers::poscar::Poscar;
+use rsgrad::{
+    Result,
+    Poscar,
+};
 use tempdir::TempDir;
 
 

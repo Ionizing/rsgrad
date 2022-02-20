@@ -13,10 +13,8 @@ use structopt::{
     clap::AppSettings,
 };
 use crate::{
-    traits::{
-        Result,
-        index_transform,
-    },
+    Result,
+    index_transform,
     OptProcess,
     Outcar,
     Poscar,

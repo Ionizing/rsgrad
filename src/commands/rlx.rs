@@ -12,7 +12,7 @@ use structopt::{
     clap::AppSettings,
 };
 use crate::{
-    traits::Result,
+    Result,
     OptProcess,
     Outcar,
     IonicIterationsFormat,

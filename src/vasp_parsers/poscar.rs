@@ -9,8 +9,8 @@ use std::{
     fmt,
 };
 use anyhow::{anyhow, Context};
-use crate::traits::Result;
-use crate::types::{
+use crate::{
+    Result,
     Structure,
     Mat33,
     MatX3,
