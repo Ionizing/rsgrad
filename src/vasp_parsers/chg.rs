@@ -20,6 +20,7 @@ use anyhow::{
 use rayon::prelude::*;
 
 use crate::{
+    types::Mat33,
     Result,
     Poscar,
 };
@@ -291,6 +292,13 @@ impl fmt::Display for ChargeDensity {
 }
 
 
+fn mat33_approx_eq(ma: &Mat33<f64>, mb: &Mat33<f64>) -> bool {
+    ma.iter().flatten()
+        .zip(mb.iter().flatten())
+        .all(|(x, y)| (x - y).abs() <= 1e-6 )
+}
+
+
 impl Add for ChargeDensity {
     type Output=Result<Self>;
 
@@ -305,8 +313,8 @@ impl Add for ChargeDensity {
                   self.chgtype, other.chgtype);
         }
 
-        if self.pos.cell != other.pos.cell {
-            bail!("[CHG_ADD]: Cannot add two system's charge densities within different lattices: \n{:#?}\n != \n{:#?}\n",
+        if !mat33_approx_eq(&self.pos.cell, &other.pos.cell) {
+            bail!("[CHG_ADD]: Cannot add two system's charge densities within different lattices: \n{:?}\n != \n{:?}\n",
                   self.pos.cell, other.pos.cell);
         }
 
@@ -397,8 +405,8 @@ impl Sub for ChargeDensity {
                   self.chgtype, other.chgtype);
         }
 
-        if self.pos.cell != other.pos.cell {
-            bail!("[CHG_SUB]: Cannot subtract two system's charge densities within different lattices: \n{:#?}\n != \n{:#?}\n",
+        if !mat33_approx_eq(&self.pos.cell, &other.pos.cell) {
+            bail!("[CHG_SUB]: Cannot subtract two system's charge densities within different lattices: \n{:?}\n != \n{:?}\n",
                   self.pos.cell, other.pos.cell);
         }
 
