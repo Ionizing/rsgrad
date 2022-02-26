@@ -43,6 +43,11 @@ enum Opt {
     #[structopt(setting = AppSettings::ColoredHelp,
                 setting = AppSettings::ColorAuto)]
     Pot(commands::pot::Pot),
+
+
+    #[structopt(setting = AppSettings::ColoredHelp,
+                setting = AppSettings::ColorAuto)]
+    Chgdiff(commands::chgdiff::Chgdiff),
 }
 
 
@@ -53,11 +58,12 @@ fn main() -> Result<()> {
         env_logger::Env::new().filter_or("RSGRAD_LOG", "info"));
 
     match Opt::from_args() {
-        Opt::Rlx(cmd) => cmd.process()?,
-        Opt::Vib(cmd) => cmd.process()?,
-        Opt::Traj(cmd) => cmd.process()?,
-        Opt::Pos(cmd) => cmd.process()?,
-        Opt::Pot(cmd) => cmd.process()?,
+        Opt::Rlx(cmd)       => cmd.process()?,
+        Opt::Vib(cmd)       => cmd.process()?,
+        Opt::Traj(cmd)      => cmd.process()?,
+        Opt::Pos(cmd)       => cmd.process()?,
+        Opt::Pot(cmd)       => cmd.process()?,
+        Opt::Chgdiff(cmd)   => cmd.process()?,
     }
 
     info!("Time used: {:?}", now.elapsed());

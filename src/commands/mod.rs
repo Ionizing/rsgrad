@@ -7,3 +7,4 @@ pub mod rlx;
 pub mod traj;
 pub mod vib;
 pub mod wav;
+pub mod chgdiff;

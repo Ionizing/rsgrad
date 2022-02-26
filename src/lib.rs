@@ -34,7 +34,10 @@ pub use vasp_parsers::potcar::{
     AtomicPotcar,
 };
 
-pub use vasp_parsers::chg;
+pub use vasp_parsers::chg::{
+    ChargeType,
+    ChargeDensity,
+};
 
 pub use settings::{
     Settings,
