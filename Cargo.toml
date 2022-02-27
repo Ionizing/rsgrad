@@ -1,6 +1,6 @@
 [package]
 name = "rsgrad"
-version = "0.3.3"
+version = "0.3.4"
 authors = ["Ionizing <PeterSmith_9@outlook.com>"]
 edition = "2018"
 
