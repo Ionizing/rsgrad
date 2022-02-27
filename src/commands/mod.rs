@@ -1,6 +1,6 @@
 pub mod band;
 pub mod dos;
-pub mod loc;
+pub mod workfunc;
 pub mod pos;
 pub mod pot;
 pub mod rlx;

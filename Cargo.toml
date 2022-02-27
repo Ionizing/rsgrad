@@ -24,6 +24,7 @@ flate2 = "1.0"
 config = { git = "https://github.com/mehcode/config-rs", rev = "68e00251318cc17b1ccfa227f1b108ccab22d5de"}
 directories = "4.0"
 serde = "1.0"
+plotly = { version = "0.7", features = ["plotly_ndarray"] }
 
 [dev-dependencies]
 tempdir = "0.3"

@@ -48,6 +48,11 @@ enum Opt {
     #[structopt(setting = AppSettings::ColoredHelp,
                 setting = AppSettings::ColorAuto)]
     Chgdiff(commands::chgdiff::Chgdiff),
+
+
+    #[structopt(setting = AppSettings::ColoredHelp,
+                setting = AppSettings::ColorAuto)]
+    Workfunc(commands::workfunc::Workfunc),
 }
 
 
@@ -64,6 +69,7 @@ fn main() -> Result<()> {
         Opt::Pos(cmd)       => cmd.process()?,
         Opt::Pot(cmd)       => cmd.process()?,
         Opt::Chgdiff(cmd)   => cmd.process()?,
+        Opt::Workfunc(cmd)  => cmd.process()?,
     }
 
     info!("Time used: {:?}", now.elapsed());
