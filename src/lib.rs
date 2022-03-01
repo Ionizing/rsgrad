@@ -43,3 +43,8 @@ pub use settings::{
     Settings,
     FunctionalPath,
 };
+
+pub use vasp_parsers::procar::{
+    ProjectedDOS,
+    Procar,
+};
