@@ -4,6 +4,7 @@ use structopt::{
     StructOpt,
     clap::AppSettings,
 };
+use serde;
 use anyhow::{
     Error,
     bail,
@@ -16,33 +17,35 @@ use crate::{
 };
 
 
-#[derive(Debug)]
-struct Selections(Vec<(Vec<i32>, String)>);
-
-
-impl std::str::FromStr for Selections {
-    type Err = anyhow::Error;
-    fn from_str(s: &str) -> Result<Self> {
-
-        bail!("");
-    }
+struct Selection {
+    ispins:   Vec<i32>,
+    ikpoints: Vec<i32>,
+    iatoms:   Vec<i32>,
+    iorbits:  Vec<i32>,
+    label:    String,
 }
 
 
-
-#[derive(Debug, StructOpt)]
+#[derive(Debug, StructOpt, Clone)]
 #[structopt(setting = AppSettings::ColoredHelp,
             setting = AppSettings::ColorAuto)]
 pub struct Dos {
+    #[structopt(short, long)]
     config: Option<PathBuf>,
 
+    #[structopt(long, default_value = "./OUTCAR")]
     outcar: PathBuf,
+
+    #[structopt(long, default_value = "./PROCAR")]
     procar: PathBuf,
-    ikpoints: Vec<i32>,
 
-    projections: Selections,
+    #[structopt(long, default_value = "0")]
+    ispins: Vec<i32>,
 
+    #[structopt(short, long)]
     txtout: PathBuf,
+
+    #[structopt(short, long)]
     htmlout: PathBuf,
 }
 
