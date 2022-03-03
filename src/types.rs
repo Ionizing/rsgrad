@@ -38,9 +38,13 @@ pub fn index_transform(v: Vec<i32>, len: usize) -> Vec<usize> {
 /// Parse string containing range and integers into Vec<i32>
 /// 
 /// Valid strings can be `"1..5 12 -1..3 0"` will be parsed as
-/// `vec![1, 2, 3, 4, 5, 12, -1, 1, 2, 3]`, `0` and duplicated items
-/// are filtered out.
+/// `vec![1, 2, 3, 4, 5, 12, -1, 1, 2, 3]`, `0` is filtered out.
+/// If only `0` is supplied, `Ok(vec![0])` is return
 pub fn parse_range(input: &str) -> Result<Vec<i32>> {
+    if input.trim() == "0" {
+        return Ok(vec![0]);
+    }
+
     let mut ret = vec![];
 
     let re_range = Regex::new(r"^(-?\d+)\.\.(-?\d+)$").unwrap();
@@ -65,9 +69,7 @@ pub fn parse_range(input: &str) -> Result<Vec<i32>> {
         }
     }
 
-    let mut ret = ret.into_iter().filter(|x| *x != 0).collect::<Vec<_>>();
-    ret.sort();
-    ret.dedup();
+    let ret = ret.into_iter().filter(|x| *x != 0).collect::<Vec<_>>();
 
     Ok(ret)
 }
@@ -96,12 +98,20 @@ mod test {
     use super::*;
 
     #[test]
+    fn test_index_transform() {
+        assert_eq!(index_transform(vec![-1], 5), vec![5]);
+        assert_eq!(index_transform(vec![-1, 5], 5), vec![5, 5]);
+        assert_eq!(index_transform(vec![-1, 0], 5), vec![1, 2, 3, 4, 5]);
+    }
+
+    #[test]
     fn test_range_parse() {
         assert_eq!(parse_range("1..6").unwrap(), vec![1, 2, 3, 4, 5, 6]);
         assert_eq!(parse_range("9..12").unwrap(), vec![9, 10, 11, 12]);
         assert_eq!(parse_range("-1..5").unwrap(), vec![-1, 1, 2, 3, 4, 5]);
         assert_eq!(parse_range("-10..-5").unwrap(), vec![-10, -9, -8, -7, -6, -5]);
-        assert_eq!(parse_range("-10..-9 4    29 \n  -5").unwrap(), vec![-10, -9, -5, 4, 29]);
+        assert_eq!(parse_range("-10..-9 4    29 \n  -5").unwrap(), vec![-10, -9, 4, 29, -5]);
+        assert_eq!(parse_range(" 0   ").unwrap(), vec![0]);
         assert!(parse_range("5..-1").is_err());
         assert!(parse_range("..-1").is_err());
         assert!(parse_range("..10").is_err());
