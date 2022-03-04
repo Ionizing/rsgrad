@@ -25,10 +25,10 @@ config = { git = "https://github.com/mehcode/config-rs", rev = "68e00251318cc17b
 directories = "4.0"
 serde = "1.0"
 plotly = { version = "0.7", features = ["plotly_ndarray"] }
+toml = "0.5"
 
 [dev-dependencies]
 tempdir = "0.3"
-toml = "0.5"
 
 
 [profile.release]

@@ -53,6 +53,11 @@ enum Opt {
     #[structopt(setting = AppSettings::ColoredHelp,
                 setting = AppSettings::ColorAuto)]
     Workfunc(commands::workfunc::Workfunc),
+
+
+    #[structopt(setting = AppSettings::ColoredHelp,
+                setting = AppSettings::ColorAuto)]
+    Dos(commands::dos::Dos),
 }
 
 
@@ -70,6 +75,7 @@ fn main() -> Result<()> {
         Opt::Pot(cmd)       => cmd.process()?,
         Opt::Chgdiff(cmd)   => cmd.process()?,
         Opt::Workfunc(cmd)  => cmd.process()?,
+        Opt::Dos(cmd)       => cmd.process()?,
     }
 
     info!("Time used: {:?}", now.elapsed());
