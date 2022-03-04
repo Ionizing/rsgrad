@@ -58,6 +58,14 @@ pub struct Pos {
     #[structopt(short = "s", long)]
     /// Split POSCAR according to selected_indices
     split: bool,
+
+    #[structopt(long)]
+    /// Convert POSCAR to cartesian coordinates or fractional coordinates
+    convert: bool,
+
+    #[structopt(long, default_value = "POSCAR_new")]
+    /// The target path of converted POSCAR
+    converted: PathBuf,
 }
 
 
@@ -182,6 +190,20 @@ impl OptProcess for Pos {
     fn process(&self) -> Result<()> {
         info!("Reading POSCAR file {:?} ...", &self.poscar);
         let pos = Poscar::from_file(&self.poscar)?;
+
+
+        if self.convert {
+            info!("Converting it to {:?}", &self.converted);
+
+            pos.to_formatter()
+                .preserve_constraints(!self.no_preserve_constraints)
+                .fraction_coordinates(!self.cartesian)
+                .add_symbol_tags(!self.no_add_symbols_tags)
+                .to_file(&self.converted)?;
+            
+            info!("Done");
+        }
+
 
         if self.split {
             info!("Splitting it to {:?} and {:?} ...", &self.a_name, &self.b_name);
