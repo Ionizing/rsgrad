@@ -36,38 +36,16 @@ struct RawSelection {
     kpoints:    Option<String>,
     atoms:      Option<String>,
     orbits:     Option<String>,
-    label:      String,
-}
-
-
-impl Default for RawSelection {
-    fn default() -> Self {
-        Self {
-            spins:      Some("input spin here, can be commented".to_string()),
-            kpoints:    Some("input kpoints here, can be commented".to_string()),
-            atoms:      Some("input atoms here, can be commented".to_string()),
-            orbits:     Some("input orbits here, can be commented".to_string()),
-            label:      "You must set label".to_string()
-        }
-    }
-}
-
-
-
-#[derive(Clone, Serialize, Deserialize)]
-struct RawSelectionVec {
-    #[serde(rename = "PDOS")]
-    inner: Vec<RawSelection>
 }
 
 
 #[derive(Clone)]
 struct Selection {
+    label:      String,
     ispins:     Vec<i32>,
     ikpoints:   Vec<i32>,
     iatoms:     Vec<i32>,
     iorbits:    Vec<i32>,
-    label:      String,
 }
 
 
@@ -117,10 +95,17 @@ impl OptProcess for Dos {
             let conf_filename = PathBuf::from("./dos.toml");
 
             info!("Generating selection dos configuration template ...");
-            let conf = RawSelectionVec{
-                inner: vec![RawSelection::default()]
-            };
-            let s = toml::to_string(&conf)?;
+            let s = r#"# Toml format.
+[pdos1]     # The label must be set, and CANNOT be repetitive.
+#spins   = "up down"         # for ISPIN = 2 system, "up" and "down" are available,
+                            # for LSORBIT = .TRUE. system, "x" "y" "z" and "tot" are available.
+#kpoints = "1 3..7 -1"       # selects 1 3 4 5 6 7 and the last kpoint for pdos plot.
+#atoms   = "1 3..7 -1"       # selects 1 3 4 5 6 7 and the last atoms' projection for pdos plot.
+#orbits  = "s px dx"         # selects the s px and dx orbits' projection for pdos plot.
+
+# The fields cannot be left blank, if you want select all the components for some fields,
+# just comment them. You can comment fields with '#'
+"#;
             fs::write(&conf_filename, s.as_bytes())?;
             info!("Template file written to {:?}. Exiting", &conf_filename);
             
