@@ -49,6 +49,14 @@ struct Selection {
 }
 
 
+trait ToSelection<F, T> { fn to_selection(f: F) -> T; }
+impl ToSelection<HashMap<String, RawSelection>, Vec<Selection>> for HashMap<String, RawSelection> {
+    fn to_selection(f: HashMap<String, RawSelection>) -> Vec<Selection> {
+        todo!();
+    }
+}
+
+
 #[derive(Clone, Serialize, Deserialize)]
 struct Configuration {
     #[serde(default = "Configuration::sigma_default")]
