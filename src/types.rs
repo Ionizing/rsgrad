@@ -40,7 +40,7 @@ pub fn index_transform(v: Vec<i32>, len: usize) -> Vec<usize> {
 /// Valid strings can be `"1..5 12 -1..3 0"` will be parsed as
 /// `vec![1, 2, 3, 4, 5, 12, -1, 1, 2, 3]`, `0` is filtered out.
 /// If only `0` is supplied, `Ok(vec![0])` is return
-pub fn parse_range(input: &str) -> Result<Vec<i32>> {
+pub fn range_parse(input: &str) -> Result<Vec<i32>> {
     if input.trim() == "0" {
         return Ok(vec![0]);
     }
@@ -59,13 +59,13 @@ pub fn parse_range(input: &str) -> Result<Vec<i32>> {
             let end   = m.get(2).unwrap().as_str().parse::<i32>().unwrap();
             
             if start > end {
-                bail!("[PARSE_RANGE]: start is greater than end in token \'{}\'", s);
+                bail!("[RANGE_PARSE]: start is greater than end in token \'{}\'", s);
             }
 
             let to_be_extend = (start ..= end).collect::<Vec<_>>();
             ret.extend( to_be_extend );
         } else {
-            bail!("[PARSE_RANGE]: token \'{}\' is invalid, cannot be parsed as range or integer", s);
+            bail!("[RANGE_PARSE]: token \'{}\' is invalid, cannot be parsed as range or integer", s);
         }
     }
 
@@ -106,17 +106,17 @@ mod test {
 
     #[test]
     fn test_range_parse() {
-        assert_eq!(parse_range("1..6").unwrap(), vec![1, 2, 3, 4, 5, 6]);
-        assert_eq!(parse_range("9..12").unwrap(), vec![9, 10, 11, 12]);
-        assert_eq!(parse_range("-1..5").unwrap(), vec![-1, 1, 2, 3, 4, 5]);
-        assert_eq!(parse_range("-10..-5").unwrap(), vec![-10, -9, -8, -7, -6, -5]);
-        assert_eq!(parse_range("-10..-9 4    29 \n  -5").unwrap(), vec![-10, -9, 4, 29, -5]);
-        assert_eq!(parse_range(" 0   ").unwrap(), vec![0]);
-        assert!(parse_range("5..-1").is_err());
-        assert!(parse_range("..-1").is_err());
-        assert!(parse_range("..10").is_err());
-        assert!(parse_range("1 .. 10").is_err());
-        assert!(parse_range("1 .. 10").is_err());
-        assert!(parse_range("1-2..5").is_err());
+        assert_eq!(range_parse("1..6").unwrap(), vec![1, 2, 3, 4, 5, 6]);
+        assert_eq!(range_parse("9..12").unwrap(), vec![9, 10, 11, 12]);
+        assert_eq!(range_parse("-1..5").unwrap(), vec![-1, 1, 2, 3, 4, 5]);
+        assert_eq!(range_parse("-10..-5").unwrap(), vec![-10, -9, -8, -7, -6, -5]);
+        assert_eq!(range_parse("-10..-9 4    29 \n  -5").unwrap(), vec![-10, -9, 4, 29, -5]);
+        assert_eq!(range_parse(" 0   ").unwrap(), vec![0]);
+        assert!(range_parse("5..-1").is_err());
+        assert!(range_parse("..-1").is_err());
+        assert!(range_parse("..10").is_err());
+        assert!(range_parse("1 .. 10").is_err());
+        assert!(range_parse("1 .. 10").is_err());
+        assert!(range_parse("1-2..5").is_err());
     }
 }
