@@ -1,6 +1,7 @@
 use std::{
     fs,
-    path::PathBuf
+    path::PathBuf,
+    collections::HashMap,
 };
 
 use structopt::{
@@ -14,7 +15,6 @@ use serde::{
     Serialize,
     Deserialize,
 };
-use config::Config;
 use anyhow::{
     Error,
     bail,
@@ -47,6 +47,40 @@ struct Selection {
     iatoms:     Vec<i32>,
     iorbits:    Vec<i32>,
 }
+
+
+#[derive(Clone, Serialize, Deserialize)]
+struct Configuration {
+    #[serde(default = "Configuration::sigma_default")]
+    sigma: f64,
+
+    #[serde(default = "Configuration::procar_default")]
+    procar: PathBuf,
+
+    #[serde(default = "Configuration::outcar_default")]
+    outcar: PathBuf,
+
+    #[serde(default = "Configuration::txtout_default")]
+    txtout: PathBuf,
+
+    #[serde(default = "Configuration::htmlout_default")]
+    htmlout: PathBuf,
+
+    #[serde(default = "Configuration::notot_default")]
+    notot: bool,
+
+    pdos: Option<HashMap<String, RawSelection>>,
+}
+
+impl Configuration {
+    pub fn sigma_default() -> f64 { 0.05 }
+    pub fn procar_default() -> PathBuf { PathBuf::from("./PROCAR") }
+    pub fn outcar_default() -> PathBuf { PathBuf::from("./OUTCAR") }
+    pub fn txtout_default() -> PathBuf { PathBuf::from("./dos_raw.txt") }
+    pub fn htmlout_default() -> PathBuf { PathBuf::from("./dos.html") }
+    pub fn notot_default()  -> bool { false }
+}
+
 
 
 #[derive(Debug, StructOpt, Clone)]
@@ -89,16 +123,17 @@ pub struct Dos {
 }
 
 
-impl OptProcess for Dos {
-    fn process(&self) -> Result<()> {
-        if self.gen_template {
-            let conf_filename = PathBuf::from("./dos.toml");
+const TEMPLATE: &'static str = r#"# Toml format.
+#sigma = 0.05                    # smearing width
+#procar      = "PROCAR"          # pROCAR path
+#outcar      = "OUTCAR"          # oUTCAR path
+#txtout      = "dos_raw.txt"     # save the raw data as "dos_raw.txt"
+#htmlout     = "dos.html"        # save the pdos plot as "dos.html"
+#notot       = false             # plot the total dos
 
-            info!("Generating selection dos configuration template ...");
-            let s = r#"# Toml format.
-[pdos1]     # The label must be set, and CANNOT be repetitive.
+#[pdos.plot1]     # The label must be set, and CANNOT be repetitive.
 #spins   = "up down"         # for ISPIN = 2 system, "up" and "down" are available,
-                            # for LSORBIT = .TRUE. system, "x" "y" "z" and "tot" are available.
+#                            # for LSORBIT = .TRUE. system, "x" "y" "z" and "tot" are available.
 #kpoints = "1 3..7 -1"       # selects 1 3 4 5 6 7 and the last kpoint for pdos plot.
 #atoms   = "1 3..7 -1"       # selects 1 3 4 5 6 7 and the last atoms' projection for pdos plot.
 #orbits  = "s px dx"         # selects the s px and dx orbits' projection for pdos plot.
@@ -106,12 +141,32 @@ impl OptProcess for Dos {
 # The fields cannot be left blank, if you want select all the components for some fields,
 # just comment them. You can comment fields with '#'
 "#;
-            fs::write(&conf_filename, s.as_bytes())?;
+
+
+impl OptProcess for Dos {
+    fn process(&self) -> Result<()> {
+        if self.gen_template {
+            let conf_filename = PathBuf::from("./dos.toml");
+
+            info!("Generating selection dos configuration template ...");
+            fs::write(&conf_filename, TEMPLATE.as_bytes())?;
             info!("Template file written to {:?}. Exiting", &conf_filename);
             
             return Ok(());
         }
 
         Ok(())
+    }
+}
+
+
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    
+    #[test]
+    fn test_parse_rawconfig() {
+        let _: Configuration = toml::from_str(TEMPLATE).unwrap();
     }
 }
