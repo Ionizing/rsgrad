@@ -123,7 +123,7 @@ pub struct Dos {
 }
 
 
-const TEMPLATE: &'static str = r#"# Toml format.
+const TEMPLATE: &'static str = r#"# rsgrad DOS configuration in toml format.
 #sigma = 0.05                    # smearing width
 #procar      = "PROCAR"          # pROCAR path
 #outcar      = "OUTCAR"          # oUTCAR path
@@ -131,14 +131,14 @@ const TEMPLATE: &'static str = r#"# Toml format.
 #htmlout     = "dos.html"        # save the pdos plot as "dos.html"
 #notot       = false             # plot the total dos
 
-#[pdos.plot1]     # The label must be set, and CANNOT be repetitive.
+#[pdos.plot1]     # One label produces one plot, the labels CANNOT be repetitive.
 #spins   = "up down"         # for ISPIN = 2 system, "up" and "down" are available,
 #                            # for LSORBIT = .TRUE. system, "x" "y" "z" and "tot" are available.
 #kpoints = "1 3..7 -1"       # selects 1 3 4 5 6 7 and the last kpoint for pdos plot.
 #atoms   = "1 3..7 -1"       # selects 1 3 4 5 6 7 and the last atoms' projection for pdos plot.
 #orbits  = "s px dx"         # selects the s px and dx orbits' projection for pdos plot.
 
-# The fields cannot be left blank, if you want select all the components for some fields,
+# The fields can be left blank, if you want select all the components for some fields,
 # just comment them. You can comment fields with '#'
 "#;
 
