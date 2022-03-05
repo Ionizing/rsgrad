@@ -34,8 +34,8 @@ pub struct ProjectedDOS {
 
 #[derive(Clone)]
 pub struct Procar {
-    kpoints: Kpoints,
-    pdos:    ProjectedDOS,
+    pub kpoints: Kpoints,
+    pub pdos:    ProjectedDOS,
 }
 
 impl Procar {

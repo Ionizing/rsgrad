@@ -16,6 +16,8 @@ use serde::{
     Deserialize,
 };
 use anyhow::{
+    anyhow,
+    Context,
     Error,
     bail,
 };
@@ -27,6 +29,7 @@ use crate::{
     Procar,
     Outcar,
     vasp_parsers::outcar::GetEFermi,
+    types::range_parse,
 };
 
 
@@ -42,18 +45,40 @@ struct RawSelection {
 #[derive(Clone)]
 struct Selection {
     label:      String,
-    ispins:     Vec<i32>,
-    ikpoints:   Vec<i32>,
-    iatoms:     Vec<i32>,
-    iorbits:    Vec<i32>,
+    ispins:     Vec<usize>,
+    ikpoints:   Vec<usize>,
+    iatoms:     Vec<usize>,
+    iorbits:    Vec<usize>,
 }
 
 
-trait ToSelection<F, T> { fn to_selection(f: F) -> T; }
-impl ToSelection<HashMap<String, RawSelection>, Vec<Selection>> for HashMap<String, RawSelection> {
-    fn to_selection(f: HashMap<String, RawSelection>) -> Vec<Selection> {
-        todo!();
+fn rawsel_to_sel(r: HashMap<String, RawSelection>, 
+                 nlm: &[String], 
+                 nions: usize, 
+                 nkpoints: usize) -> Result<Vec<Selection>> {
+
+    for (label, val) in r.into_iter() {
+        let iorbits = val.orbits.into_iter()
+            .map(|x| {
+                 nlm.iter().position(|x2| x2 == &x)
+                     .context(format!("Selected orbit {:?} is not available in {:?}", x, &nlm))
+                     .map(|x| x + 1)  // transform from 0 based index into 1 based index
+            })
+            .collect::<Result<Vec<_>>>()?;
+        let ispins = val.spins.into_iter()
+            .map(|x| {
+                match x.as_ref() {
+                    "up"    | "x"   => Ok(0),
+                    "down"  | "y"   => Ok(1),
+                    "z"             => Ok(2),
+                    "tot"           => Ok(3),
+                    _               => bail!("Invalid spin component selected: {}", x)
+                }
+            })
+            .collect::<Result<Vec<_>>>()?;
     }
+
+    todo!()
 }
 
 
@@ -128,6 +153,10 @@ pub struct Dos {
     /// Note: Your browser should be able to run plotly.js. Chrome, Safari, Edge, Firefox and
     /// etc. are supported.
     htmlout: PathBuf,
+
+    #[structopt(long)]
+    /// Print available orbits from PROCAR, this may be helpful when you write the configuration.
+    show_orbits: bool
 }
 
 
@@ -161,6 +190,15 @@ impl OptProcess for Dos {
             info!("Template file written to {:?}. Exiting", &conf_filename);
             
             return Ok(());
+        }
+
+        info!("Parsing PROCAR file {:?}", &self.procar);
+        let procar  = Procar::from_file(&self.procar)?;
+        let nlm     = procar.pdos.nlm.clone();
+        let nkpts   = procar.kpoints.nkpoints as usize;
+
+        if self.show_orbits {
+            info!("Available orbits are\n {:?}", &nlm);
         }
 
         Ok(())
