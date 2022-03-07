@@ -55,7 +55,9 @@ struct Selection {
 fn rawsel_to_sel(r: HashMap<String, RawSelection>, 
                  nlm: &[String], 
                  nions: usize, 
-                 nkpoints: usize) -> Result<Vec<Selection>> {
+                 nkpoints: usize,
+                 nspin: usize,
+                 is_ncl: bool) -> Result<Vec<Selection>> {
 
     for (label, val) in r.into_iter() {
         let iorbits = val.orbits.into_iter()
