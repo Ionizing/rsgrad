@@ -60,24 +60,48 @@ fn rawsel_to_sel(r: HashMap<String, RawSelection>,
                  is_ncl: bool) -> Result<Vec<Selection>> {
 
     for (label, val) in r.into_iter() {
-        let iorbits = val.orbits.into_iter()
-            .map(|x| {
-                 nlm.iter().position(|x2| x2 == &x)
-                     .context(format!("Selected orbit {:?} is not available in {:?}", x, &nlm))
-                     .map(|x| x + 1)  // transform from 0 based index into 1 based index
-            })
-            .collect::<Result<Vec<_>>>()?;
-        let ispins = val.spins.into_iter()
-            .map(|x| {
-                match x.as_ref() {
-                    "up"    | "x"   => Ok(0),
-                    "down"  | "y"   => Ok(1),
-                    "z"             => Ok(2),
-                    "tot"           => Ok(3),
-                    _               => bail!("Invalid spin component selected: {}", x)
-                }
-            })
-            .collect::<Result<Vec<_>>>()?;
+
+        let iorbits = if let Some(orbits) = val.orbits {
+            orbits.split_whitespace()
+                .map(|x| {
+                    nlm.iter().position(|x2| x2 == &x)
+                        .context(format!("Selected orbit {:?} not available in {:?}", x, &nlm))
+                })
+                .collect::<Result<Vec<_>>>()?
+        } else {
+            (0 .. nlm.len()).collect::<Vec<usize>>()
+        };
+
+        let ispins = if let Some(spins) = val.spins {
+            if is_ncl {
+
+            } else if nspin == 2 {
+
+            } else {
+
+            }
+            todo!()
+        } else {
+            if is_ncl {
+                vec![0usize]  // 'tot' part
+            } else if nspin == 2 {
+                vec![0usize, 1usize]  // spin up and spin down
+            } else {
+                vec![0usize]  // only one spin available
+            }
+        };
+
+        //let ispins = val.spins.into_iter()
+            //.map(|x| {
+                //match x.as_ref() {
+                    //"up"    | "x"   => Ok(0),
+                    //"down"  | "y"   => Ok(1),
+                    //"z"             => Ok(2),
+                    //"tot"           => Ok(3),
+                    //_               => bail!("Invalid spin component selected: {}", x)
+                //}
+            //})
+            //.collect::<Result<Vec<_>>>()?;
     }
 
     todo!()
