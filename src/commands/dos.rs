@@ -10,6 +10,7 @@ use structopt::{
 };
 use log::{
     info,
+    warn,
 };
 use serde::{
     Serialize,
@@ -74,13 +75,27 @@ fn rawsel_to_sel(r: HashMap<String, RawSelection>,
 
         let ispins = if let Some(spins) = val.spins {
             if is_ncl {
-
+                spins.split_whitespace()
+                    .map(|x| match x.to_ascii_lowercase().as_ref() {
+                        "x"         => Ok(1usize),
+                        "y"         => Ok(2usize),
+                        "z"         => Ok(3usize),
+                        "t" | "tot" => Ok(0usize),
+                        _ =>
+bail!("Invalid spin component selected: `{}`, available components are `x`, `y`, `z` and `tot`", x)
+                    }).collect::<Result<Vec<_>>>()?
             } else if nspin == 2 {
-
+                spins.split_whitespace()
+                    .map(|x| match x.to_ascii_lowercase().as_ref() {
+                        "u" | "up"           => Ok(0usize),
+                        "d" | "dn" | "down"  => Ok(0usize),
+                        _ =>
+bail!("Invalid spin component selected: `{}`, available components are `up` and `down`", x)
+                    }).collect::<Result<Vec<_>>>()?
             } else {
-
+                warn!("[DOS]: This system is not spin-polarized, only one spin component is available, selected by default.");
+                vec![0usize]
             }
-            todo!()
         } else {
             if is_ncl {
                 vec![0usize]  // 'tot' part
@@ -91,17 +106,6 @@ fn rawsel_to_sel(r: HashMap<String, RawSelection>,
             }
         };
 
-        //let ispins = val.spins.into_iter()
-            //.map(|x| {
-                //match x.as_ref() {
-                    //"up"    | "x"   => Ok(0),
-                    //"down"  | "y"   => Ok(1),
-                    //"z"             => Ok(2),
-                    //"tot"           => Ok(3),
-                    //_               => bail!("Invalid spin component selected: {}", x)
-                //}
-            //})
-            //.collect::<Result<Vec<_>>>()?;
     }
 
     todo!()
