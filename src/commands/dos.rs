@@ -15,12 +15,11 @@ use log::{
 use serde::{
     Serialize,
     Deserialize,
-    Deserializer,
 };
 use anyhow::{
-    anyhow,
+    //anyhow,
     Context,
-    Error,
+    //Error,
     bail,
 };
 use toml;
@@ -29,11 +28,17 @@ use crate::{
     Result,
     OptProcess,
     Procar,
-    Outcar,
+    //Outcar,
     vasp_parsers::outcar::GetEFermi,
-    types::range_parse,
-    types::index_transform,
+    types::{
+        range_parse,
+        index_transform,
+        Vector,
+    },
 };
+
+
+const PI: f64 = std::f64::consts::PI;
 
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -256,8 +261,55 @@ pub struct Dos {
     htmlout: PathBuf,
 
     #[structopt(long)]
-    /// Print available orbits from PROCAR, this may be helpful when you write the configuration.
-    show_orbits: bool
+    /// Print brief info of PROCAR, this may be helpful when you write the configuration.
+    show_brief: bool
+}
+
+
+// gaussian_smearing(x::AbstractArray, μ::Float64, σ=0.05) = @. exp(-(x-μ)^2 / (2*σ^2)) / (σ*sqrt(2π))
+fn smearing_gaussian(v: &Vector<f64>, mus: &[f64], sigma: f64) -> Vector<f64> {
+    let len = v.len();
+    let inv_two_sgm_sqr = 1.0 / (2.0 * sigma.powi(2));  // 1.0/(2*σ^2)
+    let inv_sgm_sqrt2pi = 1.0 / (sigma * (2.0 * PI).sqrt()); // 1.0/(σ*sqrt(2π))
+
+    let mut ret = Vector::<f64>::zeros(len);
+
+    for i in 0..len {
+        ret[i] += mus.as_ref().iter()
+            .map(|c| (-(v[i]-c).powi(2) * inv_two_sgm_sqr).exp() * inv_sgm_sqrt2pi)
+            .sum::<f64>();
+    }
+
+    ret
+}
+
+// lorentz_smearing(x::AbstractArray, x0::Float64, Γ=0.05) = @. Γ/(2π) / ((x-x0)^2 + (Γ/2)^2)
+fn smearing_lorentz(v: &Vector<f64>, x0s: &[f64], gamma: f64) -> Vector<f64> {
+    let len = v.len();
+    let gam_div_2pi = gamma / (2.0 * PI);  // Γ/(2π)
+    let gam_half_sqr = (gamma / 2.0).powi(2); // (Γ/2)^2
+
+    let mut ret = Vector::<f64>::zeros(len);
+
+    for i in 0..len {
+        ret[i] += x0s.as_ref().iter()
+            .map(|c| gam_div_2pi / ((v[i] - c).powi(2) + gam_half_sqr))
+            .sum::<f64>();
+    }
+
+    ret
+}
+
+pub fn apply_smearing(v: &Vector<f64>, centers: &[f64], width: f64, method: SmearingMethod) -> Vector<f64> {
+    match method {
+        SmearingMethod::Lorentz => smearing_lorentz(v, centers, width),
+        SmearingMethod::Gaussian => smearing_gaussian(v, centers, width),
+    }
+}
+
+
+fn gen_totdos() {
+    todo!()
 }
 
 
@@ -273,8 +325,8 @@ notot       = false             # plot the total dos
 [pdos.plot1]     # One label produces one plot, the labels CANNOT be repetitive.
 spins   = "up down"         # for ISPIN = 2 system, "up" and "down" are available,
                             # for LSORBIT = .TRUE. system, "x" "y" "z" and "tot" are available.
-kpoints = "1 3..7 -1"       # selects 1 3 4 5 6 7 and the last kpoint for pdos plot.
-atoms   = "1 3..7 -1"       # selects 1 3 4 5 6 7 and the last atoms' projection for pdos plot.
+kpoints = "1 3..7 -1"       # selects 1 3 4 5 6 7 and the last kpoint for pdos plot, starts from 1.
+atoms   = "1 3..7 -1"       # selects 1 3 4 5 6 7 and the last atoms' projection for pdos plot, starts from 1.
 orbits  = "s px dxy"         # selects the s px and dx orbits' projection for pdos plot.
 factor  = 1.01               # the factor multiplied to this pdos
 
@@ -299,10 +351,25 @@ impl OptProcess for Dos {
         let procar  = Procar::from_file(&self.procar)?;
         let nlm     = procar.pdos.nlm.clone();
         let nkpts   = procar.kpoints.nkpoints as usize;
+        let nions   = procar.pdos.nions as usize;
+        let is_ncl  = procar.pdos.lsorbit;
+        let nspin   = procar.pdos.nspin as usize;
+        let nbands  = procar.pdos.nbands as usize;
 
-        if self.show_orbits {
-            info!("Available orbits are\n {:?}", &nlm);
+        if self.show_brief {
+            info!("Brief info of current PROCAR:
+  orbitals = {:?}
+  NKPTS  = {}
+  NIONS  = {}
+  IS_NCL = {}
+  NSPIN  = {}
+  NBANDS = {}", &nlm, nkpts, nions, is_ncl, nspin, nbands);
+            return Ok(());
         }
+
+        info!("Parsing OUTCAR file {:?} for Fermi level", self.outcar);
+        let efermi = fs::read_to_string(&self.outcar)?.get_efermi()?;
+        info!("Found Fermi level = {}", efermi);
 
         Ok(())
     }
@@ -313,6 +380,28 @@ impl OptProcess for Dos {
 #[cfg(test)]
 mod test {
     use super::*;
+
+    const TEST_TEMPLATE: &'static str = r#"# rsgrad DOS configuration in toml format.
+method      = "Gaussian"        # smearing method
+sigma       = 0.05              # smearing width, (eV)
+procar      = "PROCAR"          # PROCAR path
+outcar      = "OUTCAR"          # OUTCAR path
+txtout      = "dos_raw.txt"     # save the raw data as "dos_raw.txt"
+htmlout     = "dos.html"        # save the pdos plot as "dos.html"
+notot       = false             # plot the total dos
+
+[pdos.plot1]                  # One label produces one plot, the labels CANNOT be repetitive.
+                              # each the label is 'plot1', to add more pdos, write '[pdos.plot2]' and so on.
+spins   = "up down"           # for ISPIN = 2 system, "up" and "down" are available,
+                              # for LSORBIT = .TRUE. system, "x" "y" "z" and "tot" are available.
+kpoints = "1 3..7 -1"         # selects 1 3 4 5 6 7 and the last kpoint for pdos plot.
+atoms   = "1 3..7 -1"         # selects 1 3 4 5 6 7 and the last atoms' projection for pdos plot.
+orbits  = "s px dxy"          # selects the s px and dx orbits' projection for pdos plot.
+factor  = 1.01                # the factor multiplied to this pdos
+
+# The fields can be left blank, if you want select all the components for some fields,
+# just comment them. You can comment fields with '#'
+"#;
     
     #[test]
     fn test_parse_rawconfig() {
@@ -325,7 +414,7 @@ mod test {
         let nspin = 2;
         let is_ncl = false;
 
-        let c: Configuration = toml::from_str(TEMPLATE).unwrap();
+        let c: Configuration = toml::from_str(TEST_TEMPLATE).unwrap();
         let v = rawsel_to_sel(c.clone().pdos.unwrap(),
                               &nlm,
                               nions,
@@ -337,7 +426,7 @@ mod test {
         assert_eq!(v[0].iatoms, &[0, 2, 3, 4, 5, 6, 7]);
         assert_eq!(v[0].ikpoints, &[0, 2, 3, 4, 5, 6, 17]);
         assert_eq!(v[0].iorbits, &[0, 3, 4]);
-        assert_eq!(v[0].factor, 1.01);
+        assert_eq!(v[0].factor, 1.0);
 
         let s = toml::to_string(&c).unwrap();
         println!("{}", s);
