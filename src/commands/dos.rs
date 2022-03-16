@@ -15,6 +15,7 @@ use log::{
 use serde::{
     Serialize,
     Deserialize,
+    Deserializer,
 };
 use anyhow::{
     anyhow,
@@ -31,6 +32,7 @@ use crate::{
     Outcar,
     vasp_parsers::outcar::GetEFermi,
     types::range_parse,
+    types::index_transform,
 };
 
 
@@ -40,16 +42,18 @@ struct RawSelection {
     kpoints:    Option<String>,
     atoms:      Option<String>,
     orbits:     Option<String>,
+    factor:     Option<f64>,
 }
 
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct Selection {
     label:      String,
     ispins:     Vec<usize>,
     ikpoints:   Vec<usize>,
     iatoms:     Vec<usize>,
     iorbits:    Vec<usize>,
+    factor:     f64,
 }
 
 
@@ -59,6 +63,8 @@ fn rawsel_to_sel(r: HashMap<String, RawSelection>,
                  nkpoints: usize,
                  nspin: usize,
                  is_ncl: bool) -> Result<Vec<Selection>> {
+
+    let mut sel_vec = vec![];
 
     for (label, val) in r.into_iter() {
 
@@ -88,7 +94,7 @@ bail!("Invalid spin component selected: `{}`, available components are `x`, `y`,
                 spins.split_whitespace()
                     .map(|x| match x.to_ascii_lowercase().as_ref() {
                         "u" | "up"           => Ok(0usize),
-                        "d" | "dn" | "down"  => Ok(0usize),
+                        "d" | "dn" | "down"  => Ok(1usize),
                         _ =>
 bail!("Invalid spin component selected: `{}`, available components are `up` and `down`", x)
                     }).collect::<Result<Vec<_>>>()?
@@ -106,14 +112,78 @@ bail!("Invalid spin component selected: `{}`, available components are `up` and 
             }
         };
 
+        let iatoms = if let Some(atoms) = val.atoms {
+            let mut ret = atoms.split_whitespace()
+                .map(|x| range_parse(x))
+                .collect::<Result<Vec<Vec<i32>>>>()?
+                .into_iter()
+                .map(|x| index_transform(x, nions).into_iter())
+                .flatten()
+                .map(|x| x - 1)
+                .collect::<Vec<usize>>();
+            ret.sort();
+            ret.dedup();
+
+            if ret.iter().any(|x| x >= &nions) {
+                bail!("[DOS]: Some selected atom index greater than NIONS");
+            }
+
+            ret
+        } else {  // All atoms selected if left blank
+            (0 .. nions).collect::<Vec<usize>>()
+        };
+
+        let ikpoints = if let Some(kpoints) = val.kpoints {
+            let mut ret = kpoints.split_whitespace()
+                .map(|x| range_parse(x))
+                .collect::<Result<Vec<Vec<i32>>>>()?
+                .into_iter()
+                .map(|x| index_transform(x, nkpoints).into_iter())
+                .flatten()
+                .map(|x| x - 1)
+                .collect::<Vec<usize>>();
+            ret.sort();
+            ret.dedup();
+
+            if ret.iter().any(|x| x >= &nkpoints) {
+                bail!("[DOS]: Some selected kpoint index greater than NKPTS");
+            }
+
+            ret
+        } else {
+            (0 .. nkpoints).collect::<Vec<usize>>()
+        };
+
+        let factor = val.factor.unwrap_or(1.0);
+
+        let sel = Selection {
+            label: label.to_string(),
+            ispins,
+            ikpoints,
+            iatoms,
+            iorbits,
+            factor,
+        };
+
+        sel_vec.push(sel);
     }
 
-    todo!()
+    Ok(sel_vec)
+}
+
+
+#[derive(Clone, Serialize, Deserialize)]
+pub enum SmearingMethod {
+    Gaussian,
+    Lorentz,
 }
 
 
 #[derive(Clone, Serialize, Deserialize)]
 struct Configuration {
+    #[serde(default = "Configuration::method_default")]
+    method: SmearingMethod,
+
     #[serde(default = "Configuration::sigma_default")]
     sigma: f64,
 
@@ -136,6 +206,7 @@ struct Configuration {
 }
 
 impl Configuration {
+    pub fn method_default() -> SmearingMethod { SmearingMethod::Gaussian }
     pub fn sigma_default() -> f64 { 0.05 }
     pub fn procar_default() -> PathBuf { PathBuf::from("./PROCAR") }
     pub fn outcar_default() -> PathBuf { PathBuf::from("./OUTCAR") }
@@ -191,19 +262,21 @@ pub struct Dos {
 
 
 const TEMPLATE: &'static str = r#"# rsgrad DOS configuration in toml format.
-#sigma = 0.05                    # smearing width
-#procar      = "PROCAR"          # pROCAR path
-#outcar      = "OUTCAR"          # oUTCAR path
-#txtout      = "dos_raw.txt"     # save the raw data as "dos_raw.txt"
-#htmlout     = "dos.html"        # save the pdos plot as "dos.html"
-#notot       = false             # plot the total dos
+method      = "Gaussian"        # smearing method
+sigma       = 0.05              # smearing width, (eV)
+procar      = "PROCAR"          # PROCAR path
+outcar      = "OUTCAR"          # OUTCAR path
+txtout      = "dos_raw.txt"     # save the raw data as "dos_raw.txt"
+htmlout     = "dos.html"        # save the pdos plot as "dos.html"
+notot       = false             # plot the total dos
 
-#[pdos.plot1]     # One label produces one plot, the labels CANNOT be repetitive.
-#spins   = "up down"         # for ISPIN = 2 system, "up" and "down" are available,
-#                            # for LSORBIT = .TRUE. system, "x" "y" "z" and "tot" are available.
-#kpoints = "1 3..7 -1"       # selects 1 3 4 5 6 7 and the last kpoint for pdos plot.
-#atoms   = "1 3..7 -1"       # selects 1 3 4 5 6 7 and the last atoms' projection for pdos plot.
-#orbits  = "s px dx"         # selects the s px and dx orbits' projection for pdos plot.
+[pdos.plot1]     # One label produces one plot, the labels CANNOT be repetitive.
+spins   = "up down"         # for ISPIN = 2 system, "up" and "down" are available,
+                            # for LSORBIT = .TRUE. system, "x" "y" "z" and "tot" are available.
+kpoints = "1 3..7 -1"       # selects 1 3 4 5 6 7 and the last kpoint for pdos plot.
+atoms   = "1 3..7 -1"       # selects 1 3 4 5 6 7 and the last atoms' projection for pdos plot.
+orbits  = "s px dxy"         # selects the s px and dx orbits' projection for pdos plot.
+factor  = 1.01               # the factor multiplied to this pdos
 
 # The fields can be left blank, if you want select all the components for some fields,
 # just comment them. You can comment fields with '#'
@@ -243,6 +316,31 @@ mod test {
     
     #[test]
     fn test_parse_rawconfig() {
-        let _: Configuration = toml::from_str(TEMPLATE).unwrap();
+        let nlm = "s     py     pz     px    dxy    dyz    dz2    dxz    dx2    tot" 
+            .split_whitespace()
+            .map(String::from)
+            .collect::<Vec<_>>();
+        let nions = 8usize;
+        let nkpoints = 18usize;
+        let nspin = 2;
+        let is_ncl = false;
+
+        let c: Configuration = toml::from_str(TEMPLATE).unwrap();
+        let v = rawsel_to_sel(c.clone().pdos.unwrap(),
+                              &nlm,
+                              nions,
+                              nkpoints,
+                              nspin,
+                              is_ncl).unwrap();
+        assert_eq!(v[0].label, "plot1");
+        assert_eq!(v[0].ispins, &[0, 1]);
+        assert_eq!(v[0].iatoms, &[0, 2, 3, 4, 5, 6, 7]);
+        assert_eq!(v[0].ikpoints, &[0, 2, 3, 4, 5, 6, 17]);
+        assert_eq!(v[0].iorbits, &[0, 3, 4]);
+        assert_eq!(v[0].factor, 1.01);
+
+        let s = toml::to_string(&c).unwrap();
+        println!("{}", s);
+        println!("{:?}", v);
     }
 }
