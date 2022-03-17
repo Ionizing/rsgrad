@@ -23,6 +23,10 @@ use anyhow::{
     bail,
 };
 use toml;
+use ndarray::{
+    self,
+    Array1,
+};
 
 use crate::{
     Result,
@@ -367,10 +371,9 @@ impl OptProcess for Dos {
         let sigma   = if let Some(cfg) = config.as_ref() {    cfg.sigma } else {          0.05 };
         let method  = if let Some(cfg) = config.as_ref() {   cfg.method } else { SmearingMethod::Gaussian };
         let notot   = if let Some(cfg) = config.as_ref() {    cfg.notot } else {         false };
-        
 
         info!("Parsing PROCAR file {:?}", procar);
-        let procar  = Procar::from_file(procar)?;
+        let mut procar  = Procar::from_file(procar)?;
         let nlm     = procar.pdos.nlm.clone();
         let nkpts   = procar.kpoints.nkpoints as usize;
         let nions   = procar.pdos.nions as usize;
@@ -391,7 +394,25 @@ impl OptProcess for Dos {
 
         info!("Parsing OUTCAR file {:?} for Fermi level", outcar);
         let efermi = fs::read_to_string(outcar)?.get_efermi()?;
-        info!("Found Fermi level = {}", efermi);
+        info!("Found Fermi level = {}, eigenvalues will be shifted.", efermi);
+
+        procar.pdos.eigvals -= efermi;
+
+        let emin = procar.pdos.eigvals
+            .iter()
+            .cloned()
+            .reduce(f64::min)
+            .unwrap();
+        let emax = procar.pdos.eigvals
+            .iter()
+            .cloned()
+            .reduce(f64::max)
+            .unwrap();
+
+        let nedos = (emax - emin).ceil() as usize * 400;  // 400 points per eV
+
+        let xvals = Array1::<f64>::linspace(emin-2.0, emax+2.0, nedos);
+
 
         Ok(())
     }
