@@ -181,7 +181,7 @@ fn rawsel_to_sel(r: HashMap<String, RawSelection>,
 }
 
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Copy, Serialize, Deserialize)]
 pub enum SmearingMethod {
     Gaussian,
     Lorentz,
@@ -271,8 +271,8 @@ pub struct Dos {
 
 
 // gaussian_smearing(x::AbstractArray, μ::Float64, σ=0.05) = @. exp(-(x-μ)^2 / (2*σ^2)) / (σ*sqrt(2π))
-fn smearing_gaussian(v: &Vector<f64>, mus: &[f64], sigma: f64) -> Vector<f64> {
-    let len = v.len();
+fn smearing_gaussian(x: &[f64], mus: &[f64], sigma: f64) -> Vector<f64> {
+    let len = x.len();
     let inv_two_sgm_sqr = 1.0 / (2.0 * sigma.powi(2));  // 1.0/(2*σ^2)
     let inv_sgm_sqrt2pi = 1.0 / (sigma * (2.0 * PI).sqrt()); // 1.0/(σ*sqrt(2π))
 
@@ -280,7 +280,7 @@ fn smearing_gaussian(v: &Vector<f64>, mus: &[f64], sigma: f64) -> Vector<f64> {
 
     for i in 0..len {
         ret[i] += mus.as_ref().iter()
-            .map(|c| (-(v[i]-c).powi(2) * inv_two_sgm_sqr).exp() * inv_sgm_sqrt2pi)
+            .map(|c| (-(x[i]-c).powi(2) * inv_two_sgm_sqr).exp() * inv_sgm_sqrt2pi)
             .sum::<f64>();
     }
 
@@ -288,8 +288,8 @@ fn smearing_gaussian(v: &Vector<f64>, mus: &[f64], sigma: f64) -> Vector<f64> {
 }
 
 // lorentz_smearing(x::AbstractArray, x0::Float64, Γ=0.05) = @. Γ/(2π) / ((x-x0)^2 + (Γ/2)^2)
-fn smearing_lorentz(v: &Vector<f64>, x0s: &[f64], gamma: f64) -> Vector<f64> {
-    let len = v.len();
+fn smearing_lorentz(x: &[f64], x0s: &[f64], gamma: f64) -> Vector<f64> {
+    let len = x.len();
     let gam_div_2pi = gamma / (2.0 * PI);  // Γ/(2π)
     let gam_half_sqr = (gamma / 2.0).powi(2); // (Γ/2)^2
 
@@ -297,17 +297,17 @@ fn smearing_lorentz(v: &Vector<f64>, x0s: &[f64], gamma: f64) -> Vector<f64> {
 
     for i in 0..len {
         ret[i] += x0s.as_ref().iter()
-            .map(|c| gam_div_2pi / ((v[i] - c).powi(2) + gam_half_sqr))
+            .map(|c| gam_div_2pi / ((x[i] - c).powi(2) + gam_half_sqr))
             .sum::<f64>();
     }
 
     ret
 }
 
-pub fn apply_smearing(v: &Vector<f64>, centers: &[f64], width: f64, method: SmearingMethod) -> Vector<f64> {
+fn apply_smearing(x: &[f64], centers: &[f64], width: f64, method: SmearingMethod) -> Vector<f64> {
     match method {
-        SmearingMethod::Lorentz => smearing_lorentz(v, centers, width),
-        SmearingMethod::Gaussian => smearing_gaussian(v, centers, width),
+        SmearingMethod::Lorentz  => smearing_lorentz(x, centers, width),
+        SmearingMethod::Gaussian => smearing_gaussian(x, centers, width),
     }
 }
 
@@ -351,8 +351,26 @@ impl OptProcess for Dos {
             return Ok(());
         }
 
-        info!("Parsing PROCAR file {:?}", &self.procar);
-        let procar  = Procar::from_file(&self.procar)?;
+        let config = if let Some(config) = self.config.as_ref() {
+            info!("Reading PDOS configuration from {:?}", self.config.as_ref());
+            let config = fs::read_to_string(config)?;
+            let config: Configuration = toml::from_str(&config)?;
+            Some(config)
+        } else {
+            None
+        };
+
+        let procar  = if let Some(cfg) = config.as_ref() {  &cfg.procar } else {  &self.procar };
+        let outcar  = if let Some(cfg) = config.as_ref() {  &cfg.outcar } else {  &self.outcar };
+        let txtout  = if let Some(cfg) = config.as_ref() {  &cfg.txtout } else {  &self.txtout };
+        let htmlout = if let Some(cfg) = config.as_ref() { &cfg.htmlout } else { &self.htmlout };
+        let sigma   = if let Some(cfg) = config.as_ref() {    cfg.sigma } else {          0.05 };
+        let method  = if let Some(cfg) = config.as_ref() {   cfg.method } else { SmearingMethod::Gaussian };
+        let notot   = if let Some(cfg) = config.as_ref() {    cfg.notot } else {         false };
+        
+
+        info!("Parsing PROCAR file {:?}", procar);
+        let procar  = Procar::from_file(procar)?;
         let nlm     = procar.pdos.nlm.clone();
         let nkpts   = procar.kpoints.nkpoints as usize;
         let nions   = procar.pdos.nions as usize;
@@ -371,8 +389,8 @@ impl OptProcess for Dos {
             return Ok(());
         }
 
-        info!("Parsing OUTCAR file {:?} for Fermi level", self.outcar);
-        let efermi = fs::read_to_string(&self.outcar)?.get_efermi()?;
+        info!("Parsing OUTCAR file {:?} for Fermi level", outcar);
+        let efermi = fs::read_to_string(outcar)?.get_efermi()?;
         info!("Found Fermi level = {}", efermi);
 
         Ok(())
