@@ -87,8 +87,7 @@ pub struct Workfunc {
     locpot: PathBuf,
 
     #[structopt(long, short = "o", default_value="./workfunction.html")]
-    /// Write the plot to html and view it in the web browser. If `use_local_plotly` is not set,
-    /// you may need internet connection to load `plotly.js`.
+    /// Write the plot to html and view it in the web browser.
     htmlout: PathBuf,
 
     #[structopt(long, default_value="locpot.txt")]
@@ -104,11 +103,6 @@ pub struct Workfunc {
                 case_insensitive = true)]
     /// Integration direction. e.g. if 'z' is provided, the XoY plane is integrated.
     axis: Axis,
-
-    #[structopt(long, short)]
-    /// Embed `plotly.js` in html, which can be viewed offline, and speed up loading efficiency,
-    /// but result in much larger output.
-    use_local_plotly: bool,
 }
 
 
@@ -172,9 +166,7 @@ impl OptProcess for Workfunc {
 
         let mut plot = plotly::Plot::new();
         plot.add_trace(trace);
-        if self.use_local_plotly {
-            plot.use_local_plotly();
-        }
+        plot.use_local_plotly();
 
         let layout = plotly::Layout::new()
             .title(plotly::common::Title::new(&format!("Work function along {} axis", self.axis)))
