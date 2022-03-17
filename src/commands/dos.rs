@@ -51,6 +51,93 @@ struct RawSelection {
 }
 
 
+impl RawSelection {
+    fn parse_ispins(input: Option<&str>, nspin: usize, is_ncl: bool) -> Result<Vec<usize>> {
+        if let Some(spins) = input {
+            if is_ncl {
+                spins.split_whitespace()
+                    .map(|x| match x.to_ascii_lowercase().as_ref() {
+                        "x"         => Ok(1usize),
+                        "y"         => Ok(2usize),
+                        "z"         => Ok(3usize),
+                        "t" | "tot" => Ok(0usize),
+                        _ =>
+bail!("[DOS]: Invalid spin component selected: `{}`, available components are `x`, `y`, `z` and `tot`", x)
+                    }).collect::<Result<Vec<_>>>()
+            } else if nspin == 2 {
+                spins.split_whitespace()
+                    .map(|x| match x.to_ascii_lowercase().as_ref() {
+                        "u" | "up"           => Ok(0usize),
+                        "d" | "dn" | "down"  => Ok(1usize),
+                        _ =>
+bail!("[DOS]: Invalid spin component selected: `{}`, available components are `up` and `down`", x)
+                    }).collect::<Result<Vec<_>>>()
+            } else {
+                warn!("[DOS]: This system is not spin-polarized, only one spin component is available, selected by default.");
+                Ok(vec![0usize])
+            }
+        } else {
+            Ok(if is_ncl {
+                vec![0usize]  // 'tot' part
+            } else if nspin == 2 {
+                vec![0usize, 1usize]  // spin up and spin down
+            } else {
+                vec![0usize]  // only one spin available
+            })
+        }
+    }
+
+    fn parse_iatoms(input: Option<&str>, nions: usize) -> Result<Vec<usize>> {
+        if let Some(atoms) = input {
+            let mut ret = atoms.split_whitespace()
+                .map(|x| range_parse(x))
+                .collect::<Result<Vec<Vec<i32>>>>()?
+                .into_iter()
+                .map(|x| index_transform(x, nions).into_iter())
+                .flatten()
+                .map(|x| x - 1)
+                .collect::<Vec<usize>>();
+            ret.sort();
+            ret.dedup();
+            Ok(ret)
+        } else {  // All atoms selected if left blank
+            Ok((0 .. nions).collect::<Vec<usize>>())
+        }
+    }
+
+    fn parse_ikpoints(input: Option<&str>, nkpoints: usize) -> Result<Vec<usize>> {
+        if let Some(kpoints) = input {
+            let mut ret = kpoints.split_whitespace()
+                .map(|x| range_parse(x))
+                .collect::<Result<Vec<Vec<i32>>>>()?
+                .into_iter()
+                .map(|x| index_transform(x, nkpoints).into_iter())
+                .flatten()
+                .map(|x| x - 1)
+                .collect::<Vec<usize>>();
+            ret.sort();
+            ret.dedup();
+            Ok(ret)
+        } else {
+            Ok((0 .. nkpoints).collect::<Vec<usize>>())
+        }
+    }
+
+    fn parse_iorbits(input: Option<&str>, nlm: &[String]) -> Result<Vec<usize>> {
+        if let Some(orbits) = input {
+            orbits.split_whitespace()
+                .map(|x| {
+                    nlm.iter().position(|x2| x2 == &x)
+                        .context(format!("Selected orbit {:?} not available in {:?}", x, &nlm))
+                })
+            .collect::<Result<Vec<_>>>()
+        } else {
+            Ok((0 .. nlm.len()).collect::<Vec<usize>>())
+        }
+    }
+}
+
+
 #[derive(Clone, Debug)]
 struct Selection {
     label:      String,
@@ -72,93 +159,10 @@ fn rawsel_to_sel(r: HashMap<String, RawSelection>,
     let mut sel_vec = vec![];
 
     for (label, val) in r.into_iter() {
-
-        let iorbits = if let Some(orbits) = val.orbits {
-            orbits.split_whitespace()
-                .map(|x| {
-                    nlm.iter().position(|x2| x2 == &x)
-                        .context(format!("Selected orbit {:?} not available in {:?}", x, &nlm))
-                })
-                .collect::<Result<Vec<_>>>()?
-        } else {
-            (0 .. nlm.len()).collect::<Vec<usize>>()
-        };
-
-        let ispins = if let Some(spins) = val.spins {
-            if is_ncl {
-                spins.split_whitespace()
-                    .map(|x| match x.to_ascii_lowercase().as_ref() {
-                        "x"         => Ok(1usize),
-                        "y"         => Ok(2usize),
-                        "z"         => Ok(3usize),
-                        "t" | "tot" => Ok(0usize),
-                        _ =>
-bail!("Invalid spin component selected: `{}`, available components are `x`, `y`, `z` and `tot`", x)
-                    }).collect::<Result<Vec<_>>>()?
-            } else if nspin == 2 {
-                spins.split_whitespace()
-                    .map(|x| match x.to_ascii_lowercase().as_ref() {
-                        "u" | "up"           => Ok(0usize),
-                        "d" | "dn" | "down"  => Ok(1usize),
-                        _ =>
-bail!("Invalid spin component selected: `{}`, available components are `up` and `down`", x)
-                    }).collect::<Result<Vec<_>>>()?
-            } else {
-                warn!("[DOS]: This system is not spin-polarized, only one spin component is available, selected by default.");
-                vec![0usize]
-            }
-        } else {
-            if is_ncl {
-                vec![0usize]  // 'tot' part
-            } else if nspin == 2 {
-                vec![0usize, 1usize]  // spin up and spin down
-            } else {
-                vec![0usize]  // only one spin available
-            }
-        };
-
-        let iatoms = if let Some(atoms) = val.atoms {
-            let mut ret = atoms.split_whitespace()
-                .map(|x| range_parse(x))
-                .collect::<Result<Vec<Vec<i32>>>>()?
-                .into_iter()
-                .map(|x| index_transform(x, nions).into_iter())
-                .flatten()
-                .map(|x| x - 1)
-                .collect::<Vec<usize>>();
-            ret.sort();
-            ret.dedup();
-
-            if ret.iter().any(|x| x >= &nions) {
-                bail!("[DOS]: Some selected atom index greater than NIONS");
-            }
-
-            ret
-        } else {  // All atoms selected if left blank
-            (0 .. nions).collect::<Vec<usize>>()
-        };
-
-        let ikpoints = if let Some(kpoints) = val.kpoints {
-            let mut ret = kpoints.split_whitespace()
-                .map(|x| range_parse(x))
-                .collect::<Result<Vec<Vec<i32>>>>()?
-                .into_iter()
-                .map(|x| index_transform(x, nkpoints).into_iter())
-                .flatten()
-                .map(|x| x - 1)
-                .collect::<Vec<usize>>();
-            ret.sort();
-            ret.dedup();
-
-            if ret.iter().any(|x| x >= &nkpoints) {
-                bail!("[DOS]: Some selected kpoint index greater than NKPTS");
-            }
-
-            ret
-        } else {
-            (0 .. nkpoints).collect::<Vec<usize>>()
-        };
-
+        let ispins = RawSelection::parse_ispins(    val.spins.as_deref(),   nspin,  is_ncl)?;
+        let ikpoints = RawSelection::parse_ikpoints(val.kpoints.as_deref(), nkpoints)?;
+        let iatoms = RawSelection::parse_iatoms(    val.atoms.as_deref(),   nions)?;
+        let iorbits = RawSelection::parse_iorbits(  val.orbits.as_deref(),  nlm)?;
         let factor = val.factor.unwrap_or(1.0);
 
         let sel = Selection {
@@ -405,7 +409,7 @@ factor  = 1.01                # the factor multiplied to this pdos
     
     #[test]
     fn test_parse_rawconfig() {
-        let nlm = "s     py     pz     px    dxy    dyz    dz2    dxz    dx2    tot" 
+        let nlm = "s     py     pz     px    dxy    dyz    dz2    dxz    dx2" 
             .split_whitespace()
             .map(String::from)
             .collect::<Vec<_>>();
@@ -426,10 +430,46 @@ factor  = 1.01                # the factor multiplied to this pdos
         assert_eq!(v[0].iatoms, &[0, 2, 3, 4, 5, 6, 7]);
         assert_eq!(v[0].ikpoints, &[0, 2, 3, 4, 5, 6, 17]);
         assert_eq!(v[0].iorbits, &[0, 3, 4]);
-        assert_eq!(v[0].factor, 1.0);
+        assert_eq!(v[0].factor, 1.01);
 
         let s = toml::to_string(&c).unwrap();
         println!("{}", s);
         println!("{:?}", v);
+    }
+
+    #[test]
+    fn test_parse_rawconfig_2() {
+        let nions = 8usize;
+        let nkpoints = 18usize;
+        let nspin = 1;
+        let is_ncl = true;
+        let nlm = "s     py     pz     px    dxy    dyz    dz2    dxz    dx2" 
+            .split_whitespace()
+            .map(String::from)
+            .collect::<Vec<_>>();
+        let cfg = r#"[pdos.plot1]
+spins = "down"
+"#;
+        let c:Configuration = toml::from_str(cfg).unwrap();
+        let v = rawsel_to_sel(c.clone().pdos.unwrap(),
+                              &nlm,
+                              nions,
+                              nkpoints,
+                              nspin,
+                              is_ncl);
+        assert!(v.is_err());
+
+        let nions = 8usize;
+        let nkpoints = 18usize;
+        let nspin = 1;
+        let is_ncl = false;
+        let nlm = "s     py     pz     px    dxy    dyz    dz2    dxz    dx2" 
+            .split_whitespace()
+            .map(String::from)
+            .collect::<Vec<_>>();
+        let cfg = r#"[pdos.plot1]
+spins = "down"
+"#;
+        
     }
 }
