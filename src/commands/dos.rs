@@ -23,9 +23,10 @@ use anyhow::{
     bail,
 };
 use toml;
+use plotly;
 use ndarray::{
     self,
-    Array1,
+    s,
 };
 
 use crate::{
@@ -316,8 +317,27 @@ fn apply_smearing(x: &[f64], centers: &[f64], width: f64, method: SmearingMethod
 }
 
 
-fn gen_totdos() {
-    todo!()
+fn gen_totdos(xvals: &[f64], procar: &Procar, sigma: f64, method: SmearingMethod) -> Vec<Vector<f64>> {
+    let nspin       = procar.pdos.nspin as usize;
+    let nkpoints    = procar.pdos.nkpoints as usize;
+    let mut totdos  = vec![Vector::<f64>::zeros(xvals.len()); 2];
+    
+    let weights = &procar.kpoints.weights;
+    let norm = weights.sum();
+
+    for ispin in 0 .. nspin {
+        for ikpoint in 0 .. nkpoints {
+            let eigs = procar.pdos.eigvals.slice(s![ispin, ikpoint, ..]).to_slice().unwrap();
+            if 0 == ispin {
+                totdos[ispin] += &(apply_smearing(xvals, eigs, sigma, method) * weights[ikpoint]);
+            } else {
+                totdos[ispin] -= &(apply_smearing(xvals, eigs, sigma, method) * weights[ikpoint]);
+            }
+        }
+        totdos[ispin] /= norm;
+    }
+
+    totdos
 }
 
 
@@ -410,9 +430,31 @@ impl OptProcess for Dos {
             .unwrap();
 
         let nedos = (emax - emin).ceil() as usize * 400;  // 400 points per eV
+        let xvals = Vector::<f64>::linspace(emin-2.0, emax+2.0, nedos);
 
-        let xvals = Array1::<f64>::linspace(emin-2.0, emax+2.0, nedos);
+        let totdos = if !notot { gen_totdos(xvals.as_slice().unwrap(), &procar, sigma, method) } else { vec![] };
 
+        let mut plot = plotly::Plot::new();
+        totdos.into_iter()
+            .map(|yvals| plotly::Scatter::from_array(xvals.clone(), yvals)
+                 .mode(plotly::common::Mode::Lines)
+                 .marker(plotly::common::Marker::new()
+                         .color(plotly::NamedColor::Grey))
+                 .fill_color(plotly::NamedColor::Grey))
+            .for_each(|tr| plot.add_trace(tr));
+
+        plot.use_local_plotly();
+        let layout = plotly::Layout::new()
+            .title(plotly::common::Title::new("Density of States"))
+            .y_axis(plotly::layout::Axis::new()
+                    .title(plotly::common::Title::new("DOS (arb. unit)"))
+                    .zero_line(true))
+            .x_axis(plotly::layout::Axis::new()
+                    .title(plotly::common::Title::new("E-Ef (eV)"))
+                    .range(vec![-2.0, 6.0])
+                    .zero_line(true));
+        plot.set_layout(layout);
+        plot.to_html(&htmlout);
 
         Ok(())
     }
