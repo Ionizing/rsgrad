@@ -320,21 +320,23 @@ fn apply_smearing(x: &[f64], centers: &[f64], width: f64, method: SmearingMethod
 fn gen_totdos(xvals: &[f64], procar: &Procar, sigma: f64, method: SmearingMethod) -> Vec<Vector<f64>> {
     let nspin       = procar.pdos.nspin as usize;
     let nkpoints    = procar.pdos.nkpoints as usize;
-    let mut totdos  = vec![Vector::<f64>::zeros(xvals.len()); 2];
+    let mut totdos  = vec![];
     
     let weights = &procar.kpoints.weights;
     let norm = weights.sum();
 
     for ispin in 0 .. nspin {
+        let mut tdos = Vector::<f64>::zeros(xvals.len());
         for ikpoint in 0 .. nkpoints {
             let eigs = procar.pdos.eigvals.slice(s![ispin, ikpoint, ..]).to_slice().unwrap();
             if 0 == ispin {
-                totdos[ispin] += &(apply_smearing(xvals, eigs, sigma, method) * weights[ikpoint]);
+                tdos += &(apply_smearing(xvals, eigs, sigma, method) * weights[ikpoint]);
             } else {
-                totdos[ispin] -= &(apply_smearing(xvals, eigs, sigma, method) * weights[ikpoint]);
+                tdos -= &(apply_smearing(xvals, eigs, sigma, method) * weights[ikpoint]);
             }
         }
-        totdos[ispin] /= norm;
+        tdos /= norm;
+        totdos.push(tdos);
     }
 
     totdos
@@ -438,6 +440,7 @@ impl OptProcess for Dos {
         totdos.into_iter()
             .map(|yvals| plotly::Scatter::from_array(xvals.clone(), yvals)
                  .mode(plotly::common::Mode::Lines)
+                 //.line(plotly::common::Line::new().shape(plotly::common::LineShape::Spline))
                  .marker(plotly::common::Marker::new()
                          .color(plotly::NamedColor::Grey))
                  .fill(plotly::common::Fill::ToZeroY))
@@ -448,7 +451,9 @@ impl OptProcess for Dos {
             .title(plotly::common::Title::new("Density of States"))
             .y_axis(plotly::layout::Axis::new()
                     .title(plotly::common::Title::new("DOS (arb. unit)"))
-                    .zero_line(true))
+                    .zero_line(true)
+                    .fixed_range(false)
+                    )
             .x_axis(plotly::layout::Axis::new()
                     .title(plotly::common::Title::new("E-Ef (eV)"))
                     .range(vec![-1.0, 6.0])
