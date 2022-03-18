@@ -440,7 +440,7 @@ impl OptProcess for Dos {
                  .mode(plotly::common::Mode::Lines)
                  .marker(plotly::common::Marker::new()
                          .color(plotly::NamedColor::Grey))
-                 .fill_color(plotly::NamedColor::Grey))
+                 .fill(plotly::common::Fill::ToZeroY))
             .for_each(|tr| plot.add_trace(tr));
 
         plot.use_local_plotly();
@@ -451,8 +451,10 @@ impl OptProcess for Dos {
                     .zero_line(true))
             .x_axis(plotly::layout::Axis::new()
                     .title(plotly::common::Title::new("E-Ef (eV)"))
-                    .range(vec![-2.0, 6.0])
-                    .zero_line(true));
+                    .range(vec![-1.0, 6.0])
+                    .zero_line(true)
+                    .range_slider(plotly::layout::RangeSlider::new().visible(true))
+                    );
         plot.set_layout(layout);
         plot.to_html(&htmlout);
 
