@@ -57,8 +57,17 @@ struct RawSelection {
 
 
 impl RawSelection {
+    /// Parse the spin options from configuration, the result is sorted and deduplicated.
+    ///
+    /// For ispin = 1 system, whatever in, vec![0] out;
+    /// For ispin = 2 system, it accepts 'u' 'd' 'up' 'down' 'dn' and uppercased strings;
+    /// For NCL system, it accepts 'x' 'y' 'z' 'tot' and uppercased strings.
     fn parse_ispins(input: Option<&str>, nspin: usize, is_ncl: bool) -> Result<Vec<usize>> {
-        if let Some(spins) = input {
+        let mut ret = if let Some(spins) = input {
+            if spins.trim().is_empty() {
+                bail!("[DOS]: No spin component selected.");
+            }
+
             if is_ncl {
                 spins.split_whitespace()
                     .map(|x| match x.to_ascii_lowercase().as_ref() {
@@ -89,7 +98,11 @@ bail!("[DOS]: Invalid spin component selected: `{}`, available components are `u
             } else {
                 vec![0usize]  // only one spin available
             })
-        }
+        }?;
+
+        ret.sort();
+        ret.dedup();
+        Ok(ret)
     }
 
     fn parse_iatoms(input: Option<&str>, nions: usize) -> Result<Vec<usize>> {
@@ -100,7 +113,7 @@ bail!("[DOS]: Invalid spin component selected: `{}`, available components are `u
                 .into_iter()
                 .map(|x| index_transform(x, nions).into_iter())
                 .flatten()
-                .map(|x| x - 1)
+                .map(|x| (x - 1).rem_euclid(nions))
                 .collect::<Vec<usize>>();
             ret.sort();
             ret.dedup();
@@ -526,38 +539,38 @@ factor  = 1.01                # the factor multiplied to this pdos
     }
 
     #[test]
-    fn test_parse_rawconfig_2() {
-        let nions = 8usize;
-        let nkpoints = 18usize;
-        let nspin = 1;
-        let is_ncl = true;
-        let nlm = "s     py     pz     px    dxy    dyz    dz2    dxz    dx2" 
-            .split_whitespace()
-            .map(String::from)
-            .collect::<Vec<_>>();
-        let cfg = r#"[pdos.plot1]
-spins = "down"
-"#;
-        let c:Configuration = toml::from_str(cfg).unwrap();
-        let v = rawsel_to_sel(c.clone().pdos.unwrap(),
-                              &nlm,
-                              nions,
-                              nkpoints,
-                              nspin,
-                              is_ncl);
-        assert!(v.is_err());
+    fn test_parse_ispins() {
+        // NCL system
+        assert_eq!(RawSelection::parse_ispins(Some("x y z t"),  1, true).unwrap(), vec![0, 1, 2, 3]);
+        assert_eq!(RawSelection::parse_ispins(Some("x y z t"),  3, true).unwrap(), vec![0, 1, 2, 3]);
+        assert_eq!(RawSelection::parse_ispins(None, 3, true).unwrap(), vec![0]);
+        assert!(RawSelection::parse_ispins(Some("x y z s"),     3, true).is_err());
+        assert!(RawSelection::parse_ispins(Some(""), 3, true).is_err());
+        assert!(RawSelection::parse_ispins(Some("u"),           1, true).is_err());
+        assert!(RawSelection::parse_ispins(Some("d"),           1, true).is_err());
 
-        let nions = 8usize;
-        let nkpoints = 18usize;
-        let nspin = 1;
-        let is_ncl = false;
-        let nlm = "s     py     pz     px    dxy    dyz    dz2    dxz    dx2" 
-            .split_whitespace()
-            .map(String::from)
-            .collect::<Vec<_>>();
-        let cfg = r#"[pdos.plot1]
-spins = "down"
-"#;
-        
+        // ISPIN = 2 system
+        assert_eq!(RawSelection::parse_ispins(Some("up down u d"),  2, false).unwrap(), vec![0, 1]);
+        assert_eq!(RawSelection::parse_ispins(Some("u U up UP"),    2, false).unwrap(), vec![0]);
+        assert_eq!(RawSelection::parse_ispins(Some("d D dn DN dN"), 2, false).unwrap(), vec![1]);
+        assert_eq!(RawSelection::parse_ispins(None,                 2, false).unwrap(), vec![0, 1]);
+        assert!(RawSelection::parse_ispins(Some(""),                2, false).is_err());
+        assert!(RawSelection::parse_ispins(Some("x"),               2, false).is_err());
+        assert!(RawSelection::parse_ispins(Some("y"),               2, false).is_err());
+        assert!(RawSelection::parse_ispins(Some("z"),               2, false).is_err());
+        assert!(RawSelection::parse_ispins(Some("t"),               2, false).is_err());
+
+        // ISPIN = 1 system
+        assert_eq!(RawSelection::parse_ispins(Some("t"), 1, false).unwrap(), vec![0]);
+        assert_eq!(RawSelection::parse_ispins(Some("u"), 1, false).unwrap(), vec![0]);
+        assert_eq!(RawSelection::parse_ispins(Some("d"), 1, false).unwrap(), vec![0]);
+        assert_eq!(RawSelection::parse_ispins(None,      1, false).unwrap(), vec![0]);
+    }
+
+
+    #[test]
+    fn test_parse_iatoms() {
+        assert_eq!(RawSelection::parse_iatoms(Some("1..8"), 5).unwrap(), vec![0, 1, 2, 3, 4]);
+        assert_eq!(RawSelection::parse_iatoms(Some("-2..-1"), 5).unwrap(), vec![3, 4]);
     }
 }
