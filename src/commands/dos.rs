@@ -115,6 +115,11 @@ bail!("[DOS]: Invalid spin component selected: `{}`, available components are `u
                 .flatten()
                 .map(|x| (x - 1).rem_euclid(nions))
                 .collect::<Vec<usize>>();
+
+            if ret.is_empty() {
+                bail!("[DOS]: No atoms selected.");
+            }
+
             ret.sort();
             ret.dedup();
             Ok(ret)
@@ -131,8 +136,13 @@ bail!("[DOS]: Invalid spin component selected: `{}`, available components are `u
                 .into_iter()
                 .map(|x| index_transform(x, nkpoints).into_iter())
                 .flatten()
-                .map(|x| x - 1)
+                .map(|x| (x - 1).rem_euclid(nkpoints))
                 .collect::<Vec<usize>>();
+
+            if ret.is_empty() {
+                bail!("[DOS]: No ikpoints selected.");
+            }
+
             ret.sort();
             ret.dedup();
             Ok(ret)
@@ -143,12 +153,21 @@ bail!("[DOS]: Invalid spin component selected: `{}`, available components are `u
 
     fn parse_iorbits(input: Option<&str>, nlm: &[String]) -> Result<Vec<usize>> {
         if let Some(orbits) = input {
-            orbits.split_whitespace()
+            if orbits.trim().is_empty() {
+                bail!("[DOS]: No orbits selected.");
+            }
+
+            let mut ret = orbits.split_whitespace()
                 .map(|x| {
                     nlm.iter().position(|x2| x2 == &x)
                         .context(format!("Selected orbit {:?} not available in {:?}", x, &nlm))
                 })
-            .collect::<Result<Vec<_>>>()
+            .collect::<Result<Vec<_>>>()?;
+            
+            ret.sort();
+            ret.dedup();
+
+            Ok(ret)
         } else {
             Ok((0 .. nlm.len()).collect::<Vec<usize>>())
         }
@@ -572,5 +591,33 @@ factor  = 1.01                # the factor multiplied to this pdos
     fn test_parse_iatoms() {
         assert_eq!(RawSelection::parse_iatoms(Some("1..8"), 5).unwrap(), vec![0, 1, 2, 3, 4]);
         assert_eq!(RawSelection::parse_iatoms(Some("-2..-1"), 5).unwrap(), vec![3, 4]);
+        assert_eq!(RawSelection::parse_iatoms(None, 5).unwrap(), vec![0, 1, 2, 3, 4]);
+        assert!(RawSelection::parse_iatoms(Some("-1..-2"), 5).is_err());
+        assert!(RawSelection::parse_iatoms(Some("t"), 5).is_err());
+    }
+
+    #[test]
+    fn test_parse_ikpoints() {
+        assert_eq!(RawSelection::parse_ikpoints(Some("1..8"), 5).unwrap(), vec![0, 1, 2, 3, 4]);
+        assert_eq!(RawSelection::parse_ikpoints(Some("-2..-1"), 5).unwrap(), vec![3, 4]);
+        assert_eq!(RawSelection::parse_ikpoints(None, 5).unwrap(), vec![0, 1, 2, 3, 4]);
+        assert!(RawSelection::parse_ikpoints(Some("-1..-2"), 5).is_err());
+        assert!(RawSelection::parse_ikpoints(Some("t"), 5).is_err());
+    }
+
+    #[test]
+    fn test_parse_iorbits() {
+        let nlm = "s     py     pz     px    dxy    dyz    dz2    dxz    dx2" 
+            .split_whitespace()
+            .map(str::to_string)
+            .collect::<Vec<_>>();
+
+        assert_eq!(RawSelection::parse_iorbits(None, &nlm).unwrap(), 
+                   (0usize .. 9).collect::<Vec<_>>());
+        assert_eq!(RawSelection::parse_iorbits(Some("s dx2"), &nlm).unwrap(), vec![0, 8]);
+        assert_eq!(RawSelection::parse_iorbits(Some("s     py     pz     px    dxy    dyz    dz2    dxz    dx2 dx2 s"), &nlm).unwrap(), 
+                   (0usize .. 9).collect::<Vec<_>>());
+        assert!(RawSelection::parse_iorbits(Some("  \n"), &nlm).is_err());
+        assert!(RawSelection::parse_iorbits(Some(" y"), &nlm).is_err());
     }
 }
