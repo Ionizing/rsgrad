@@ -8,10 +8,7 @@ use structopt::{
     StructOpt,
     clap::AppSettings,
 };
-use log::{
-    info,
-    warn,
-};
+use log::info;
 use serde::{
     Serialize,
     Deserialize,
@@ -35,144 +32,15 @@ use crate::{
     Procar,
     //Outcar,
     vasp_parsers::outcar::GetEFermi,
-    types::{
-        range_parse,
-        index_transform,
-        Vector,
-    },
+    types::Vector,
+    commands::common::{
+        RawSelection,
+        write_array_to_txt,
+    }
 };
 
 
 const PI: f64 = std::f64::consts::PI;
-
-
-#[derive(Clone, Serialize, Deserialize)]
-struct RawSelection {
-    spins:      Option<String>,
-    kpoints:    Option<String>,
-    atoms:      Option<String>,
-    orbits:     Option<String>,
-    factor:     Option<f64>,
-}
-
-
-impl RawSelection {
-    /// Parse the spin options from configuration, the result is sorted and deduplicated.
-    ///
-    /// For ispin = 1 system, whatever in, vec![0] out;
-    /// For ispin = 2 system, it accepts 'u' 'd' 'up' 'down' 'dn' and uppercased strings;
-    /// For NCL system, it accepts 'x' 'y' 'z' 'tot' and uppercased strings.
-    fn parse_ispins(input: Option<&str>, nspin: usize, is_ncl: bool) -> Result<Vec<usize>> {
-        let mut ret = if let Some(spins) = input {
-            if spins.trim().is_empty() {
-                bail!("[DOS]: No spin component selected.");
-            }
-
-            if is_ncl {
-                spins.split_whitespace()
-                    .map(|x| match x.to_ascii_lowercase().as_ref() {
-                        "x"         => Ok(1usize),
-                        "y"         => Ok(2usize),
-                        "z"         => Ok(3usize),
-                        "t" | "tot" => Ok(0usize),
-                        _ =>
-bail!("[DOS]: Invalid spin component selected: `{}`, available components are `x`, `y`, `z` and `tot`", x)
-                    }).collect::<Result<Vec<_>>>()
-            } else if nspin == 2 {
-                spins.split_whitespace()
-                    .map(|x| match x.to_ascii_lowercase().as_ref() {
-                        "u" | "up"           => Ok(0usize),
-                        "d" | "dn" | "down"  => Ok(1usize),
-                        _ =>
-bail!("[DOS]: Invalid spin component selected: `{}`, available components are `up` and `down`", x)
-                    }).collect::<Result<Vec<_>>>()
-            } else {
-                warn!("[DOS]: This system is not spin-polarized, only one spin component is available, selected by default.");
-                Ok(vec![0usize])
-            }
-        } else {
-            Ok(if is_ncl {
-                vec![0usize]  // 'tot' part
-            } else if nspin == 2 {
-                vec![0usize, 1usize]  // spin up and spin down
-            } else {
-                vec![0usize]  // only one spin available
-            })
-        }?;
-
-        ret.sort();
-        ret.dedup();
-        Ok(ret)
-    }
-
-    fn parse_iatoms(input: Option<&str>, nions: usize) -> Result<Vec<usize>> {
-        if let Some(atoms) = input {
-            let mut ret = atoms.split_whitespace()
-                .map(|x| range_parse(x))
-                .collect::<Result<Vec<Vec<i32>>>>()?
-                .into_iter()
-                .map(|x| index_transform(x, nions).into_iter())
-                .flatten()
-                .map(|x| (x - 1).rem_euclid(nions))
-                .collect::<Vec<usize>>();
-
-            if ret.is_empty() {
-                bail!("[DOS]: No atoms selected.");
-            }
-
-            ret.sort();
-            ret.dedup();
-            Ok(ret)
-        } else {  // All atoms selected if left blank
-            Ok((0 .. nions).collect::<Vec<usize>>())
-        }
-    }
-
-    fn parse_ikpoints(input: Option<&str>, nkpoints: usize) -> Result<Vec<usize>> {
-        if let Some(kpoints) = input {
-            let mut ret = kpoints.split_whitespace()
-                .map(|x| range_parse(x))
-                .collect::<Result<Vec<Vec<i32>>>>()?
-                .into_iter()
-                .map(|x| index_transform(x, nkpoints).into_iter())
-                .flatten()
-                .map(|x| (x - 1).rem_euclid(nkpoints))
-                .collect::<Vec<usize>>();
-
-            if ret.is_empty() {
-                bail!("[DOS]: No ikpoints selected.");
-            }
-
-            ret.sort();
-            ret.dedup();
-            Ok(ret)
-        } else {
-            Ok((0 .. nkpoints).collect::<Vec<usize>>())
-        }
-    }
-
-    fn parse_iorbits(input: Option<&str>, nlm: &[String]) -> Result<Vec<usize>> {
-        if let Some(orbits) = input {
-            if orbits.trim().is_empty() {
-                bail!("[DOS]: No orbits selected.");
-            }
-
-            let mut ret = orbits.split_whitespace()
-                .map(|x| {
-                    nlm.iter().position(|x2| x2 == &x)
-                        .context(format!("Selected orbit {:?} not available in {:?}", x, &nlm))
-                })
-            .collect::<Result<Vec<_>>>()?;
-            
-            ret.sort();
-            ret.dedup();
-
-            Ok(ret)
-        } else {
-            Ok((0 .. nlm.len()).collect::<Vec<usize>>())
-        }
-    }
-}
 
 
 #[derive(Clone, Debug)]
@@ -196,11 +64,11 @@ fn rawsel_to_sel(r: HashMap<String, RawSelection>,
     let mut sel_vec = vec![];
 
     for (label, val) in r.into_iter() {
-        let ispins = RawSelection::parse_ispins(    val.spins.as_deref(),   nspin,  is_ncl)?;
-        let ikpoints = RawSelection::parse_ikpoints(val.kpoints.as_deref(), nkpoints)?;
-        let iatoms = RawSelection::parse_iatoms(    val.atoms.as_deref(),   nions)?;
-        let iorbits = RawSelection::parse_iorbits(  val.orbits.as_deref(),  nlm)?;
-        let factor = val.factor.unwrap_or(1.0);
+        let ispins      = RawSelection::parse_ispins(   val.spins.as_deref(),   nspin,  is_ncl)?;
+        let ikpoints    = RawSelection::parse_ikpoints( val.kpoints.as_deref(), nkpoints)?;
+        let iatoms      = RawSelection::parse_iatoms(   val.atoms.as_deref(),   nions)?;
+        let iorbits     = RawSelection::parse_iorbits(  val.orbits.as_deref(),  nlm)?;
+        let factor      = val.factor.unwrap_or(1.0);
 
         let sel = Selection {
             label: label.to_string(),
@@ -349,7 +217,7 @@ fn apply_smearing(x: &[f64], centers: &[f64], width: f64, method: SmearingMethod
 }
 
 
-fn gen_totdos(xvals: &[f64], procar: &Procar, sigma: f64, method: SmearingMethod) -> Vec<Vector<f64>> {
+fn gen_totdos(xvals: &[f64], procar: &Procar, sigma: f64, method: SmearingMethod) -> Vector<f64> {
     let nspin       = procar.pdos.nspin as usize;
     let nkpoints    = procar.pdos.nkpoints as usize;
     let mut totdos  = vec![];
@@ -368,10 +236,22 @@ fn gen_totdos(xvals: &[f64], procar: &Procar, sigma: f64, method: SmearingMethod
             }
         }
         tdos /= norm;
+
+        let tdos = if 0 == ispin {
+            tdos.into_raw_vec()
+        } else {
+            let mut r = tdos.into_raw_vec();
+            r.reverse();
+            r
+        };
+
         totdos.push(tdos);
     }
 
-    totdos
+    totdos.into_iter()
+        .map(|x| x.into_iter())
+        .flatten()
+        .collect::<_>()
 }
 
 
@@ -463,20 +343,31 @@ impl OptProcess for Dos {
             .reduce(f64::max)
             .unwrap();
 
-        let nedos = (emax - emin).ceil() as usize * 400;  // 400 points per eV
-        let xvals = Vector::<f64>::linspace(emin-2.0, emax+2.0, nedos);
-
-        let totdos = if !notot { gen_totdos(xvals.as_slice().unwrap(), &procar, sigma, method) } else { vec![] };
 
         let mut plot = plotly::Plot::new();
-        totdos.into_iter()
-            .map(|yvals| plotly::Scatter::from_array(xvals.clone(), yvals)
-                 .mode(plotly::common::Mode::Lines)
-                 //.line(plotly::common::Line::new().shape(plotly::common::LineShape::Spline))
-                 .marker(plotly::common::Marker::new()
-                         .color(plotly::NamedColor::Grey))
-                 .fill(plotly::common::Fill::ToZeroY))
-            .for_each(|tr| plot.add_trace(tr));
+
+        let nedos = (emax - emin).ceil() as usize * 400;  // 400 points per eV
+        let xvals = Vector::<f64>::linspace(emin-2.0, emax+2.0, nedos);
+        let xvals_plot = if nspin == 1 {
+            xvals.clone()
+        } else {
+            xvals.clone()
+                .into_iter()
+                .chain(xvals.clone().into_raw_vec().into_iter().rev())
+                .collect::<Vector<f64>>()
+        };
+
+        let totdos = gen_totdos(xvals.as_slice().unwrap(), &procar, sigma, method);
+
+        if !notot {
+            let tr = plotly::Scatter::from_array(xvals_plot.clone(), totdos.clone())
+                .mode(plotly::common::Mode::Lines)
+                .marker(plotly::common::Marker::new()
+                        .color(plotly::NamedColor::Grey))
+                .fill(plotly::common::Fill::ToZeroY)
+                .name("Total DOS");
+            plot.add_trace(tr);
+        };
 
         plot.use_local_plotly();
         let layout = plotly::Layout::new()
@@ -493,7 +384,12 @@ impl OptProcess for Dos {
                     .range_slider(plotly::layout::RangeSlider::new().visible(true))
                     );
         plot.set_layout(layout);
+
+        info!("Writing DOS plot to {:?}", htmlout);
         plot.to_html(&htmlout);
+
+        info!("Writing raw DOS data to {:?}", txtout);
+        write_array_to_txt(txtout, vec![&xvals_plot, &totdos], "E-Ef TOTDOS")?;
 
         Ok(())
     }
@@ -557,67 +453,4 @@ factor  = 1.01                # the factor multiplied to this pdos
         println!("{:?}", v);
     }
 
-    #[test]
-    fn test_parse_ispins() {
-        // NCL system
-        assert_eq!(RawSelection::parse_ispins(Some("x y z t"),  1, true).unwrap(), vec![0, 1, 2, 3]);
-        assert_eq!(RawSelection::parse_ispins(Some("x y z t"),  3, true).unwrap(), vec![0, 1, 2, 3]);
-        assert_eq!(RawSelection::parse_ispins(None, 3, true).unwrap(), vec![0]);
-        assert!(RawSelection::parse_ispins(Some("x y z s"),     3, true).is_err());
-        assert!(RawSelection::parse_ispins(Some(""), 3, true).is_err());
-        assert!(RawSelection::parse_ispins(Some("u"),           1, true).is_err());
-        assert!(RawSelection::parse_ispins(Some("d"),           1, true).is_err());
-
-        // ISPIN = 2 system
-        assert_eq!(RawSelection::parse_ispins(Some("up down u d"),  2, false).unwrap(), vec![0, 1]);
-        assert_eq!(RawSelection::parse_ispins(Some("u U up UP"),    2, false).unwrap(), vec![0]);
-        assert_eq!(RawSelection::parse_ispins(Some("d D dn DN dN"), 2, false).unwrap(), vec![1]);
-        assert_eq!(RawSelection::parse_ispins(None,                 2, false).unwrap(), vec![0, 1]);
-        assert!(RawSelection::parse_ispins(Some(""),                2, false).is_err());
-        assert!(RawSelection::parse_ispins(Some("x"),               2, false).is_err());
-        assert!(RawSelection::parse_ispins(Some("y"),               2, false).is_err());
-        assert!(RawSelection::parse_ispins(Some("z"),               2, false).is_err());
-        assert!(RawSelection::parse_ispins(Some("t"),               2, false).is_err());
-
-        // ISPIN = 1 system
-        assert_eq!(RawSelection::parse_ispins(Some("t"), 1, false).unwrap(), vec![0]);
-        assert_eq!(RawSelection::parse_ispins(Some("u"), 1, false).unwrap(), vec![0]);
-        assert_eq!(RawSelection::parse_ispins(Some("d"), 1, false).unwrap(), vec![0]);
-        assert_eq!(RawSelection::parse_ispins(None,      1, false).unwrap(), vec![0]);
-    }
-
-
-    #[test]
-    fn test_parse_iatoms() {
-        assert_eq!(RawSelection::parse_iatoms(Some("1..8"), 5).unwrap(), vec![0, 1, 2, 3, 4]);
-        assert_eq!(RawSelection::parse_iatoms(Some("-2..-1"), 5).unwrap(), vec![3, 4]);
-        assert_eq!(RawSelection::parse_iatoms(None, 5).unwrap(), vec![0, 1, 2, 3, 4]);
-        assert!(RawSelection::parse_iatoms(Some("-1..-2"), 5).is_err());
-        assert!(RawSelection::parse_iatoms(Some("t"), 5).is_err());
-    }
-
-    #[test]
-    fn test_parse_ikpoints() {
-        assert_eq!(RawSelection::parse_ikpoints(Some("1..8"), 5).unwrap(), vec![0, 1, 2, 3, 4]);
-        assert_eq!(RawSelection::parse_ikpoints(Some("-2..-1"), 5).unwrap(), vec![3, 4]);
-        assert_eq!(RawSelection::parse_ikpoints(None, 5).unwrap(), vec![0, 1, 2, 3, 4]);
-        assert!(RawSelection::parse_ikpoints(Some("-1..-2"), 5).is_err());
-        assert!(RawSelection::parse_ikpoints(Some("t"), 5).is_err());
-    }
-
-    #[test]
-    fn test_parse_iorbits() {
-        let nlm = "s     py     pz     px    dxy    dyz    dz2    dxz    dx2" 
-            .split_whitespace()
-            .map(str::to_string)
-            .collect::<Vec<_>>();
-
-        assert_eq!(RawSelection::parse_iorbits(None, &nlm).unwrap(), 
-                   (0usize .. 9).collect::<Vec<_>>());
-        assert_eq!(RawSelection::parse_iorbits(Some("s dx2"), &nlm).unwrap(), vec![0, 8]);
-        assert_eq!(RawSelection::parse_iorbits(Some("s     py     pz     px    dxy    dyz    dz2    dxz    dx2 dx2 s"), &nlm).unwrap(), 
-                   (0usize .. 9).collect::<Vec<_>>());
-        assert!(RawSelection::parse_iorbits(Some("  \n"), &nlm).is_err());
-        assert!(RawSelection::parse_iorbits(Some(" y"), &nlm).is_err());
-    }
 }

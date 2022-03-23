@@ -1,11 +1,4 @@
-use std::{
-    io::Write,
-    fs,
-    path::{
-        Path,
-        PathBuf
-    },
-};
+use std::path::PathBuf;
 use structopt::{
     StructOpt,
     clap::AppSettings,
@@ -15,13 +8,9 @@ use rayon;
 use anyhow::{
     Context,
     anyhow,
-    bail,
 };
 use log::info;
-use ndarray::{
-    self,
-    Array1,
-};
+use ndarray;
 use plotly;
 
 use crate::{
@@ -30,6 +19,7 @@ use crate::{
     ChargeDensity,
     ChargeType,
     Outcar,
+    commands::common::write_array_to_txt,
 };
 
 arg_enum!{
@@ -39,38 +29,6 @@ arg_enum!{
         Y,
         Z
     }
-}
-
-
-fn write_array_to_txt(file_name: &(impl AsRef<Path> + ?Sized), ys: Vec<&Array1<f64>>, comment: &str) -> Result<()> {
-    let ncol = ys.len();
-
-    let x = ys.get(0).context("At lease two data sets are needed")?;
-    let nrow = x.len();
-
-    if nrow == 0 || !ys.iter().all(|y| y.len() == nrow) {
-        bail!("[WRT_ARRAY]: input data with zero length or they don't have consistent lengths");
-    }
-
-    let mut f = fs::OpenOptions::new()
-        .create(true)
-        .truncate(true)
-        .write(true)
-        .open(file_name)?;
-
-    writeln!(f, "# {}", comment.trim())?;
-
-    for irow in 0 .. nrow {
-        let mut s = String::with_capacity(8);
-        for icol in 0 .. ncol {
-            s.push_str(&format!("  {:15.6}", ys[icol][irow]));
-        }
-        s.push('\n');
-
-        f.write(s.as_bytes())?;
-    }
-    
-    Ok(())
 }
 
 
