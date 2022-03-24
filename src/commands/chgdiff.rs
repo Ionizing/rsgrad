@@ -20,8 +20,9 @@ use crate::{
 #[derive(Debug, StructOpt)]
 #[structopt(setting = AppSettings::ColoredHelp,
             setting = AppSettings::ColorAuto)]
-/// Calculate charge density difference. The operation is performed by
-/// `chgdiff = chgcar_ab - (chgcar_a + chgcar_b)`.
+/// Calculate charge density difference. 
+///
+/// The operation is performed by `chgdiff = chgcar_ab - (chgcar_a + chgcar_b)`.
 pub struct Chgdiff {
     /// The CHGCAR of A+B system
     chgcar_ab: PathBuf,
