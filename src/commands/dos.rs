@@ -64,7 +64,11 @@ fn rawsel_to_sel(r: HashMap<String, RawSelection>,
     let mut sel_vec = vec![];
 
     for (label, val) in r.into_iter() {
-        let ispins      = RawSelection::parse_ispins(   val.spins.as_deref(),   nspin,  is_ncl)?;
+        let ispins      = if is_ncl {
+            RawSelection::parse_ispins(   val.spins.as_deref(),   nspin,  is_ncl)?
+        } else {
+            RawSelection::parse_ispins(                   None,   nspin,  is_ncl)?
+        };
         let ikpoints    = RawSelection::parse_ikpoints( val.kpoints.as_deref(), nkpoints)?;
         let iatoms      = RawSelection::parse_iatoms(   val.atoms.as_deref(),   nions)?;
         let iorbits     = RawSelection::parse_iorbits(  val.orbits.as_deref(),  nlm)?;
@@ -256,6 +260,7 @@ fn gen_totdos(xvals: &[f64], procar: &Procar, sigma: f64, method: SmearingMethod
 
 
 const TEMPLATE: &'static str = r#"# rsgrad DOS configuration in toml format.
+# If you want some options to be default, just comment the whole lines.
 method      = "Gaussian"        # smearing method
 sigma       = 0.05              # smearing width, (eV)
 procar      = "PROCAR"          # PROCAR path
@@ -265,12 +270,11 @@ htmlout     = "dos.html"        # save the pdos plot as "dos.html"
 notot       = false             # plot the total dos
 
 [pdos.plot1]     # One label produces one plot, the labels CANNOT be repetitive.
-spins   = "up down"         # for ISPIN = 2 system, "up" and "down" are available,
-                            # for LSORBIT = .TRUE. system, "x" "y" "z" and "tot" are available.
+# spins   = "x y"           # for LSORBIT = .TRUE. system only, "x" "y" "z" and "tot" are available.
 kpoints = "1 3..7 -1"       # selects 1 3 4 5 6 7 and the last kpoint for pdos plot, starts from 1.
 atoms   = "1 3..7 -1"       # selects 1 3 4 5 6 7 and the last atoms' projection for pdos plot, starts from 1.
-orbits  = "s px dxy"         # selects the s px and dx orbits' projection for pdos plot.
-factor  = 1.01               # the factor multiplied to this pdos
+orbits  = "s px dxy"        # selects the s px and dx orbits' projection for pdos plot.
+factor  = 1.01              # the factor multiplied to this pdos
 
 # The fields can be left blank, if you want select all the components for some fields,
 # just comment them. You can comment fields with '#'
@@ -402,6 +406,7 @@ mod test {
     use super::*;
 
     const TEST_TEMPLATE: &'static str = r#"# rsgrad DOS configuration in toml format.
+# multiple tokens inside string are seperated by whitespace
 method      = "Gaussian"        # smearing method
 sigma       = 0.05              # smearing width, (eV)
 procar      = "PROCAR"          # PROCAR path
@@ -412,8 +417,7 @@ notot       = false             # plot the total dos
 
 [pdos.plot1]                  # One label produces one plot, the labels CANNOT be repetitive.
                               # each the label is 'plot1', to add more pdos, write '[pdos.plot2]' and so on.
-spins   = "up down"           # for ISPIN = 2 system, "up" and "down" are available,
-                              # for LSORBIT = .TRUE. system, "x" "y" "z" and "tot" are available.
+#spins   = "x y z"             # for LSORBIT = .TRUE. system only, "x" "y" "z" and "tot" are available.
 kpoints = "1 3..7 -1"         # selects 1 3 4 5 6 7 and the last kpoint for pdos plot.
 atoms   = "1 3..7 -1"         # selects 1 3 4 5 6 7 and the last atoms' projection for pdos plot.
 orbits  = "s px dxy"          # selects the s px and dx orbits' projection for pdos plot.
