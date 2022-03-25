@@ -46,7 +46,6 @@ const PI: f64 = std::f64::consts::PI;
 #[derive(Clone, Debug)]
 struct Selection {
     label:      String,
-    ispins:     Vec<usize>,
     ikpoints:   Vec<usize>,
     iatoms:     Vec<usize>,
     iorbits:    Vec<usize>,
@@ -57,18 +56,11 @@ struct Selection {
 fn rawsel_to_sel(r: HashMap<String, RawSelection>, 
                  nlm: &[String], 
                  nions: usize, 
-                 nkpoints: usize,
-                 nspin: usize,
-                 is_ncl: bool) -> Result<Vec<Selection>> {
+                 nkpoints: usize) -> Result<Vec<Selection>> {
 
     let mut sel_vec = vec![];
 
     for (label, val) in r.into_iter() {
-        let ispins      = if is_ncl {
-            RawSelection::parse_ispins(   val.spins.as_deref(),   nspin,  is_ncl)?
-        } else {
-            RawSelection::parse_ispins(                   None,   nspin,  is_ncl)?
-        };
         let ikpoints    = RawSelection::parse_ikpoints( val.kpoints.as_deref(), nkpoints)?;
         let iatoms      = RawSelection::parse_iatoms(   val.atoms.as_deref(),   nions)?;
         let iorbits     = RawSelection::parse_iorbits(  val.orbits.as_deref(),  nlm)?;
@@ -76,7 +68,6 @@ fn rawsel_to_sel(r: HashMap<String, RawSelection>,
 
         let sel = Selection {
             label: label.to_string(),
-            ispins,
             ikpoints,
             iatoms,
             iorbits,
@@ -179,83 +170,123 @@ pub struct Dos {
 }
 
 
-// gaussian_smearing(x::AbstractArray, μ::Float64, σ=0.05) = @. exp(-(x-μ)^2 / (2*σ^2)) / (σ*sqrt(2π))
-fn smearing_gaussian(x: &[f64], mus: &[f64], sigma: f64) -> Vector<f64> {
-    let len = x.len();
-    let inv_two_sgm_sqr = 1.0 / (2.0 * sigma.powi(2));  // 1.0/(2*σ^2)
-    let inv_sgm_sqrt2pi = 1.0 / (sigma * (2.0 * PI).sqrt()); // 1.0/(σ*sqrt(2π))
+impl Dos {
+    // gaussian_smearing(x::AbstractArray, μ::Float64, σ=0.05) = @. exp(-(x-μ)^2 / (2*σ^2)) / (σ*sqrt(2π))
+    fn smearing_gaussian(x: &[f64], mus: &[f64], sigma: f64, scales: &[f64]) -> Vector<f64> {
+        let xlen = x.len();
+        let clen = mus.len();
+        let inv_two_sgm_sqr = 1.0 / (2.0 * sigma.powi(2));  // 1.0/(2*σ^2)
+        let inv_sgm_sqrt2pi = 1.0 / (sigma * (2.0 * PI).sqrt()); // 1.0/(σ*sqrt(2π))
 
-    let mut ret = Vector::<f64>::zeros(len);
+        let mut ret = Vector::<f64>::zeros(xlen);
 
-    for i in 0..len {
-        ret[i] += mus.as_ref().iter()
-            .map(|c| (-(x[i]-c).powi(2) * inv_two_sgm_sqr).exp() * inv_sgm_sqrt2pi)
-            .sum::<f64>();
-    }
-
-    ret
-}
-
-// lorentz_smearing(x::AbstractArray, x0::Float64, Γ=0.05) = @. Γ/(2π) / ((x-x0)^2 + (Γ/2)^2)
-fn smearing_lorentz(x: &[f64], x0s: &[f64], gamma: f64) -> Vector<f64> {
-    let len = x.len();
-    let gam_div_2pi = gamma / (2.0 * PI);  // Γ/(2π)
-    let gam_half_sqr = (gamma / 2.0).powi(2); // (Γ/2)^2
-
-    let mut ret = Vector::<f64>::zeros(len);
-
-    for i in 0..len {
-        ret[i] += x0s.as_ref().iter()
-            .map(|c| gam_div_2pi / ((x[i] - c).powi(2) + gam_half_sqr))
-            .sum::<f64>();
-    }
-
-    ret
-}
-
-fn apply_smearing(x: &[f64], centers: &[f64], width: f64, method: SmearingMethod) -> Vector<f64> {
-    match method {
-        SmearingMethod::Lorentz  => smearing_lorentz(x, centers, width),
-        SmearingMethod::Gaussian => smearing_gaussian(x, centers, width),
-    }
-}
-
-
-fn gen_totdos(xvals: &[f64], procar: &Procar, sigma: f64, method: SmearingMethod) -> Vector<f64> {
-    let nspin       = procar.pdos.nspin as usize;
-    let nkpoints    = procar.pdos.nkpoints as usize;
-    let mut totdos  = vec![];
-    
-    let weights = &procar.kpoints.weights;
-    let norm = weights.sum();
-
-    for ispin in 0 .. nspin {
-        let mut tdos = Vector::<f64>::zeros(xvals.len());
-        for ikpoint in 0 .. nkpoints {
-            let eigs = procar.pdos.eigvals.slice(s![ispin, ikpoint, ..]).to_slice().unwrap();
-            if 0 == ispin {
-                tdos += &(apply_smearing(xvals, eigs, sigma, method) * weights[ikpoint]);
-            } else {
-                tdos -= &(apply_smearing(xvals, eigs, sigma, method) * weights[ikpoint]);
-            }
+        for c in 0 .. clen {
+            ret.iter_mut()
+                .zip(x.iter())
+                .for_each(|(y, x)| {
+                    *y += ((-x-mus[c]).powi(2) * inv_two_sgm_sqr).exp() * inv_sgm_sqrt2pi * scales[c];
+                });
         }
-        tdos /= norm;
 
-        let tdos = if 0 == ispin {
-            tdos.into_raw_vec()
+        ret
+    }
+
+    // lorentz_smearing(x::AbstractArray, x0::Float64, Γ=0.05) = @. Γ/(2π) / ((x-x0)^2 + (Γ/2)^2)
+    fn smearing_lorentz(x: &[f64], x0s: &[f64], gamma: f64, scales: &[f64]) -> Vector<f64> {
+        let xlen = x.len();
+        let clen = x0s.len();
+        let gam_div_2pi = gamma / (2.0 * PI);  // Γ/(2π)
+        let gam_half_sqr = (gamma / 2.0).powi(2); // (Γ/2)^2
+
+        let mut ret = Vector::<f64>::zeros(xlen);
+
+        for c in 0 .. clen {
+            ret.iter_mut()
+                .zip(x.iter())
+                .for_each(|(y, x)| {
+                    *y += gam_div_2pi / ((x - x0s[c]).powi(2) + gam_half_sqr) * scales[c];
+                })
+        }
+
+        ret
+    }
+
+    fn apply_smearing(x: &[f64], centers: &[f64], width: f64, method: SmearingMethod, scales: Option<&[f64]>) -> Vector<f64> {
+        let clen = centers.len();
+        let mut fac = vec![1.0; 0];
+
+        let scales = if let Some(factors) = scales {
+            assert_eq!(factors.len(), clen, "[DOSsmear]: factors' length inconsistent with smearing peaks");
+            factors
         } else {
-            let mut r = tdos.into_raw_vec();
-            r.reverse();
-            r
+            fac.resize(clen, 1.0);
+            &fac
         };
 
-        totdos.push(tdos);
+        match method {
+            SmearingMethod::Lorentz  => Self::smearing_lorentz(x, centers, width, scales),
+            SmearingMethod::Gaussian => Self::smearing_gaussian(x, centers, width, scales),
+        }
     }
 
-    totdos.into_iter()
-        .map(|x| x.into_iter())
-        .flatten()
-        .collect::<_>()
+
+    fn gen_totdos(xvals: &[f64], procar: &Procar, sigma: f64, method: SmearingMethod) -> Vector<f64> {
+        let nspin       = procar.pdos.nspin as usize;
+        let nkpoints    = procar.pdos.nkpoints as usize;
+        let mut totdos  = vec![];
+
+        let norm = procar.kpoints.weights.sum();
+        let weights = &procar.kpoints.weights / norm;
+
+        for ispin in 0 .. nspin {
+            let mut tdos = Vector::<f64>::zeros(xvals.len());
+            for ikpoint in 0 .. nkpoints {
+                let eigs = procar.pdos.eigvals.slice(s![ispin, ikpoint, ..]).to_slice().unwrap();
+                if 0 == ispin {
+                    tdos += &(Self::apply_smearing(xvals, eigs, sigma, method, None) * weights[ikpoint]);
+                } else {
+                    tdos -= &(Self::apply_smearing(xvals, eigs, sigma, method, None) * weights[ikpoint]);
+                }
+            }
+
+            let tdos = if 0 == ispin {
+                tdos.into_raw_vec()
+            } else {
+                let mut r = tdos.into_raw_vec();
+                r.reverse();
+                r
+            };
+
+            totdos.push(tdos);
+        }
+
+        totdos.into_iter()
+            .map(|x| x.into_iter())
+            .flatten()
+            .collect()
+    }
+
+    fn gen_pdos(xvals: &[f64], procar: &Procar, selection: &Selection) -> Vector<f64> {
+        let nspin       = procar.pdos.nspin as usize;
+        let nkpoints    = procar.pdos.nkpoints as usize;
+        let mut totdos  = Vec::<Vec<f64>>::new();
+
+        let norm        = procar.kpoints.weights.sum();
+        let kptweights  = &procar.kpoints.weights / norm;
+
+        for ispin in 0 .. nspin {
+            let mut tdos = Vector::<f64>::zeros(xvals.len());
+            for ikpoint in selection.ikpoints.iter() {
+                let eigs = procar.pdos.eigvals.slice(s![ispin, *ikpoint, ..]).to_slice().unwrap();
+                //let pdosweight
+            }
+        }
+
+        totdos.into_iter()
+            .map(|x| x.into_iter())
+            .flatten()
+            .collect()
+    }
 }
 
 
@@ -270,7 +301,6 @@ htmlout     = "dos.html"        # save the pdos plot as "dos.html"
 notot       = false             # plot the total dos
 
 [pdos.plot1]     # One label produces one plot, the labels CANNOT be repetitive.
-# spins   = "x y"           # for LSORBIT = .TRUE. system only, "x" "y" "z" and "tot" are available.
 kpoints = "1 3..7 -1"       # selects 1 3 4 5 6 7 and the last kpoint for pdos plot, starts from 1.
 atoms   = "1 3..7 -1"       # selects 1 3 4 5 6 7 and the last atoms' projection for pdos plot, starts from 1.
 orbits  = "s px dxy"        # selects the s px and dx orbits' projection for pdos plot.
@@ -361,7 +391,7 @@ impl OptProcess for Dos {
                 .collect::<Vector<f64>>()
         };
 
-        let totdos = gen_totdos(xvals.as_slice().unwrap(), &procar, sigma, method);
+        let totdos = Self::gen_totdos(xvals.as_slice().unwrap(), &procar, sigma, method);
 
         if !notot {
             let tr = plotly::Scatter::from_array(xvals_plot.clone(), totdos.clone())
@@ -435,18 +465,13 @@ factor  = 1.01                # the factor multiplied to this pdos
             .collect::<Vec<_>>();
         let nions = 8usize;
         let nkpoints = 18usize;
-        let nspin = 2;
-        let is_ncl = false;
 
         let c: Configuration = toml::from_str(TEST_TEMPLATE).unwrap();
         let v = rawsel_to_sel(c.clone().pdos.unwrap(),
                               &nlm,
                               nions,
-                              nkpoints,
-                              nspin,
-                              is_ncl).unwrap();
+                              nkpoints).unwrap();
         assert_eq!(v[0].label, "plot1");
-        assert_eq!(v[0].ispins, &[0, 1]);
         assert_eq!(v[0].iatoms, &[0, 2, 3, 4, 5, 6, 7]);
         assert_eq!(v[0].ikpoints, &[0, 2, 3, 4, 5, 6, 17]);
         assert_eq!(v[0].iorbits, &[0, 3, 4]);
