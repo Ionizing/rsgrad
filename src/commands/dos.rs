@@ -4,6 +4,7 @@ use std::{
     time::Instant,
 };
 
+use indexmap::IndexMap;
 use structopt::{
     StructOpt,
     clap::AppSettings,
@@ -52,7 +53,7 @@ struct Selection {
 }
 
 
-fn rawsel_to_sel(r: Vec<(String, RawSelection)>, 
+fn rawsel_to_sel(r: IndexMap<String, RawSelection>, 
                  nlm: &[String], 
                  nions: usize, 
                  nkpoints: usize) -> Result<Vec<Selection>> {
@@ -115,7 +116,7 @@ struct Configuration {
     #[serde(default = "Configuration::fill_default")]
     fill: bool,
 
-    pdos: Option<Vec<(String, RawSelection)>>,
+    pdos: Option<IndexMap<String, RawSelection>>,
 }
 
 impl Configuration {
@@ -328,20 +329,29 @@ impl Dos {
 
 
 const TEMPLATE: &'static str = r#"# rsgrad DOS configuration in toml format.
-method      = "Gaussian"        # smearing method, "Lorentz" and "Gaussian" smearing are available
+# multiple tokens inside string are seperated by whitespace
+method      = "Gaussian"        # smearing method
 sigma       = 0.05              # smearing width, (eV)
 procar      = "PROCAR"          # PROCAR path
 outcar      = "OUTCAR"          # OUTCAR path
 txtout      = "dos_raw.txt"     # save the raw data as "dos_raw.txt"
 htmlout     = "dos.html"        # save the pdos plot as "dos.html"
-totdos      = true              # plot the total dos or not
+totdos      = true              # plot the total dos
 fill        = true              # fill the plot to x axis or not
 
-[pdos.plot1]     # One label produces one plot, the labels CANNOT be repetitive.
-kpoints = "1 3..7 -1"       # selects 1 3 4 5 6 7 and the last kpoint for pdos plot, starts from 1.
-atoms   = "1 3..7 -1"       # selects 1 3 4 5 6 7 and the last atoms' projection for pdos plot, starts from 1.
-orbits  = "s px dxy"        # selects the s px and dx orbits' projection for pdos plot.
-factor  = 1.01              # the factor multiplied to this pdos
+[pdos.plot1]                  # One label produces one plot, the labels CANNOT be repetitive.
+                              # each the label is 'plot1', to add more pdos, write '[pdos.plot2]' and so on.
+kpoints = "1 3..7 -1"         # selects 1 3 4 5 6 7 and the last kpoint for pdos plot.
+atoms   = "1 3..7 -1"         # selects 1 3 4 5 6 7 and the last atoms' projection for pdos plot.
+orbits  = "s px dxy"          # selects the s px and dx orbits' projection for pdos plot.
+factor  = 1.01                # the factor multiplied to this pdos
+
+[pdos.plot2]                  # One label produces one plot, the labels CANNOT be repetitive.
+                              # each the label is 'plot1', to add more pdos, write '[pdos.plot2]' and so on.
+kpoints = "1 3..7 -1"         # selects 1 3 4 5 6 7 and the last kpoint for pdos plot.
+atoms   = "1 3..7 -1"         # selects 1 3 4 5 6 7 and the last atoms' projection for pdos plot.
+orbits  = "s px dxy"          # selects the s px and dx orbits' projection for pdos plot.
+factor  = 1.01                # the factor multiplied to this pdos
 
 # The fields can be left blank, if you want select all the components for some fields,
 # just comment them. You can comment fields with '#'
@@ -538,28 +548,6 @@ impl OptProcess for Dos {
 #[cfg(test)]
 mod test {
     use super::*;
-
-    const TEST_TEMPLATE: &'static str = r#"# rsgrad DOS configuration in toml format.
-# multiple tokens inside string are seperated by whitespace
-method      = "Gaussian"        # smearing method
-sigma       = 0.05              # smearing width, (eV)
-procar      = "PROCAR"          # PROCAR path
-outcar      = "OUTCAR"          # OUTCAR path
-txtout      = "dos_raw.txt"     # save the raw data as "dos_raw.txt"
-htmlout     = "dos.html"        # save the pdos plot as "dos.html"
-totdos      = true              # plot the total dos
-fill        = true              # fill the plot to x axis or not
-
-[pdos.plot1]                  # One label produces one plot, the labels CANNOT be repetitive.
-                              # each the label is 'plot1', to add more pdos, write '[pdos.plot2]' and so on.
-kpoints = "1 3..7 -1"         # selects 1 3 4 5 6 7 and the last kpoint for pdos plot.
-atoms   = "1 3..7 -1"         # selects 1 3 4 5 6 7 and the last atoms' projection for pdos plot.
-orbits  = "s px dxy"          # selects the s px and dx orbits' projection for pdos plot.
-factor  = 1.01                # the factor multiplied to this pdos
-
-# The fields can be left blank, if you want select all the components for some fields,
-# just comment them. You can comment fields with '#'
-"#;
     
     #[test]
     fn test_parse_rawconfig() {
@@ -570,7 +558,7 @@ factor  = 1.01                # the factor multiplied to this pdos
         let nions = 8usize;
         let nkpoints = 18usize;
 
-        let c: Configuration = toml::from_str(TEST_TEMPLATE).unwrap();
+        let c: Configuration = toml::from_str(TEMPLATE).unwrap();
         let v = rawsel_to_sel(c.clone().pdos.unwrap(),
                               &nlm,
                               nions,
