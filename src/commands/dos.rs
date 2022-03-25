@@ -1,26 +1,25 @@
 use std::{
     fs,
     path::PathBuf,
-    collections::HashMap,
+    time::Instant,
 };
 
 use structopt::{
     StructOpt,
     clap::AppSettings,
 };
-use log::info;
+use log::{
+    info,
+    debug,
+};
 use serde::{
     Serialize,
     Deserialize,
 };
-use anyhow::{
-    //anyhow,
-    Context,
-    //Error,
-    bail,
-};
+use anyhow::bail;
 use toml;
 use plotly;
+use rayon::prelude::*;
 use ndarray::{
     self,
     s,
@@ -53,7 +52,7 @@ struct Selection {
 }
 
 
-fn rawsel_to_sel(r: HashMap<String, RawSelection>, 
+fn rawsel_to_sel(r: Vec<(String, RawSelection)>, 
                  nlm: &[String], 
                  nions: usize, 
                  nkpoints: usize) -> Result<Vec<Selection>> {
@@ -65,6 +64,8 @@ fn rawsel_to_sel(r: HashMap<String, RawSelection>,
         let iatoms      = RawSelection::parse_iatoms(   val.atoms.as_deref(),   nions)?;
         let iorbits     = RawSelection::parse_iorbits(  val.orbits.as_deref(),  nlm)?;
         let factor      = val.factor.unwrap_or(1.0);
+
+        if factor < 0.0 { bail!("The factor cannot be negative."); }
 
         let sel = Selection {
             label: label.to_string(),
@@ -81,14 +82,14 @@ fn rawsel_to_sel(r: HashMap<String, RawSelection>,
 }
 
 
-#[derive(Clone, Copy, Serialize, Deserialize)]
+#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
 pub enum SmearingMethod {
     Gaussian,
     Lorentz,
 }
 
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 struct Configuration {
     #[serde(default = "Configuration::method_default")]
     method: SmearingMethod,
@@ -108,10 +109,13 @@ struct Configuration {
     #[serde(default = "Configuration::htmlout_default")]
     htmlout: PathBuf,
 
-    #[serde(default = "Configuration::notot_default")]
-    notot: bool,
+    #[serde(default = "Configuration::totdos_default")]
+    totdos: bool,
 
-    pdos: Option<HashMap<String, RawSelection>>,
+    #[serde(default = "Configuration::fill_default")]
+    fill: bool,
+
+    pdos: Option<Vec<(String, RawSelection)>>,
 }
 
 impl Configuration {
@@ -121,7 +125,8 @@ impl Configuration {
     pub fn outcar_default() -> PathBuf { PathBuf::from("./OUTCAR") }
     pub fn txtout_default() -> PathBuf { PathBuf::from("./dos_raw.txt") }
     pub fn htmlout_default() -> PathBuf { PathBuf::from("./dos.html") }
-    pub fn notot_default()  -> bool { false }
+    pub fn fill_default() -> bool { true }
+    pub fn totdos_default()  -> bool { true }
 }
 
 
@@ -266,20 +271,52 @@ impl Dos {
             .collect()
     }
 
-    fn gen_pdos(xvals: &[f64], procar: &Procar, selection: &Selection) -> Vector<f64> {
+    fn gen_pdos(xvals: &[f64], procar: &Procar, selection: &Selection, sigma: f64, method: SmearingMethod) -> Vector<f64> {
         let nspin       = procar.pdos.nspin as usize;
-        let nkpoints    = procar.pdos.nkpoints as usize;
+        let nbands      = procar.pdos.nbands as usize;
+        let factor      = selection.factor;
         let mut totdos  = Vec::<Vec<f64>>::new();
 
         let norm        = procar.kpoints.weights.sum();
         let kptweights  = &procar.kpoints.weights / norm;
 
+        // pdos.projected = [ispin, ikpoint, iband, iion, iorbit]
+
         for ispin in 0 .. nspin {
             let mut tdos = Vector::<f64>::zeros(xvals.len());
-            for ikpoint in selection.ikpoints.iter() {
-                let eigs = procar.pdos.eigvals.slice(s![ispin, *ikpoint, ..]).to_slice().unwrap();
-                //let pdosweight
+            for ikpoint in selection.ikpoints.iter().copied() {
+                let eigs = procar.pdos.eigvals.slice(s![ispin, ikpoint, ..]).to_slice().unwrap();
+                let bandweights = (0 .. nbands)
+                    .into_iter()
+                    .map(|iband| {
+                        let mut wht = 0.0;
+                        for iion in selection.iatoms.iter().copied() {
+                            for iorbit in selection.iorbits.iter().copied() {
+                                wht += procar.pdos.projected[[ispin, ikpoint, iband, iion, iorbit]];
+                            }
+                        }
+                        wht
+                    }).collect::<Vec<f64>>();
+
+                if 0 == ispin {
+                    tdos += &(Self::apply_smearing(xvals, eigs, sigma, method, Some(&bandweights)) * kptweights[ikpoint]);
+                } else {
+                    tdos -= &(Self::apply_smearing(xvals, eigs, sigma, method, Some(&bandweights)) * kptweights[ikpoint]);
+                }
+
             }
+
+            tdos *= factor;
+
+            let tdos = if 0 == ispin {
+                tdos.into_raw_vec()
+            } else {
+                let mut r = tdos.into_raw_vec();
+                r.reverse();
+                r
+            };
+
+            totdos.push(tdos);
         }
 
         totdos.into_iter()
@@ -291,14 +328,14 @@ impl Dos {
 
 
 const TEMPLATE: &'static str = r#"# rsgrad DOS configuration in toml format.
-# If you want some options to be default, just comment the whole lines.
-method      = "Gaussian"        # smearing method
+method      = "Gaussian"        # smearing method, "Lorentz" and "Gaussian" smearing are available
 sigma       = 0.05              # smearing width, (eV)
 procar      = "PROCAR"          # PROCAR path
 outcar      = "OUTCAR"          # OUTCAR path
 txtout      = "dos_raw.txt"     # save the raw data as "dos_raw.txt"
 htmlout     = "dos.html"        # save the pdos plot as "dos.html"
-notot       = false             # plot the total dos
+totdos      = true              # plot the total dos or not
+fill        = true              # fill the plot to x axis or not
 
 [pdos.plot1]     # One label produces one plot, the labels CANNOT be repetitive.
 kpoints = "1 3..7 -1"       # selects 1 3 4 5 6 7 and the last kpoint for pdos plot, starts from 1.
@@ -314,7 +351,7 @@ factor  = 1.01              # the factor multiplied to this pdos
 impl OptProcess for Dos {
     fn process(&self) -> Result<()> {
         if self.gen_template {
-            let conf_filename = PathBuf::from("./dos.toml");
+            let conf_filename = PathBuf::from("./pdos.toml");
 
             info!("Generating selection dos configuration template ...");
             fs::write(&conf_filename, TEMPLATE.as_bytes())?;
@@ -327,18 +364,26 @@ impl OptProcess for Dos {
             info!("Reading PDOS configuration from {:?}", self.config.as_ref());
             let config = fs::read_to_string(config)?;
             let config: Configuration = toml::from_str(&config)?;
+
+            debug!("{:#?}", &config);
+
             Some(config)
         } else {
             None
         };
 
-        let procar  = if let Some(cfg) = config.as_ref() {  &cfg.procar } else {  &self.procar };
-        let outcar  = if let Some(cfg) = config.as_ref() {  &cfg.outcar } else {  &self.outcar };
-        let txtout  = if let Some(cfg) = config.as_ref() {  &cfg.txtout } else {  &self.txtout };
-        let htmlout = if let Some(cfg) = config.as_ref() { &cfg.htmlout } else { &self.htmlout };
-        let sigma   = if let Some(cfg) = config.as_ref() {    cfg.sigma } else {          0.05 };
-        let method  = if let Some(cfg) = config.as_ref() {   cfg.method } else { SmearingMethod::Gaussian };
-        let notot   = if let Some(cfg) = config.as_ref() {    cfg.notot } else {         false };
+        let procar     = if let Some(cfg) = config.as_ref() {  &cfg.procar } else {  &self.procar };
+        let outcar     = if let Some(cfg) = config.as_ref() {  &cfg.outcar } else {  &self.outcar };
+        let txtout     = if let Some(cfg) = config.as_ref() {  &cfg.txtout } else {  &self.txtout };
+        let htmlout    = if let Some(cfg) = config.as_ref() { &cfg.htmlout } else { &self.htmlout };
+        let sigma      = if let Some(cfg) = config.as_ref() {    cfg.sigma } else {          0.05 };
+        let method     = if let Some(cfg) = config.as_ref() {   cfg.method } else { SmearingMethod::Gaussian };
+        let is_totdos  = if let Some(cfg) = config.as_ref() {   cfg.totdos } else {         false };
+        let to_fill    = if let Some(cfg) = config.as_ref() {     cfg.fill } else {          true };
+
+        if sigma < 0.0 {
+            bail!("[DOS]: sigma cannot be negative.");
+        }
 
         info!("Parsing PROCAR file {:?}", procar);
         let mut procar  = Procar::from_file(procar)?;
@@ -363,6 +408,16 @@ impl OptProcess for Dos {
         info!("Parsing OUTCAR file {:?} for Fermi level", outcar);
         let efermi = fs::read_to_string(outcar)?.get_efermi()?;
         info!("Found Fermi level = {}, eigenvalues will be shifted.", efermi);
+
+        let selections = if config.as_ref().is_some() {
+            if let Some(pdos) = config.clone().unwrap().pdos {
+                Some(rawsel_to_sel(pdos, &nlm, nions, nkpts)?)
+            } else {
+                None
+            }
+        } else {
+            None
+        };
 
         procar.pdos.eigvals -= efermi;
 
@@ -393,15 +448,62 @@ impl OptProcess for Dos {
 
         let totdos = Self::gen_totdos(xvals.as_slice().unwrap(), &procar, sigma, method);
 
-        if !notot {
+        let mut labels = vec!["E-Ef", "TotDOS"]
+            .into_iter()
+            .map(String::from)
+            .collect::<Vec<_>>();
+
+        let mut raw_dats = vec![
+            xvals_plot.clone(), 
+            totdos.clone()
+        ];
+
+        let fill_type = if to_fill {
+            plotly::common::Fill::ToZeroY
+        } else {
+            plotly::common::Fill::None
+        };
+
+        if is_totdos {
+            info!("Plotting Total DOS ...");
+            let now = Instant::now();
             let tr = plotly::Scatter::from_array(xvals_plot.clone(), totdos.clone())
                 .mode(plotly::common::Mode::Lines)
                 .marker(plotly::common::Marker::new()
                         .color(plotly::NamedColor::Grey))
-                .fill(plotly::common::Fill::ToZeroY)
+                .fill(fill_type.clone())
                 .name("Total DOS");
             plot.add_trace(tr);
+            info!("Total DOS plot time usage: {:?}", now.elapsed());
         };
+
+        if let Some(selections) = selections {
+            info!("Plotting PDOS ...");
+            let now = Instant::now();
+
+            let doses = selections
+                .into_par_iter()
+                .map(|sel| {
+                    (
+                        Self::gen_pdos(xvals.as_slice().unwrap(), &procar, &sel, sigma, method),
+                        sel.label,
+                    )
+                })
+                .collect::<Vec<_>>();
+
+            for (dos, label) in doses.into_iter() {
+                let tr = plotly::Scatter::from_array(xvals_plot.clone(), dos.clone())
+                    .mode(plotly::common::Mode::Lines)
+                    .fill(fill_type.clone())
+                    .name(&label);
+                labels.push(label);
+                raw_dats.push(dos);
+                plot.add_trace(tr);
+            }
+
+            info!("PDOS plot time usage: {:?}", now.elapsed());
+        }
+
 
         plot.use_local_plotly();
         let layout = plotly::Layout::new()
@@ -423,7 +525,9 @@ impl OptProcess for Dos {
         plot.to_html(&htmlout);
 
         info!("Writing raw DOS data to {:?}", txtout);
-        write_array_to_txt(txtout, vec![&xvals_plot, &totdos], "E-Ef TOTDOS")?;
+        let label = labels.join(" ");
+        let raw_dats = raw_dats.iter().map(|x| x).collect::<Vec<_>>();
+        write_array_to_txt(txtout, raw_dats, &label)?;
 
         Ok(())
     }
@@ -443,11 +547,11 @@ procar      = "PROCAR"          # PROCAR path
 outcar      = "OUTCAR"          # OUTCAR path
 txtout      = "dos_raw.txt"     # save the raw data as "dos_raw.txt"
 htmlout     = "dos.html"        # save the pdos plot as "dos.html"
-notot       = false             # plot the total dos
+totdos      = true              # plot the total dos
+fill        = true              # fill the plot to x axis or not
 
 [pdos.plot1]                  # One label produces one plot, the labels CANNOT be repetitive.
                               # each the label is 'plot1', to add more pdos, write '[pdos.plot2]' and so on.
-#spins   = "x y z"             # for LSORBIT = .TRUE. system only, "x" "y" "z" and "tot" are available.
 kpoints = "1 3..7 -1"         # selects 1 3 4 5 6 7 and the last kpoint for pdos plot.
 atoms   = "1 3..7 -1"         # selects 1 3 4 5 6 7 and the last atoms' projection for pdos plot.
 orbits  = "s px dxy"          # selects the s px and dx orbits' projection for pdos plot.
