@@ -184,7 +184,7 @@ impl Dos {
             ret.iter_mut()
                 .zip(x.iter())
                 .for_each(|(y, x)| {
-                    *y += ((-x-mus[c]).powi(2) * inv_two_sgm_sqr).exp() * inv_sgm_sqrt2pi * scales[c];
+                    *y += (-(x-mus[c]).powi(2) * inv_two_sgm_sqr).exp() * inv_sgm_sqrt2pi * scales[c];
                 });
         }
 
