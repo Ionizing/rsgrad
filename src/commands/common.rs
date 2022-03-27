@@ -2,6 +2,7 @@ use std::{
     io::Write,
     fs,
     path::Path,
+    panic::catch_unwind,
 };
 
 use serde::{
@@ -14,14 +15,50 @@ use anyhow::{
     Result,
     Context,
 };
+use plotly::common::color::{
+    Color,
+    ColorWrapper,
+};
 use ndarray::Array1;
 
-use crate::{
-    types::{
-        range_parse,
-        index_transform,
-    },
+use crate::types::{
+    range_parse,
+    index_transform,
 };
+
+
+const NAMED_COLORS: &[&str] = &[
+        "aliceblue",            "antiquewhite",     "aqua",             "aquamarine",       "azure",
+        "beige",                "bisque",           "black",            "blanchedalmond",   "blue",
+        "blueviolet",           "brown",            "burlywood",        "cadetblue",        "chartreuse",
+        "chocolate",            "coral",            "cornflowerblue",   "cornsilk",         "crimson",
+        "cyan",                 "darkblue",         "darkcyan",         "darkgoldenrod",    "darkgray",
+        "darkgrey",             "darkgreen",        "darkkhaki",        "darkmagenta",      "darkolivegreen",
+        "darkorange",           "darkorchid",       "darkred",          "darksalmon",       "darkseagreen",
+        "darkslateblue",        "darkslategray",    "darkslategrey",    "darkturquoise",    "darkviolet",
+        "deeppink",             "deepskyblue",      "dimgray",          "dimgrey",          "dodgerblue",
+        "firebrick",            "floralwhite",      "forestgreen",      "fuchsia",          "gainsboro",
+        "ghostwhite",           "gold",             "goldenrod",        "gray",             "grey",
+        "green",                "greenyellow",      "honeydew",         "hotpink",          "indianred",
+        "indigo",               "ivory",            "khaki",            "lavender",         "lavenderblush",
+        "lawngreen",            "lemonchiffon",     "lightblue",        "lightcoral",       "lightcyan",
+        "lightgoldenrodyellow", "lightgray",        "lightgrey",        "lightgreen",       "lightpink",
+        "lightsalmon",          "lightseagreen",    "lightskyblue",     "lightslategray",   "lightslategrey",
+        "lightsteelblue",       "lightyellow",      "lime",             "limegreen",        "linen",
+        "magenta",              "maroon",           "mediumaquamarine", "mediumblue",       "mediumorchid",
+        "mediumpurple",         "mediumseagreen",   "mediumslateblue",  "mediumspringgreen","mediumturquoise",
+        "mediumvioletred",      "midnightblue",     "mintcream",        "mistyrose",        "moccasin",
+        "navajowhite",          "navy",             "oldlace",          "olive",            "olivedrab",
+        "orange",               "orangered",        "orchid",           "palegoldenrod",    "palegreen",
+        "paleturquoise",        "palevioletred",    "papayawhip",       "peachpuff",        "peru",
+        "pink",                 "plum",             "powderblue",       "purple",           "red",
+        "rosybrown",            "royalblue",        "saddlebrown",      "salmon",           "sandybrown",
+        "seagreen",             "seashell",         "sienna",           "silver",           "skyblue",
+        "slateblue",            "slategray",        "slategrey",        "snow",             "springgreen",
+        "steelblue",            "tan",              "teal",             "thistle",          "tomato",
+        "turquoise",            "violet",           "wheat",            "white",            "whitesmoke",
+        "yellow",               "yellowgreen",      "transparent",
+    ];
 
 
 pub fn write_array_to_txt(file_name: &(impl AsRef<Path> + ?Sized), ys: Vec<&Array1<f64>>, comment: &str) -> Result<()> {
@@ -62,6 +99,7 @@ pub struct RawSelection {
     pub kpoints:    Option<String>,
     pub atoms:      Option<String>,
     pub orbits:     Option<String>,
+    pub color:      Option<String>,
     pub factor:     Option<f64>,
 }
 
@@ -192,6 +230,24 @@ bail!("[DOS]: Invalid spin component selected: `{}`, available components are `u
             Ok(ret)
         } else {
             Ok((0 .. nlm.len()).collect::<Vec<usize>>())
+        }
+    }
+
+    /// Parse the color to this curve.
+    pub fn parse_color(input: &str) -> Result<ColorWrapper> {
+        if NAMED_COLORS.contains(&input.to_ascii_lowercase().as_ref()) {
+            return Ok(ColorWrapper::S(input.to_owned()))
+        } else {
+            let ret = catch_unwind(|| {
+                input.to_color()
+            });
+
+            if ret.is_err() {
+                bail!("The input color is neither a named color nor a valid hex code. 
+See \"https://developer.mozilla.org/en-US/docs/Web/CSS/color_value for availed named colors.\"");
+            } else {
+                Ok(ret.unwrap())
+            }
         }
     }
 }
