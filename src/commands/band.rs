@@ -10,9 +10,15 @@ use structopt::{
 };
 use log::{
     info,
+    warn,
     debug,
 };
-use anyhow::bail;
+use rayon;
+use anyhow::{
+    bail,
+    anyhow,
+    Context,
+};
 use serde::{
     Serialize,
     Deserialize,
@@ -22,8 +28,14 @@ use crate::{
     Result,
     OptProcess,
     Procar,
+    Outcar,
+    Poscar,
     vasp_parsers::outcar::GetEFermi,
-    types::Vector,
+    types::{
+        Mat33,
+        MatX3,
+        Vector,
+    },
     commands::common::{
         write_array_to_txt,
         RawSelection,
@@ -92,6 +104,9 @@ struct Configuration {
     #[serde(default = "Configuration::htmlout_default")]
     htmlout: PathBuf,
 
+    #[serde(default = "Configuration::is_hse_default")]
+    is_hse: bool,
+
     pband: Option<IndexMap<String, RawSelection>>,
 }
 
@@ -100,6 +115,7 @@ impl Configuration {
     pub fn outcar_default() -> PathBuf { PathBuf::from("./OUTCAR") }
     pub fn txtout_default() -> PathBuf { PathBuf::from("./band_raw.txt") }
     pub fn htmlout_default() -> PathBuf { PathBuf::from("./band.html") }
+    pub fn is_hse_default() -> bool { false }
 }
 
 
@@ -121,6 +137,10 @@ pub struct Band {
     #[structopt(short, long)]
     /// Symbols for high symmetry points on the kpoint path.
     kpoint_labels: Option<Vec<String>>,
+
+    #[structopt(long)]
+    /// Specify the system is calculated via HSE method or not.
+    is_hse: bool,
 
     #[structopt(long, default_value = "./PROCAR")]
     /// PROCAR path.
@@ -148,9 +168,70 @@ pub struct Band {
     htmlout: PathBuf,
 }
 
+// Extra TODO: shift eigvals to E-fermi
+impl Band {
+    fn gen_kpath()-> Vec<f64> {
+        todo!()
+    }
+
+    fn gen_rawband() -> Vector<f64> {
+        todo!()
+    }
+
+    fn gen_pband() ->Vector<f64> {
+        todo!()
+    }
+
+    fn get_outcarinfo() -> (f64,) {
+        todo!()
+    }
+
+    fn filter_hse(procar: &mut Procar) -> bool {
+        if !procar.kpoints.weights.iter().any(|x| x.abs() < 1E-6) {
+            return false;
+        }
+
+        //procar.kpoints.kpointlist
+
+        true
+    }
+}
+
 
 impl OptProcess for Band {
     fn process(&self) -> Result<()> {
+        let mut procar: Result<Procar> = Err(anyhow!(""));
+        let mut outcar: Result<Outcar> = Err(anyhow!(""));
+
+        rayon::scope(|s| {
+            s.spawn(|_| {
+                info!("Reading band data from {:?}", &self.procar);
+                procar = Procar::from_file(&self.procar);
+            });
+            s.spawn(|_| {
+                info!("Reading fermi level and lattice data from {:?}", &self.outcar);
+                outcar = Outcar::from_file(&self.outcar);
+            });
+        });
+
+        let mut procar = procar.context(format!("Parse PROCAR file {:?} failed.", self.procar))?;
+        let outcar = outcar.context(format!("Parse OUTCAR file {:?} failed.", self.procar))?;
+
+        let efermi = outcar.efermi;
+        let cell = outcar.ion_iters.last()
+            .context("This OUTCAR doesn't complete at least one ionic step.")?
+            .cell;
+
+        info!("Found Fermi level: {}, shifting eigenvalues ...", efermi);
+        procar.pdos.eigvals -= efermi;
+
+        if self.is_hse {
+            if Self::filter_hse(&mut procar) {
+                info!("Zero-contribution k-points filtered out for HSE system.")
+            } else {
+                warn!("Could not find zero-contribution k-points, processing the non-zero-contribution k-points.")
+            }
+        }
         
         Ok(())
     }
