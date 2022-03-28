@@ -2,8 +2,24 @@
 
 Tracking the relaxation or MD progress of VASP calculation.
 
-# Usage
+# NOTE: THIS PROJECT IS UNDER DEVELOPMENT, THE DOCUMENTS MAY BE OUT OF DATE.
 
+# Download
+
+Now the pre-built binaries are built only for `x86-64` architecture.
+
+Head to https://github.com/Ionizing/rsgrad/releases/latest and download the pre-built binaries corresponding to your platform.
+
+## For Linux users
+- `linux-x86_64.tar.gz` is dynamically linked to `glibc` 2.18, with little higher performance. It cannot run on some old linux distributions (centos 7 or lower and so on)
+- `linux-x86_64-musl.tar.gz` is full statically linked with `musl` libc. Though would be a little slower, it can be run on most linux distributions.
+
+## For MacOS users
+- `macos-x86_64.tar.gz` is for Intel chip. If your PC has M1 chip, you can run it with Rosetta as well. However, an ARM native binary is better, which means you need to build `rsgrad` from source.
+
+The binary for M1 Mac is considered to be published in a few weeks.
+
+# Usage （OUTDATED, NEEDS UPDATE）
 ## Main interface
 
 ```
