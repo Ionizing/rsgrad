@@ -11,7 +11,6 @@ use structopt::{
 use log::{
     info,
     warn,
-    debug,
 };
 use rayon;
 use anyhow::{
@@ -23,6 +22,7 @@ use serde::{
     Serialize,
     Deserialize,
 };
+use ndarray::s;
 
 use crate::{
     Result,
@@ -187,11 +187,49 @@ impl Band {
     }
 
     fn filter_hse(procar: &mut Procar) -> bool {
-        if !procar.kpoints.weights.iter().any(|x| x.abs() < 1E-6) {
-            return false;
-        }
+        const THRESHOLD: f64 = 1E-6;
 
-        //procar.kpoints.kpointlist
+        let skip_index = procar.kpoints.weights.iter()
+            .position(|x| x.abs() < THRESHOLD);
+
+        let skip_index = if let Some(i) = skip_index {
+            i
+        } else {
+            return false;
+        };
+
+
+        procar.kpoints.nkpoints -= skip_index as u32;
+        procar.kpoints.weights = procar.kpoints.weights
+            .slice(s![skip_index ..])  // take weights[skip_index ..]
+            .to_owned();
+        procar.kpoints.kpointlist = procar.kpoints.kpointlist
+            .slice(s![skip_index .., ..])
+            .to_owned();
+
+        procar.pdos.nkpoints = procar.kpoints.nkpoints;
+        procar.pdos.eigvals = procar.pdos.eigvals
+            .slice(s![.., skip_index .., ..])
+            .to_owned();
+        procar.pdos.occupations = procar.pdos.eigvals
+            .slice(s![.., skip_index .., ..])
+            .to_owned();
+        procar.pdos.projected = procar.pdos.projected
+            .slice(s![.., skip_index .., .., .., ..])
+            .to_owned();
+
+        let nkpoints = procar.kpoints.nkpoints as usize;
+
+        assert!(
+            procar.kpoints.nkpoints as usize        == nkpoints &&
+            procar.kpoints.weights.len()            == nkpoints &&
+            procar.kpoints.kpointlist.shape()[0]    == nkpoints &&
+            procar.pdos.nkpoints as usize           == nkpoints &&
+            procar.pdos.eigvals.shape()[1]          == nkpoints &&
+            procar.pdos.occupations.shape()[1]      == nkpoints &&
+            procar.pdos.projected.shape()[1]        == nkpoints,
+            "Inconsistent k-point numbers in Procar instance"
+            );
 
         true
     }
