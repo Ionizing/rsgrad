@@ -36,6 +36,7 @@ use crate::{
     commands::common::{
         RawSelection,
         write_array_to_txt,
+        CustomColor,
     }
 };
 
@@ -49,6 +50,7 @@ struct Selection {
     ikpoints:   Vec<usize>,
     iatoms:     Vec<usize>,
     iorbits:    Vec<usize>,
+    color:      Option<CustomColor>,
     factor:     f64,
 }
 
@@ -64,6 +66,11 @@ fn rawsel_to_sel(r: IndexMap<String, RawSelection>,
         let ikpoints    = RawSelection::parse_ikpoints( val.kpoints.as_deref(), nkpoints)?;
         let iatoms      = RawSelection::parse_iatoms(   val.atoms.as_deref(),   nions)?;
         let iorbits     = RawSelection::parse_iorbits(  val.orbits.as_deref(),  nlm)?;
+        let color       = if let Some(color) = val.color {
+            Some( RawSelection::parse_color(&color)?)
+        } else {
+            None
+        };
         let factor      = val.factor.unwrap_or(1.0);
 
         if factor < 0.0 { bail!("The factor cannot be negative."); }
@@ -73,6 +80,7 @@ fn rawsel_to_sel(r: IndexMap<String, RawSelection>,
             ikpoints,
             iatoms,
             iorbits,
+            color,
             factor,
         };
 
@@ -388,7 +396,7 @@ impl OptProcess for Dos {
         let htmlout    = if let Some(cfg) = config.as_ref() { &cfg.htmlout } else { &self.htmlout };
         let sigma      = if let Some(cfg) = config.as_ref() {    cfg.sigma } else {          0.05 };
         let method     = if let Some(cfg) = config.as_ref() {   cfg.method } else { SmearingMethod::Gaussian };
-        let is_totdos  = if let Some(cfg) = config.as_ref() {   cfg.totdos } else {         false };
+        let is_totdos  = if let Some(cfg) = config.as_ref() {   cfg.totdos } else {          true };
         let to_fill    = if let Some(cfg) = config.as_ref() {     cfg.fill } else {          true };
 
         if sigma < 0.0 {
@@ -480,7 +488,7 @@ impl OptProcess for Dos {
             let tr = plotly::Scatter::from_array(xvals_plot.clone(), totdos.clone())
                 .mode(plotly::common::Mode::Lines)
                 .marker(plotly::common::Marker::new()
-                        .color(plotly::NamedColor::Grey))
+                        .color(plotly::NamedColor::Black))
                 .fill(fill_type.clone())
                 .name("Total DOS");
             plot.add_trace(tr);
@@ -497,13 +505,20 @@ impl OptProcess for Dos {
                     (
                         Self::gen_pdos(xvals.as_slice().unwrap(), &procar, &sel, sigma, method),
                         sel.label,
+                        sel.color,
                     )
                 })
                 .collect::<Vec<_>>();
 
-            for (dos, label) in doses.into_iter() {
+            for (dos, label, color) in doses.into_iter() {
+                let mut marker = plotly::common::Marker::new();
+                if let Some(c) = color {
+                    marker = marker.color(c);
+                };
+
                 let tr = plotly::Scatter::from_array(xvals_plot.clone(), dos.clone())
                     .mode(plotly::common::Mode::Lines)
+                    .marker(marker)
                     .fill(fill_type.clone())
                     .name(&label);
                 labels.push(label);

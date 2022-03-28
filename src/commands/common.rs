@@ -61,6 +61,16 @@ const NAMED_COLORS: &[&str] = &[
     ];
 
 
+#[derive(Debug, Clone)]
+pub struct CustomColor (ColorWrapper);
+
+impl Color for CustomColor {
+    fn to_color(&self) -> ColorWrapper {
+        self.0.clone()
+    }
+}
+
+
 pub fn write_array_to_txt(file_name: &(impl AsRef<Path> + ?Sized), ys: Vec<&Array1<f64>>, comment: &str) -> Result<()> {
     let ncol = ys.len();
 
@@ -234,9 +244,9 @@ bail!("[DOS]: Invalid spin component selected: `{}`, available components are `u
     }
 
     /// Parse the color to this curve.
-    pub fn parse_color(input: &str) -> Result<ColorWrapper> {
+    pub fn parse_color(input: &str) -> Result<CustomColor> {
         if NAMED_COLORS.contains(&input.to_ascii_lowercase().as_ref()) {
-            return Ok(ColorWrapper::S(input.to_owned()))
+            return Ok(CustomColor(ColorWrapper::S(input.to_owned())))
         } else {
             let ret = catch_unwind(|| {
                 input.to_color()
@@ -246,7 +256,7 @@ bail!("[DOS]: Invalid spin component selected: `{}`, available components are `u
                 bail!("The input color is neither a named color nor a valid hex code. 
 See \"https://developer.mozilla.org/en-US/docs/Web/CSS/color_value for availed named colors.\"");
             } else {
-                Ok(ret.unwrap())
+                Ok(CustomColor(ret.unwrap()))
             }
         }
     }
