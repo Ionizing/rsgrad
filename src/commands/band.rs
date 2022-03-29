@@ -22,7 +22,11 @@ use serde::{
     Serialize,
     Deserialize,
 };
-use ndarray::s;
+use ndarray::{
+    s,
+    arr2,
+};
+use itertools::Itertools;
 
 use crate::{
     Result,
@@ -35,12 +39,16 @@ use crate::{
         Mat33,
         MatX3,
         Vector,
+        Matrix,
     },
     commands::common::{
         write_array_to_txt,
         RawSelection,
     }
 };
+
+
+const THRESHOLD: f64 = 1E-6;
 
 
 #[derive(Clone, Debug)]
@@ -104,8 +112,8 @@ struct Configuration {
     #[serde(default = "Configuration::htmlout_default")]
     htmlout: PathBuf,
 
-    #[serde(default = "Configuration::is_hse_default")]
-    is_hse: bool,
+    //#[serde(default = "Configuration::is_hse_default")]
+    //is_hse: bool,
 
     pband: Option<IndexMap<String, RawSelection>>,
 }
@@ -115,7 +123,7 @@ impl Configuration {
     pub fn outcar_default() -> PathBuf { PathBuf::from("./OUTCAR") }
     pub fn txtout_default() -> PathBuf { PathBuf::from("./band_raw.txt") }
     pub fn htmlout_default() -> PathBuf { PathBuf::from("./band.html") }
-    pub fn is_hse_default() -> bool { false }
+    //pub fn is_hse_default() -> bool { false }
 }
 
 
@@ -138,9 +146,9 @@ pub struct Band {
     /// Symbols for high symmetry points on the kpoint path.
     kpoint_labels: Option<Vec<String>>,
 
-    #[structopt(long)]
-    /// Specify the system is calculated via HSE method or not.
-    is_hse: bool,
+    //#[structopt(long)]
+    // /// Specify the system is calculated via HSE method or not.
+    //is_hse: bool,
 
     #[structopt(long, default_value = "./PROCAR")]
     /// PROCAR path.
@@ -170,25 +178,49 @@ pub struct Band {
 
 // Extra TODO: shift eigvals to E-fermi
 impl Band {
-    fn gen_kpath()-> Vec<f64> {
+    /// Given a `nkpoints*3` matrix to generate k-point path for bandstructure
+    /// `segments_ranges` are the start and end indices of each, closed interval.
+    /// the range can be in reversed direction
+    fn gen_kpath(kpoints: &Matrix<f64>, bcell: &[[f64; 3]; 3], segment_ranges: &Vec<(usize, usize)>)-> Vector<f64> {
+        let bcell = arr2(bcell);
+        let kpoints = kpoints.dot(&bcell);
+
+        segment_ranges
+            .iter()
+            .cloned()
+            .map(|(beg, end)| {
+                let (rng, lrng) = if beg < end {    // Forward range (e.g. 1..5)
+                    (s![beg..end,    ..], s![(beg-1)..(end-1),    ..])
+                } else {                            // Backward range (e.g.  5..1)
+                    (s![end..beg;-1, ..], s![(end-1)..(beg-1);-1, ..])
+                };
+
+                let mut kdiffs = (kpoints.slice(rng).to_owned() - kpoints.slice(lrng))
+                    .outer_iter()
+                    .map(|v| f64::sqrt(v[0]*v[0] + v[1]*v[1] + v[2]*v[2]))
+                    .collect::<Vec<f64>>();
+
+                kdiffs.insert(0, 0.0);
+                kdiffs.into_iter()
+            })
+            .flatten()
+            .scan(0.0, |acc, x| {
+                *acc += x;
+                Some(*acc)
+            })
+            .collect()
+    }
+
+    fn gen_rawband() -> Vec<f64> {
         todo!()
     }
 
-    fn gen_rawband() -> Vector<f64> {
+    fn gen_pband() ->Vec<f64> {
         todo!()
     }
 
-    fn gen_pband() ->Vector<f64> {
-        todo!()
-    }
-
-    fn get_outcarinfo() -> (f64,) {
-        todo!()
-    }
-
-    fn filter_hse(procar: &mut Procar) -> bool {
-        const THRESHOLD: f64 = 1E-6;
-
+    // May be not useful here ...
+    fn _filter_hse(procar: &mut Procar) -> bool {
         let skip_index = procar.kpoints.weights.iter()
             .position(|x| x.abs() < THRESHOLD);
 
@@ -221,14 +253,13 @@ impl Band {
         let nkpoints = procar.kpoints.nkpoints as usize;
 
         assert!(
-            procar.kpoints.nkpoints as usize        == nkpoints &&
             procar.kpoints.weights.len()            == nkpoints &&
             procar.kpoints.kpointlist.shape()[0]    == nkpoints &&
             procar.pdos.nkpoints as usize           == nkpoints &&
             procar.pdos.eigvals.shape()[1]          == nkpoints &&
             procar.pdos.occupations.shape()[1]      == nkpoints &&
             procar.pdos.projected.shape()[1]        == nkpoints,
-            "Inconsistent k-point numbers in Procar instance"
+            "[*BUG*] Inconsistent k-point numbers in Procar instance"  // Treat as bug
             );
 
         true
@@ -263,14 +294,57 @@ impl OptProcess for Band {
         info!("Found Fermi level: {}, shifting eigenvalues ...", efermi);
         procar.pdos.eigvals -= efermi;
 
-        if self.is_hse {
-            if Self::filter_hse(&mut procar) {
-                info!("Zero-contribution k-points filtered out for HSE system.")
-            } else {
-                warn!("Could not find zero-contribution k-points, processing the non-zero-contribution k-points.")
-            }
-        }
+        //if self.is_hse {
+            //if Self::filter_hse(&mut procar) {
+                //info!("Zero-contribution k-points filtered out for HSE system.")
+            //} else {
+                //warn!("Could not find zero-contribution k-points, processing the non-zero-contribution k-points.")
+            //}
+        //}
         
         Ok(())
+    }
+}
+
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use ndarray::{
+        arr1,
+        arr2,
+    };
+
+    #[test]
+    fn test_gen_kpath() {
+        let kpoints = arr2(&[[ 0.     ,  0.     ,  0.     ],  // 1
+                             [-0.08325,  0.16675,  0.     ],  // 2
+                             [-0.1665 ,  0.3335 ,  0.     ],  // 3
+                             [-0.24975,  0.50025,  0.     ],  // 4
+                             [-0.333  ,  0.667  ,  0.     ],  // 5 <- sep
+                             [-0.333  ,  0.667  ,  0.     ],  // 6 <- sep
+                             [-0.24975,  0.62525,  0.     ],  // 7
+                             [-0.1665 ,  0.5835 ,  0.     ],  // 8
+                             [-0.08325,  0.54175,  0.     ],  // 9
+                             [ 0.     ,  0.5    ,  0.     ],  // 10 <- sep
+                             [ 0.     ,  0.5    ,  0.     ],  // 11 <- sep
+                             [ 0.     ,  0.375  ,  0.     ],  // 12
+                             [ 0.     ,  0.25   ,  0.     ],  // 13
+                             [ 0.     ,  0.125  ,  0.     ],  // 14
+                             [ 0.     ,  0.     ,  0.     ]]);// 15
+
+        let cell = [[    2.8847306200059699 * 0.993,  -1.6655000000000000 * 0.993,   0.0000000000000000 * 0.993],
+                    [    0.0000000000000000 * 0.993,   3.3310000000000000 * 0.993,   0.0000000000000000 * 0.993],
+                    [    0.0000000000000000 * 0.993,   0.0000000000000000 * 0.993,  23.1640000000000015 * 0.993]];
+
+        let bcell = Poscar::acell_to_bcell(&cell).unwrap();
+
+        let kpath = Band::gen_kpath(&kpoints, &bcell, &vec![(1, 5), (6, 10), (11, 15), (6, 10)]);
+        let expect = arr1(&[0.0, 0.05041295144327735, 0.1008259028865547, 0.15123885432983203, 0.2016518057731094,
+                          0.2016518057731094, 0.22682051907635853, 0.2519892323796077, 0.27715794568285684, 0.30232665898610595,
+                          0.30232665898610595, 0.3459637207291467, 0.38960078247218755, 0.4332378442152283, 0.4768749059582691,
+                          0.4768749059582691, 0.5020436192615182, 0.5272123325647673, 0.5523810458680164, 0.5775497591712655]);
+        eprintln!("{}", &kpath);
+        assert!((kpath - &expect).iter().all(|x| x.abs() < 1E-6));
     }
 }
