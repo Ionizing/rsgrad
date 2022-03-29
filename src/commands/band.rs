@@ -25,6 +25,7 @@ use serde::{
 use ndarray::{
     s,
     arr2,
+    Axis,
 };
 use itertools::Itertools;
 
@@ -115,6 +116,9 @@ struct Configuration {
     //#[serde(default = "Configuration::is_hse_default")]
     //is_hse: bool,
 
+    #[serde(default = "Configuration::segment_ranges_default")]
+    segment_ranges: Option<Vec<(usize, usize)>>,
+
     pband: Option<IndexMap<String, RawSelection>>,
 }
 
@@ -124,6 +128,7 @@ impl Configuration {
     pub fn txtout_default() -> PathBuf { PathBuf::from("./band_raw.txt") }
     pub fn htmlout_default() -> PathBuf { PathBuf::from("./band.html") }
     //pub fn is_hse_default() -> bool { false }
+    pub fn segment_ranges_default() -> Option<Vec<(usize, usize)>> { None }
 }
 
 
@@ -180,7 +185,7 @@ pub struct Band {
 impl Band {
     /// Given a `nkpoints*3` matrix to generate k-point path for bandstructure
     /// `segments_ranges` are the start and end indices of each, closed interval.
-    /// the range can be in reversed direction
+    /// the range can be in reversed direction. Index starts from 1.
     fn gen_kpath(kpoints: &Matrix<f64>, bcell: &[[f64; 3]; 3], segment_ranges: &Vec<(usize, usize)>)-> Vector<f64> {
         let bcell = arr2(bcell);
         let kpoints = kpoints.dot(&bcell);
@@ -209,6 +214,31 @@ impl Band {
                 Some(*acc)
             })
             .collect()
+    }
+
+    /// Try to partition the path according to the equality of k-points
+    fn find_segments(kpoints: &Matrix<f64>) -> Result<Vec<(usize, usize)>> {
+        let len = kpoints.shape()[0];
+
+        if len <= 3 {
+            bail!("Too few k-points, consider add more k-points in calculation.");
+        }
+
+        let mut boundaries = Vec::<(usize, usize)>::new();
+        let mut last_bound = 1usize;
+
+        for i in 1 .. len {
+            if (kpoints.index_axis(Axis(0), i).to_owned() - 
+                kpoints.index_axis(Axis(0), i-1))
+                .iter().all(|d| d.abs() < THRESHOLD) {  // if kpt[i, :] == kpt[i-1, :]
+
+                boundaries.push((last_bound, i));
+                last_bound = i + 1;
+            }
+        }
+
+        boundaries.push((last_bound, len));
+        Ok(boundaries)
     }
 
     fn gen_rawband() -> Vec<f64> {
@@ -346,5 +376,8 @@ mod test {
                           0.4768749059582691, 0.5020436192615182, 0.5272123325647673, 0.5523810458680164, 0.5775497591712655]);
         eprintln!("{}", &kpath);
         assert!((kpath - &expect).iter().all(|x| x.abs() < 1E-6));
+
+        let segment_ranges = Band::find_segments(&kpoints).unwrap();
+        assert_eq!(segment_ranges, vec![(1, 5), (6, 10), (11, 15)]);
     }
 }
