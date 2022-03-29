@@ -280,14 +280,14 @@ impl Poscar {
 
 
     #[inline]
-    fn mat33_det(mat: &Mat33<f64>) -> f64 {
+    pub fn mat33_det(mat: &Mat33<f64>) -> f64 {
         return mat[0][0] * (mat[1][1] * mat[2][2] - mat[2][1] * mat[1][2])
              - mat[0][1] * (mat[1][0] * mat[2][2] - mat[1][2] * mat[2][0])
              + mat[0][2] * (mat[1][0] * mat[2][1] - mat[1][1] * mat[2][0]);
     }
 
 
-    fn mat33_inv(mat: &Mat33<f64>) -> Option<Mat33<f64>> {
+    pub fn mat33_inv(mat: &Mat33<f64>) -> Option<Mat33<f64>> {
         let det = Self::mat33_det(mat);
         if det.abs() < 1E-5 { return None; }
         let invdet = 1.0 / det;
@@ -305,7 +305,7 @@ impl Poscar {
     }
 
 
-    fn matx3_mul_mat33(matx3: &MatX3<f64>, mat33: &Mat33<f64>) -> MatX3<f64> {
+    pub fn matx3_mul_mat33(matx3: &MatX3<f64>, mat33: &Mat33<f64>) -> MatX3<f64> {
         let len = matx3.len();
         let mut ret = vec![[0.0; 3]; len];
         for i in 0..len {
@@ -334,6 +334,22 @@ impl Poscar {
 
     pub fn convert_frac_to_cart(frac: &MatX3<f64>, cell: &Mat33<f64>) -> MatX3<f64> {
         Self::matx3_mul_mat33(frac, cell)
+    }
+
+    pub fn mat33_transpose(mat: &Mat33<f64>) -> Mat33<f64> {
+        let mut ret = mat.clone();
+        ret[0][1] = mat[1][0];
+        ret[0][2] = mat[2][0];
+        ret[1][0] = mat[0][1];
+        ret[1][2] = mat[2][1];
+        ret[2][0] = mat[0][2];
+        ret[2][1] = mat[1][2];
+        ret
+    }
+
+    pub fn acell_to_bcell(mat: &Mat33<f64>) -> Option<Mat33<f64>> {
+        let inv = Self::mat33_inv(mat)?;
+        Some(Self::mat33_transpose(&inv))
     }
 }
 
@@ -523,5 +539,34 @@ mod tests {
         let frac = vec![[0.99927918, 0.99999056, 0.13001449]];
         let cart = vec![[7.500499771389843, 4.336581148391669, 8.710968157242762]];
         assert_eq!(Poscar::convert_frac_to_cart(&frac, &cell), cart)
+    }
+
+    #[test]
+    fn test_transpose() {
+        let cell: Mat33<f64> = [[1., 2. ,3.],
+                                [4., 5., 6.],
+                                [7., 8., 9.]];
+
+        let expect: Mat33<f64> = [[1., 4., 7.],
+                                  [2., 5., 8.],
+                                  [3., 6., 9.]];
+
+        assert_eq!(Poscar::mat33_transpose(&cell), expect);
+    }
+
+    #[test]
+    fn test_acell_to_bcell() {
+        let cell: Mat33<f64> = [[1., 2. ,3.],
+                                [4., 5., 6.],
+                                [7., 8., 9.]];
+        assert!(Poscar::acell_to_bcell(&cell).is_none());
+
+        let cell = [[ 1.0, 2.0, 5.0],
+                    [ 3.0, 1.0, 3.0],
+                    [ 4.0, 5.0, 0.0]];
+        assert_eq!(Poscar::acell_to_bcell(&cell),
+                   Some([[-0.234375,  0.1875,  0.171875],
+                         [ 0.390625, -0.3125,  0.046875],
+                         [ 0.015625,  0.1875, -0.078125]]));
     }
 }
