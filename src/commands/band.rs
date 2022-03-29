@@ -41,6 +41,7 @@ use crate::{
         MatX3,
         Vector,
         Matrix,
+        Cube,
     },
     commands::common::{
         write_array_to_txt,
@@ -241,11 +242,13 @@ impl Band {
         Ok(boundaries)
     }
 
-    fn gen_rawband() -> Vec<f64> {
+
+    /// Return: [ispin, ikpoint, iband]
+    fn plot_rawband(eigvals: Cube<f64>) -> Vec<Vec<f64>> {
         todo!()
     }
 
-    fn gen_pband() ->Vec<f64> {
+    fn plot_pband() ->Vec<f64> {
         todo!()
     }
 
