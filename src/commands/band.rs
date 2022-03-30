@@ -26,6 +26,11 @@ use ndarray::{
     s,
     arr2,
     Axis,
+    concatenate,
+};
+use plotly::{
+    self,
+    Plot,
 };
 use itertools::Itertools;
 
@@ -187,7 +192,7 @@ impl Band {
     /// Given a `nkpoints*3` matrix to generate k-point path for bandstructure
     /// `segments_ranges` are the start and end indices of each, closed interval.
     /// the range can be in reversed direction. Index starts from 1.
-    fn gen_kpath(kpoints: &Matrix<f64>, bcell: &[[f64; 3]; 3], segment_ranges: &Vec<(usize, usize)>)-> Vector<f64> {
+    fn gen_kpath(kpoints: &Matrix<f64>, bcell: &[[f64; 3]; 3], segment_ranges: &[(usize, usize)])-> Vector<f64> {
         let bcell = arr2(bcell);
         let kpoints = kpoints.dot(&bcell);
 
@@ -244,8 +249,55 @@ impl Band {
 
 
     /// Return: [ispin, ikpoint, iband]
-    fn plot_rawband(eigvals: Cube<f64>) -> Vec<Vec<f64>> {
-        todo!()
+    fn gen_rawband(eigvals: &Cube<f64>, segment_ranges: &[(usize, usize)]) -> Cube<f64> {
+        let bands = segment_ranges.iter()
+            .cloned()
+            .map(|(beg, end)| {
+                let rng = if beg < end {
+                    s![.., beg-1 .. end, ..]
+                } else {
+                    s![.., end-1 .. beg;-1, ..]
+                };
+                eigvals.slice(rng)
+            })
+            .collect::<Vec<_>>();
+        concatenate(Axis(1), &bands).unwrap()
+    }
+
+    fn plot_rawband(plot: &mut Plot, kpath: Vector<f64>, cropped_eigvals: Cube<f64>) {
+        let nspin     = cropped_eigvals.shape()[0];
+        let nkpoints  = cropped_eigvals.shape()[1];
+        let nbands    = cropped_eigvals.shape()[2];
+
+        assert_eq!(kpath.len(), nkpoints);    // cropped_eigvals[ispin, ikpoint, iband]
+
+        let getcolor = |ispin: usize| {
+            if nspin == 1 {
+                return plotly::NamedColor::Black;
+            } else {
+                if ispin == 0 {
+                    return plotly::NamedColor::LightCoral;
+                } else {
+                    return plotly::NamedColor::LightSkyBlue;
+                }
+            }
+        };
+
+        for ispin in 0 .. nspin {
+            (0 .. nbands).into_iter()
+                .for_each(|iband| {
+                    let dispersion = cropped_eigvals.slice(s![ispin, .., iband]).to_owned();
+                    let show_legend = if 0 == iband { true } else { false };
+
+                    let tr = plotly::Scatter::from_array(kpath.clone(), dispersion.clone())
+                        .mode(plotly::common::Mode::Lines)
+                        .marker(plotly::common::Marker::new().color(getcolor(ispin)))
+                        .legend_group("Total bandstructure")
+                        .show_legend(show_legend)
+                        .name("Total bandstructure");
+                    plot.add_trace(tr);
+                });
+        }
     }
 
     fn plot_pband() ->Vec<f64> {
@@ -324,6 +376,8 @@ impl OptProcess for Band {
             .context("This OUTCAR doesn't complete at least one ionic step.")?
             .cell;
 
+        let bcell = Poscar::acell_to_bcell(&cell).unwrap();
+
         info!("Found Fermi level: {}, shifting eigenvalues ...", efermi);
         procar.pdos.eigvals -= efermi;
 
@@ -334,6 +388,31 @@ impl OptProcess for Band {
                 //warn!("Could not find zero-contribution k-points, processing the non-zero-contribution k-points.")
             //}
         //}
+        
+        let segment_ranges = Self::find_segments(&procar.kpoints.kpointlist)?;
+        let kpath = Self::gen_kpath(&procar.kpoints.kpointlist, &bcell, &segment_ranges);
+        let bands = Self::gen_rawband(&procar.pdos.eigvals, &segment_ranges);
+
+        let mut plot = Plot::new();
+        Self::plot_rawband(&mut plot, kpath.clone(), bands.clone());
+
+        plot.use_local_plotly();
+        let layout = plotly::Layout::new()
+            .title(plotly::common::Title::new("Bandstructure"))
+            .y_axis(plotly::layout::Axis::new()
+                    .title(plotly::common::Title::new("E-Ef (eV)"))
+                    .range(vec![-1.0, 6.0])
+                    .zero_line(true)
+                    )
+            .x_axis(plotly::layout::Axis::new()
+                    .title(plotly::common::Title::new("Wavevector"))
+                    .zero_line(true)
+                    );
+
+        plot.set_layout(layout);
+
+        info!("Writing Bandstructure to {:?}", &self.htmlout);
+        plot.to_html(&self.htmlout);
         
         Ok(())
     }
@@ -379,6 +458,10 @@ mod test {
                           0.4768749059582691, 0.5020436192615182, 0.5272123325647673, 0.5523810458680164, 0.5775497591712655]);
         eprintln!("{}", &kpath);
         assert!((kpath - &expect).iter().all(|x| x.abs() < 1E-6));
+
+        let kpath = Band::gen_kpath(&kpoints, &bcell, &vec![(5, 1), (10, 6), (15, 11), (10, 6)]);
+        assert!((kpath - &expect).iter().all(|x| x.abs() < 1E-6));
+        
 
         let segment_ranges = Band::find_segments(&kpoints).unwrap();
         assert_eq!(segment_ranges, vec![(1, 5), (6, 10), (11, 15)]);

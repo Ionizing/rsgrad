@@ -58,6 +58,11 @@ enum Opt {
     #[structopt(setting = AppSettings::ColoredHelp,
                 setting = AppSettings::ColorAuto)]
     Dos(commands::dos::Dos),
+
+
+    #[structopt(setting = AppSettings::ColoredHelp,
+                setting = AppSettings::ColorAuto)]
+    Band(commands::band::Band),
 }
 
 
@@ -76,6 +81,7 @@ fn main() -> Result<()> {
         Opt::Chgdiff(cmd)   => cmd.process()?,
         Opt::Workfunc(cmd)  => cmd.process()?,
         Opt::Dos(cmd)       => cmd.process()?,
+        Opt::Band(cmd)      => cmd.process()?,
     }
 
     info!("Time used: {:?}", now.elapsed());
