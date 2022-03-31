@@ -1,5 +1,6 @@
 use std::{
     fs,
+    iter,
     path::PathBuf,
 };
 
@@ -30,7 +31,14 @@ use ndarray::{
 };
 use plotly::{
     self,
+    NamedColor,
     Plot,
+    layout::{
+        Shape,
+        ShapeType,
+        ShapeLine,
+        Layout,
+    }
 };
 use itertools::Itertools;
 
@@ -287,7 +295,7 @@ impl Band {
             (0 .. nbands).into_iter()
                 .for_each(|iband| {
                     let dispersion = cropped_eigvals.slice(s![ispin, .., iband]).to_owned();
-                    let show_legend = if 0 == iband { true } else { false };
+                    let show_legend = if 0 == iband && 0 == ispin { true } else { false };
 
                     let tr = plotly::Scatter::from_array(kpath.clone(), dispersion.clone())
                         .mode(plotly::common::Mode::Lines)
@@ -298,6 +306,59 @@ impl Band {
                     plot.add_trace(tr);
                 });
         }
+    }
+
+    fn plot_boundaries(layout: &mut Layout, kpath: &Vector<f64>, segment_ranges: &[(usize, usize)]) {
+        segment_ranges.iter()
+            .map(|(ki, kj)| {  // ki and kj form a closed interval
+                if ki > kj {
+                    ki - kj + 1
+                } else {
+                    kj - ki + 1
+                }
+            })
+            .scan(0, |acc, x| {
+                *acc += x;
+                Some(*acc - 1)
+            })
+            .chain(iter::once(0usize))
+            .map(|ik| kpath[ik])
+            .for_each(|k| {
+                let shape = Shape::new()
+                    .shape_type(ShapeType::Line)
+                    .x0(k).y0(0.0)
+                    .x1(k).y1(1.0)
+                    .x_ref("x").y_ref("paper")
+                    .line(ShapeLine::new()
+                          .color(NamedColor::Black)
+                          .width(0.7));
+                layout.add_shape(shape);
+            });
+
+        let kmax = kpath.iter().last().cloned().unwrap();
+
+        layout.add_shape(
+            Shape::new()
+            .shape_type(ShapeType::Line)
+            .x0(0.0).y0(0.0)
+            .x1(kmax).y1(0.0)
+            .x_ref("x")
+            .y_ref("paper")
+            .line(ShapeLine::new()
+                  .color(NamedColor::Black)
+                  .width(0.7))
+            );
+        layout.add_shape(
+            Shape::new()
+            .shape_type(ShapeType::Line)
+            .x0(0.0).y0(1.0)
+            .x1(kmax).y1(1.0)
+            .x_ref("x")
+            .y_ref("paper")
+            .line(ShapeLine::new()
+                  .color(NamedColor::Black)
+                  .width(0.7))
+            );
     }
 
     fn plot_pband() ->Vec<f64> {
@@ -397,7 +458,7 @@ impl OptProcess for Band {
         Self::plot_rawband(&mut plot, kpath.clone(), bands.clone());
 
         plot.use_local_plotly();
-        let layout = plotly::Layout::new()
+        let mut layout = plotly::Layout::new()
             .title(plotly::common::Title::new("Bandstructure"))
             .y_axis(plotly::layout::Axis::new()
                     .title(plotly::common::Title::new("E-Ef (eV)"))
@@ -408,6 +469,8 @@ impl OptProcess for Band {
                     .title(plotly::common::Title::new("Wavevector"))
                     .zero_line(true)
                     );
+
+        Self::plot_boundaries(&mut layout, &kpath, &segment_ranges);
 
         plot.set_layout(layout);
 
