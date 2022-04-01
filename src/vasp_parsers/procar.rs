@@ -8,7 +8,10 @@ use ndarray::{
     Array5,
     Array6,
 };
-use rayon::prelude::*;
+use rayon::{
+    self,
+    prelude::*,
+};
 use anyhow::{
     Result,
     Context,
@@ -42,15 +45,37 @@ pub struct Procar {
 impl Procar {
     pub fn from_file(path: impl AsRef<Path>) -> Result<Self> {
         let txt = fs::read_to_string(path)?;
+        
+        let mut nspin   = Result::<usize>::Ok(0);
+        let mut lsorbit = Result::<bool>::Ok(false);
+        let mut kbi     = Result::<(usize, usize, usize)>::Ok((0, 0, 0));
+        let mut nlm     = Result::<Vec<String>>::Ok(vec![]);
 
-        let nspin                       = Self::parse_nspin(&txt)?;
-        let lsorbit                     = Self::parse_lsorbit(&txt)?;
-        let (nkpoints, nbands, nions)   = Self::parse_kbi(&txt)?;
-        let nlm                         = Self::parse_nlm(&txt)?;
-        let projected                   = Self::parse_projections(&txt, nspin, nkpoints, nbands, nions, nlm.len(), lsorbit)?;
-        let (eigvals, occupations)      = Self::parse_bandlevel(&txt, nspin, nkpoints, nbands)?;
+        rayon::scope(|s| {
+            s.spawn(|_| { nspin     = Self::parse_nspin(&txt); });
+            s.spawn(|_| { lsorbit   = Self::parse_lsorbit(&txt); });
+            s.spawn(|_| { kbi       = Self::parse_kbi(&txt); });
+            s.spawn(|_| { nlm       = Self::parse_nlm(&txt); });
+        });
 
-        let (kpointlist, weights) = Self::parse_kpoints(&txt, nkpoints)?;
+        let nspin                       = nspin?;
+        let lsorbit                     = lsorbit?;
+        let (nkpoints, nbands, nions)   = kbi?;
+        let nlm                         = nlm?;
+
+        let mut projected   = Result::<Array5<f64>>::Ok(Array5::zeros([0, 0, 0, 0, 0]));
+        let mut eo          = Result::<(Cube<f64>, Cube<f64>)>::Ok((Cube::<f64>::zeros([0, 0, 0]), Cube::<f64>::zeros([0, 0, 0])));
+        let mut kw          = Result::<(Matrix<f64>, Vector<f64>)>::Ok((Matrix::<f64>::zeros([0, 0]), Vector::<f64>::zeros(0)));
+
+        rayon::scope(|s| {
+            s.spawn(|_| { projected = Self::parse_projections(&txt, nspin, nkpoints, nbands, nions, nlm.len(), lsorbit); });
+            s.spawn(|_| { eo        = Self::parse_bandlevel(&txt, nspin, nkpoints, nbands); });
+            s.spawn(|_| { kw        = Self::parse_kpoints(&txt, nkpoints); });
+        });
+        
+        let projected                   = projected?;
+        let (eigvals, occupations)      = eo?;
+        let (kpointlist, weights)       = kw?;
 
         let kpoints = Kpoints {
             nkpoints: nkpoints as u32,
