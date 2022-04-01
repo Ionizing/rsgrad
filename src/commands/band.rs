@@ -13,7 +13,10 @@ use log::{
     info,
     warn,
 };
-use rayon;
+use rayon::{
+    self,
+    prelude::*,
+};
 use anyhow::{
     bail,
     anyhow,
@@ -26,6 +29,7 @@ use serde::{
 use ndarray::{
     s,
     arr2,
+    Array5,
     Axis,
     concatenate,
 };
@@ -33,6 +37,7 @@ use plotly::{
     self,
     NamedColor,
     Plot,
+    common::color::Color,
     layout::{
         Shape,
         ShapeType,
@@ -59,6 +64,7 @@ use crate::{
     commands::common::{
         write_array_to_txt,
         RawSelection,
+        CustomColor,
     }
 };
 
@@ -70,9 +76,10 @@ const THRESHOLD: f64 = 1E-6;
 struct Selection {
     label:      String,
     ispins:     Vec<usize>,
-    ikpoints:   Vec<usize>,
+    //ikpoints:   Vec<usize>,
     iatoms:     Vec<usize>,
     iorbits:    Vec<usize>,
+    color:      Option<CustomColor>,
     factor:     f64,
 }
 
@@ -88,19 +95,25 @@ fn rawsel_to_sel(r: IndexMap<String, RawSelection>,
 
     for (label, val) in r.into_iter() {
         let ispins      = RawSelection::parse_ispins(   val.spins.as_deref(),   nspin, is_ncl)?;
-        let ikpoints    = RawSelection::parse_ikpoints( val.kpoints.as_deref(), nkpoints)?;
+        //let ikpoints    = RawSelection::parse_ikpoints( val.kpoints.as_deref(), nkpoints)?;
         let iatoms      = RawSelection::parse_iatoms(   val.atoms.as_deref(),   nions)?;
         let iorbits     = RawSelection::parse_iorbits(  val.orbits.as_deref(),  nlm)?;
         let factor      = val.factor.unwrap_or(1.0);
+        let color       = if let Some(color) = val.color {
+            Some(RawSelection::parse_color(&color)?)
+        } else {
+            None
+        };
 
         if factor < 0.0 { bail!("The factor cannot be negative."); }
 
         let sel = Selection {
             label: label.to_string(),
             ispins,
-            ikpoints,
+            //ikpoints,
             iatoms,
             iorbits,
+            color,
             factor,
         };
 
@@ -272,7 +285,23 @@ impl Band {
         concatenate(Axis(1), &bands).unwrap()
     }
 
-    fn plot_rawband(plot: &mut Plot, kpath: Vector<f64>, cropped_eigvals: Cube<f64>) {
+    /// Return: [spins, kpoints, bands, nions, nnlm]
+    fn gen_cropped_projections(proj: &Array5<f64>, segment_ranges: &[(usize, usize)]) -> Array5<f64> {
+        let projections = segment_ranges.iter()
+            .cloned()
+            .map(|(beg, end)| {
+                let rng = if beg < end {
+                    s![.., beg-1 ..end, .., .., ..]
+                } else {
+                    s![.., end-1 ..beg;-1, .., .., ..]
+                };
+                proj.slice(rng)
+            })
+            .collect::<Vec<_>>();
+        concatenate(Axis(1), &projections).unwrap()
+    }
+
+    fn plot_rawband(plot: &mut Plot, kpath: Vector<f64>, cropped_eigvals: &Cube<f64>) {
         let nspin     = cropped_eigvals.shape()[0];
         let nkpoints  = cropped_eigvals.shape()[1];
         let nbands    = cropped_eigvals.shape()[2];
@@ -281,12 +310,12 @@ impl Band {
 
         let getcolor = |ispin: usize| {
             if nspin == 1 {
-                return plotly::NamedColor::Black;
+                return NamedColor::Black;
             } else {
                 if ispin == 0 {
-                    return plotly::NamedColor::LightCoral;
+                    return NamedColor::LightCoral;
                 } else {
-                    return plotly::NamedColor::LightSkyBlue;
+                    return NamedColor::LightSkyBlue;
                 }
             }
         };
@@ -361,9 +390,63 @@ impl Band {
             );
     }
 
-    fn plot_pband() ->Vec<f64> {
-        todo!()
+    fn gen_pband(selection: &Selection, cropped_eigvals: Cube<f64>, cropped_projections: &Array5<f64>) -> Cube<f64> {
+        let nspin    = cropped_eigvals.shape()[0];
+        let nkpoints = cropped_eigvals.shape()[1];
+        let nbands   = cropped_eigvals.shape()[2];
+
+        let mut summed_proj = Cube::<f64>::zeros([nspin, nkpoints, nbands]);
+
+        if 1 == nspin {
+            let proj = (0 .. nkpoints).into_par_iter()
+                .map(|ik| {
+                    let mut weights = Vector::zeros(nbands);
+                    for ib in 0 .. nbands {
+                        for is in selection.ispins.iter().cloned() {
+                            for ia in selection.iatoms.iter().cloned() {
+                                for iorbit in selection.iorbits.iter().cloned() {
+                                    weights[ib] += cropped_projections[[is, ik, ib, ia, iorbit]];
+                                }
+                            }
+                        }
+                    }
+                    weights
+                })
+                .collect::<Vec<Vector<f64>>>();
+
+            for ik in 0 .. nkpoints {
+                summed_proj.slice_mut(s![0usize, ik, ..]).assign(&proj[ik]);
+            }
+        } else {
+            for is in selection.iatoms.iter().cloned() {
+                let proj = (0 .. nkpoints).into_par_iter()
+                    .map(|ik| {
+                        let mut weights = Vector::zeros(nbands);
+                        for ib in 0 .. nbands {
+                            for ia in selection.iatoms.iter().cloned() {
+                                for iorbit in selection.iorbits.iter().cloned() {
+                                    weights[ib] += cropped_projections[[is, ik, ib, ia, iorbit]];
+                                }
+                            }
+                        }
+                        weights
+                    })
+                    .collect::<Vec<Vector<f64>>>();
+
+                for ik in 0 .. nkpoints {
+                    summed_proj.slice_mut(s![is, ik, ..]).assign(&proj[ik]);
+                }
+            }
+        };
+
+        summed_proj
     }
+
+
+    fn plot_pband(plot: &mut Plot, selection: &Selection, kpath: &Vector<f64>, cropped_eigvals: &Cube<f64>, projections: &Cube<f64>) {
+
+    }
+
 
     // May be not useful here ...
     fn _filter_hse(procar: &mut Procar) -> bool {
@@ -455,7 +538,7 @@ impl OptProcess for Band {
         let bands = Self::gen_rawband(&procar.pdos.eigvals, &segment_ranges);
 
         let mut plot = Plot::new();
-        Self::plot_rawband(&mut plot, kpath.clone(), bands.clone());
+        Self::plot_rawband(&mut plot, kpath.clone(), &bands);
 
         plot.use_local_plotly();
         let mut layout = plotly::Layout::new()
