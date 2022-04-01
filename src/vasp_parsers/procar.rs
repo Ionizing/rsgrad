@@ -8,6 +8,7 @@ use ndarray::{
     Array5,
     Array6,
 };
+use rayon::prelude::*;
 use anyhow::{
     Result,
     Context,
@@ -121,10 +122,15 @@ impl Procar {
 
     fn parse_projections(txt: &str, nspin: usize, nkpoints: usize,
                                     nbands: usize, nions: usize, nnlm: usize, lsorbit: bool) -> Result<Array5<f64>> {
-        let mut pdos = Vec::<Matrix<f64>>::with_capacity(16);
-        for p in Regex::new(r"(?m)^band")?.find_iter(txt) {
-            pdos.push(Procar::parse_projections_aux(&txt[p.start()..], nions, lsorbit)?);
-        }
+        let bandposes = Regex::new(r"(?m)^band")?.find_iter(txt)
+            .map(|p| p.start())
+            .collect::<Vec<usize>>();
+
+        let pdos = bandposes.into_par_iter()
+            .map(|p| {
+                Procar::parse_projections_aux(&txt[p..], nions, lsorbit)
+            })
+            .collect::<Result<Vec<Matrix<f64>>>>()?;
 
         let pdos = pdos.into_iter().flatten().collect::<Vec<_>>();
         let pdos = if !lsorbit {
