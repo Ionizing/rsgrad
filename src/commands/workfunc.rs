@@ -2,7 +2,6 @@ use std::path::PathBuf;
 use structopt::{
     StructOpt,
     clap::AppSettings,
-    clap::arg_enum,
 };
 use rayon;
 use anyhow::{
@@ -19,18 +18,11 @@ use crate::{
     ChargeDensity,
     ChargeType,
     Outcar,
-    commands::common::write_array_to_txt,
-};
-
-arg_enum!{
-    #[derive(Debug)]
-    enum Axis {
-        X,
-        Y,
-        Z
+    commands::common::{
+        Axis,
+        write_array_to_txt,
     }
-}
-
+};
 
 #[derive(Debug, StructOpt)]
 #[structopt(setting = AppSettings::ColoredHelp,

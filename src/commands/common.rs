@@ -11,7 +11,6 @@ use serde::{
 };
 use log::warn;
 use anyhow::{
-    anyhow,
     bail,
     Result,
     Context,
@@ -24,11 +23,22 @@ use plotly::common::{
     },
 };
 use ndarray::Array1;
+use structopt::clap::arg_enum;
 
 use crate::types::{
     range_parse,
     index_transform,
 };
+
+
+arg_enum! {
+    #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+    pub enum Axis {
+        X,
+        Y,
+        Z,
+    }
+}
 
 
 const NAMED_COLORS: &[&str] = &[

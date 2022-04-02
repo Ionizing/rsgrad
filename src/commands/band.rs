@@ -31,7 +31,6 @@ use ndarray::{
     s,
     arr2,
     Array5,
-    Axis,
     concatenate,
 };
 use plotly::{
@@ -65,6 +64,7 @@ use crate::{
         Cube,
     },
     commands::common::{
+        Axis,
         write_array_to_txt,
         RawSelection,
         CustomColor,
@@ -143,28 +143,25 @@ struct Configuration {
     #[serde(default = "Configuration::htmlout_default")]
     htmlout: PathBuf,
 
-    //#[serde(default = "Configuration::is_hse_default")]
-    //is_hse: bool,
-
-    #[serde(default = "Configuration::segment_ranges_default")]
     segment_ranges: Option<Vec<(usize, usize)>>,
+
+    ncl_spinor: Option<Axis>,
 
     #[serde(default = "Configuration::colormap_default",
             deserialize_with = "Configuration::colormap_de")]
     colormap: ColorScalePalette,
 
+    efermi: Option<f64>,
+
     pband: Option<IndexMap<String, RawSelection>>,
 }
 
 impl Configuration {
-    pub fn kpoint_labels_default() -> Option<Vec<String>> { None }
-    pub fn procar_default() -> PathBuf { PathBuf::from("./PROCAR") }
-    pub fn outcar_default() -> PathBuf { PathBuf::from("./OUTCAR") }
-    pub fn txtout_default() -> PathBuf { PathBuf::from("./band_raw.txt") }
-    pub fn htmlout_default() -> PathBuf { PathBuf::from("./band.html") }
-    //pub fn is_hse_default() -> bool { false }
-    pub fn segment_ranges_default() -> Option<Vec<(usize, usize)>> { None }
-    pub fn colormap_default() -> ColorScalePalette { ColorScalePalette::Jet }
+    pub fn procar_default()         -> PathBuf { PathBuf::from("./PROCAR") }
+    pub fn outcar_default()         -> PathBuf { PathBuf::from("./OUTCAR") }
+    pub fn txtout_default()         -> PathBuf { PathBuf::from("./band_raw.txt") }
+    pub fn htmlout_default()        -> PathBuf { PathBuf::from("./band.html") }
+    pub fn colormap_default()       -> ColorScalePalette { ColorScalePalette::Jet }
     pub fn colormap_de<'de, D: Deserializer<'de>>(d: D) -> std::result::Result<ColorScalePalette, D::Error> {
         let s: Option<String> = Deserialize::deserialize(d)?;
         if let Some(s) = s {
@@ -195,13 +192,16 @@ pub struct Band {
     /// Generate band structure plot configuration template.
     gen_template: bool,
 
+    #[structopt(long)]
+    /// Set the E-fermi given from SCF's OUTCAR and it will be the reference energy level.
+    ///
+    /// If it is unset, the fermi level would be read from OUTCAR of non-scf calculation,
+    /// i.e. bandstructure calculation, which may be a little different from scf's.
+    efermi: Option<f64>,
+
     #[structopt(short, long)]
     /// Symbols for high symmetry points on the kpoint path.
     kpoint_labels: Option<Vec<String>>,
-
-    //#[structopt(long)]
-    // /// Specify the system is calculated via HSE method or not.
-    //is_hse: bool,
 
     #[structopt(long, default_value = "./PROCAR")]
     /// PROCAR path.
@@ -217,6 +217,9 @@ pub struct Band {
 
     #[structopt(long, default_value = "jet", parse(try_from_str = RawSelection::parse_colormap))]
     colormap: ColorScalePalette,
+
+    #[structopt(long, possible_values = &Axis::variants(), case_insensitive = true)]
+    ncl_spinor: Option<Axis>,
 
     #[structopt(long, default_value = "band.txt")]
     /// Save the raw data of band structure.
@@ -238,11 +241,11 @@ impl Band {
     /// Given a `nkpoints*3` matrix to generate k-point path for bandstructure
     /// `segment_ranges` are the start and end indices of each, closed interval.
     /// the range can be in reversed direction. Index starts from 1.
-    fn gen_kpath(kpoints: &Matrix<f64>, bcell: &[[f64; 3]; 3], segment_ranges: &[(usize, usize)])-> Vector<f64> {
+    fn gen_kpath(kpoints: &Matrix<f64>, bcell: &[[f64; 3]; 3], segment_ranges: &[(usize, usize)])-> (Vector<f64>, Vec<f64>) {
         let bcell = arr2(bcell);
         let kpoints = kpoints.dot(&bcell);
 
-        segment_ranges
+        let kpath = segment_ranges
             .iter()
             .cloned()
             .map(|(beg, end)| {
@@ -265,7 +268,26 @@ impl Band {
                 *acc += x;
                 Some(*acc)
             })
-            .collect()
+            .collect::<Vector<f64>>();
+
+        let mut kxs = segment_ranges.iter()
+            .map(|(ki, kj)| {  // ki and kj form a closed interval
+                if ki > kj {
+                    ki - kj + 1
+                } else {
+                    kj - ki + 1
+                }
+            })
+            .scan(0, |acc, x| {     // equal to cumsum
+                *acc += x;
+                Some(*acc - 1)
+            })
+            .map(|ik| kpath[ik])
+            .collect::<Vec<f64>>();
+
+        kxs.insert(0, 0.0);
+
+        (kpath, kxs)
     }
 
     /// Try to partition the path according to the equality of k-points
@@ -280,8 +302,8 @@ impl Band {
         let mut last_bound = 1usize;
 
         for i in 1 .. len {
-            if (kpoints.index_axis(Axis(0), i).to_owned() - 
-                kpoints.index_axis(Axis(0), i-1))
+            if (kpoints.index_axis(ndarray::Axis(0), i).to_owned() - 
+                kpoints.index_axis(ndarray::Axis(0), i-1))
                 .iter().all(|d| d.abs() < THRESHOLD) {  // if kpt[i, :] == kpt[i-1, :]
 
                 boundaries.push((last_bound, i));
@@ -307,7 +329,7 @@ impl Band {
                 eigvals.slice(rng)
             })
             .collect::<Vec<_>>();
-        concatenate(Axis(1), &bands).unwrap()
+        concatenate(ndarray::Axis(1), &bands).unwrap()
     }
 
     /// Return: [spins, kpoints, bands, nions, nnlm]
@@ -323,7 +345,7 @@ impl Band {
                 proj.slice(rng)
             })
             .collect::<Vec<_>>();
-        concatenate(Axis(1), &projections).unwrap()
+        concatenate(ndarray::Axis(1), &projections).unwrap()
     }
 
     fn plot_rawband(plot: &mut Plot, kpath: Vector<f64>, cropped_eigvals: &Cube<f64>) {
@@ -362,24 +384,8 @@ impl Band {
         }
     }
 
-    fn plot_boundaries(layout: &mut Layout, kpath: &Vector<f64>, segment_ranges: &[(usize, usize)], klabels: &[String]) {
-        let kxes = segment_ranges.iter()
-            .map(|(ki, kj)| {  // ki and kj form a closed interval
-                if ki > kj {
-                    ki - kj + 1
-                } else {
-                    kj - ki + 1
-                }
-            })
-            .scan(0, |acc, x| {     // equal to cumsum
-                *acc += x;
-                Some(*acc - 1)
-            })
-            .chain(iter::once(0usize))
-            .map(|ik| kpath[ik])
-            .collect::<Vec<f64>>();
-
-        kxes.iter()
+    fn plot_boundaries(layout: &mut Layout, kxs: &[f64]) {
+        kxs.iter()
             .cloned()
             .for_each(|k| {         // add vlines to canvas to identify high-symmetry points
                 let shape = Shape::new()
@@ -393,7 +399,7 @@ impl Band {
                 layout.add_shape(shape);
             });
 
-        let kmax = kpath.iter().last().cloned().unwrap();
+        let kmax = kxs.iter().last().cloned().unwrap();
 
         layout.add_shape(
             Shape::new()
@@ -624,20 +630,25 @@ impl OptProcess for Band {
         info!("Found Fermi level: {}, shifting eigenvalues ...", efermi);
         procar.pdos.eigvals -= efermi;
 
-        //if self.is_hse {
-            //if Self::filter_hse(&mut procar) {
-                //info!("Zero-contribution k-points filtered out for HSE system.")
-            //} else {
-                //warn!("Could not find zero-contribution k-points, processing the non-zero-contribution k-points.")
-            //}
-        //}
-
         let segment_ranges = Self::find_segments(&procar.kpoints.kpointlist)?;
-        let kpath = Self::gen_kpath(&procar.kpoints.kpointlist, &bcell, &segment_ranges);
+        let (kpath, kxs) = Self::gen_kpath(&procar.kpoints.kpointlist, &bcell, &segment_ranges);
         let bands = Self::gen_rawband(&procar.pdos.eigvals, &segment_ranges);
+
+        let klabels = if let Some(label) = self.kpoint_labels.as_ref() {
+            if label.len() != kxs.len() {
+                bail!("Inconsistent k-point label number with segment ranges");
+            }
+            label.to_owned()
+        } else {
+            vec!["".to_string(); kxs.len()]
+        };
 
         let mut plot = Plot::new();
         Self::plot_rawband(&mut plot, kpath.clone(), &bands);
+
+        if let Some(ax) = self.ncl_spinor.as_ref() {
+            
+        }
 
         plot.use_local_plotly();
         let mut layout = plotly::Layout::new()
@@ -649,21 +660,17 @@ impl OptProcess for Band {
                     )
             .x_axis(plotly::layout::Axis::new()
                     .title(plotly::common::Title::new("Wavevector"))
+                    .tick_values(kxs.clone())
+                    .tick_text(klabels.clone())
                     .zero_line(true)
                     );
 
-        let klabels = if let Some(label) = self.kpoint_labels.as_ref() {
-            if label.len() != segment_ranges.len() + 1 {
-                bail!("Inconsistent k-point label number with segment ranges");
-            }
-            label.to_owned()
-        } else {
-            vec!["".to_string(); segment_ranges.len()]
-        };
-
-        Self::plot_boundaries(&mut layout, &kpath, &segment_ranges, &klabels);
+        Self::plot_boundaries(&mut layout, &kxs);
 
         plot.set_layout(layout);
+
+
+        // save data
 
         info!("Writing Bandstructure to {:?}", &self.htmlout);
         plot.to_html(&self.htmlout);
@@ -705,7 +712,7 @@ mod test {
 
         let bcell = Poscar::acell_to_bcell(&cell).unwrap();
 
-        let kpath = Band::gen_kpath(&kpoints, &bcell, &vec![(1, 5), (6, 10), (11, 15), (6, 10)]);
+        let (kpath, _) = Band::gen_kpath(&kpoints, &bcell, &vec![(1, 5), (6, 10), (11, 15), (6, 10)]);
         let expect = arr1(&[0.0, 0.05041295144327735, 0.1008259028865547, 0.15123885432983203, 0.2016518057731094,
                           0.2016518057731094, 0.22682051907635853, 0.2519892323796077, 0.27715794568285684, 0.30232665898610595,
                           0.30232665898610595, 0.3459637207291467, 0.38960078247218755, 0.4332378442152283, 0.4768749059582691,
@@ -713,7 +720,7 @@ mod test {
         eprintln!("{}", &kpath);
         assert!((kpath - &expect).iter().all(|x| x.abs() < 1E-6));
 
-        let kpath = Band::gen_kpath(&kpoints, &bcell, &vec![(5, 1), (10, 6), (15, 11), (10, 6)]);
+        let (kpath, _) = Band::gen_kpath(&kpoints, &bcell, &vec![(5, 1), (10, 6), (15, 11), (10, 6)]);
         assert!((kpath - &expect).iter().all(|x| x.abs() < 1E-6));
         
 
