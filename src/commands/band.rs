@@ -25,6 +25,7 @@ use anyhow::{
 use serde::{
     Serialize,
     Deserialize,
+    Deserializer,
 };
 use ndarray::{
     s,
@@ -148,6 +149,10 @@ struct Configuration {
     #[serde(default = "Configuration::segment_ranges_default")]
     segment_ranges: Option<Vec<(usize, usize)>>,
 
+    #[serde(default = "Configuration::colormap_default",
+            deserialize_with = "Configuration::colormap_de")]
+    colormap: ColorScalePalette,
+
     pband: Option<IndexMap<String, RawSelection>>,
 }
 
@@ -158,6 +163,19 @@ impl Configuration {
     pub fn htmlout_default() -> PathBuf { PathBuf::from("./band.html") }
     //pub fn is_hse_default() -> bool { false }
     pub fn segment_ranges_default() -> Option<Vec<(usize, usize)>> { None }
+    pub fn colormap_default() -> ColorScalePalette { ColorScalePalette::Jet }
+    pub fn colormap_de<'de, D: Deserializer<'de>>(d: D) -> std::result::Result<ColorScalePalette, D::Error> {
+        let s: Option<String> = Deserialize::deserialize(d)?;
+        if let Some(s) = s {
+            let cmap = RawSelection::parse_colormap(&s);
+            match cmap {
+                Ok(c) => { return Ok(c) },
+                Err(e) => { return Err(serde::de::Error::custom(e.to_string())) },
+            }
+        } else {
+            return Ok(ColorScalePalette::Jet);
+        };
+    }
 }
 
 
@@ -196,6 +214,9 @@ pub struct Band {
     /// The fermi level and lattice info are extracted from OUTCAR.
     outcar: PathBuf,
 
+    #[structopt(long, default_value = "jet", parse(try_from_str = RawSelection::parse_colormap))]
+    colormap: ColorScalePalette,
+
     #[structopt(long, default_value = "band.txt")]
     /// Save the raw data of band structure.
     ///
@@ -209,6 +230,7 @@ pub struct Band {
     /// etc. are supported.
     htmlout: PathBuf,
 }
+
 
 // Extra TODO: shift eigvals to E-fermi
 impl Band {
@@ -339,7 +361,7 @@ impl Band {
         }
     }
 
-    fn plot_boundaries(layout: &mut Layout, kpath: &Vector<f64>, segment_ranges: &[(usize, usize)]) {
+    fn plot_boundaries(layout: &mut Layout, kpath: &Vector<f64>, segment_ranges: &[(usize, usize)], klabels: &[String]) {
         segment_ranges.iter()
             .map(|(ki, kj)| {  // ki and kj form a closed interval
                 if ki > kj {
@@ -486,7 +508,8 @@ impl Band {
 
 
     fn plot_band_ncl(plot: &mut Plot, kpath: &Vector<f64>, cropped_eigvals: &Cube<f64>, 
-                     colormap: Option<plotly::common::ColorScalePalette>, projections: &Cube<f64>) {
+                     projections: &Cube<f64>, colormap: Option<plotly::common::ColorScalePalette>, 
+                     label: &str) {
         let nspin       = cropped_eigvals.shape()[0];
         let nkpoints    = cropped_eigvals.shape()[1];
         let nbands      = cropped_eigvals.shape()[2];
@@ -511,9 +534,9 @@ impl Band {
                     .marker(plotly::common::Marker::new()
                             .color_scale(plotly::common::ColorScale::Palette(cmap.clone()))
                             .color_array(projection))
-                    .legend_group("Projected Total Band")
+                    .legend_group(label)
                     .show_legend(show_legend)
-                    .name("Projected Total Band");
+                    .name(label);
                 plot.add_trace(tr);
             });
     }
@@ -603,7 +626,7 @@ impl OptProcess for Band {
                 //warn!("Could not find zero-contribution k-points, processing the non-zero-contribution k-points.")
             //}
         //}
-        
+
         let segment_ranges = Self::find_segments(&procar.kpoints.kpointlist)?;
         let kpath = Self::gen_kpath(&procar.kpoints.kpointlist, &bcell, &segment_ranges);
         let bands = Self::gen_rawband(&procar.pdos.eigvals, &segment_ranges);

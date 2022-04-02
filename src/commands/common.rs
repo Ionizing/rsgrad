@@ -86,22 +86,22 @@ const PALETTES: &[&str] = &[
 const PALETTES_ENUM: &[ColorScalePalette] = &[
     ColorScalePalette::Blackbody,
     ColorScalePalette::Bluered,
-    ColorScalePalette::Blackbody,
-    ColorScalePalette::Blackbody,
-    ColorScalePalette::Blackbody,
-    ColorScalePalette::Blackbody,
-    ColorScalePalette::Blackbody,
-    ColorScalePalette::Blackbody,
-    ColorScalePalette::Blackbody,
-    ColorScalePalette::Blackbody,
-    ColorScalePalette::Blackbody,
-    ColorScalePalette::Blackbody,
-    ColorScalePalette::Blackbody,
-    ColorScalePalette::Blackbody,
-    ColorScalePalette::Blackbody,
-    ColorScalePalette::Blackbody,
-    ColorScalePalette::Blackbody,
-    ColorScalePalette::Blackbody,
+    ColorScalePalette::Blues,
+    ColorScalePalette::Cividis,
+    ColorScalePalette::Earth,
+    ColorScalePalette::Electric,
+    ColorScalePalette::Greens,
+    ColorScalePalette::Greys,
+    ColorScalePalette::Hot,
+    ColorScalePalette::Jet,
+    ColorScalePalette::Picnic,
+    ColorScalePalette::Portland,
+    ColorScalePalette::Rainbow,
+    ColorScalePalette::RdBu,
+    ColorScalePalette::Reds,
+    ColorScalePalette::Viridis,
+    ColorScalePalette::YlGnBu,
+    ColorScalePalette::YlOrRd,
 ];
 
 
@@ -296,11 +296,11 @@ See \"https://developer.mozilla.org/en-US/docs/Web/CSS/color_value for availed n
     }
 
     pub fn parse_colormap(input: &str) -> Result<ColorScalePalette> {
-        match input.to_ascii_lowercase().as_str() {
-            "blackbody" => Ok(ColorScalePalette::Blackbody),
-            "bluered"   => Ok(ColorScalePalette::Bluered),
-            "blues"     => Ok(ColorScalePalette::Blues),
-            _ => bail!("Invalid colormap input, available colormaps: {:?}", PALETTES)
+        let input = &input.to_ascii_lowercase();
+        if let Some(pos) = PALETTES.iter().position(|x| x == input) {
+            Ok(PALETTES_ENUM[pos].to_owned())
+        } else {
+            bail!("Invlid colormap input, available colormaps: {:?}", PALETTES)
         }
     }
 }
