@@ -157,6 +157,7 @@ struct Configuration {
 }
 
 impl Configuration {
+    pub fn kpoint_labels_default() -> Option<Vec<String>> { None }
     pub fn procar_default() -> PathBuf { PathBuf::from("./PROCAR") }
     pub fn outcar_default() -> PathBuf { PathBuf::from("./OUTCAR") }
     pub fn txtout_default() -> PathBuf { PathBuf::from("./band_raw.txt") }
@@ -235,7 +236,7 @@ pub struct Band {
 // Extra TODO: shift eigvals to E-fermi
 impl Band {
     /// Given a `nkpoints*3` matrix to generate k-point path for bandstructure
-    /// `segments_ranges` are the start and end indices of each, closed interval.
+    /// `segment_ranges` are the start and end indices of each, closed interval.
     /// the range can be in reversed direction. Index starts from 1.
     fn gen_kpath(kpoints: &Matrix<f64>, bcell: &[[f64; 3]; 3], segment_ranges: &[(usize, usize)])-> Vector<f64> {
         let bcell = arr2(bcell);
@@ -362,7 +363,7 @@ impl Band {
     }
 
     fn plot_boundaries(layout: &mut Layout, kpath: &Vector<f64>, segment_ranges: &[(usize, usize)], klabels: &[String]) {
-        segment_ranges.iter()
+        let kxes = segment_ranges.iter()
             .map(|(ki, kj)| {  // ki and kj form a closed interval
                 if ki > kj {
                     ki - kj + 1
@@ -370,13 +371,17 @@ impl Band {
                     kj - ki + 1
                 }
             })
-            .scan(0, |acc, x| {  // equal to cumsum
+            .scan(0, |acc, x| {     // equal to cumsum
                 *acc += x;
                 Some(*acc - 1)
             })
             .chain(iter::once(0usize))
             .map(|ik| kpath[ik])
-            .for_each(|k| {
+            .collect::<Vec<f64>>();
+
+        kxes.iter()
+            .cloned()
+            .for_each(|k| {         // add vlines to canvas to identify high-symmetry points
                 let shape = Shape::new()
                     .shape_type(ShapeType::Line)
                     .x0(k).y0(0.0)
@@ -394,7 +399,7 @@ impl Band {
             Shape::new()
             .shape_type(ShapeType::Line)
             .x0(0.0).y0(0.0)
-            .x1(kmax).y1(0.0)
+            .x1(kmax).y1(0.0)       // add hline at the bottom
             .x_ref("x")
             .y_ref("paper")
             .line(ShapeLine::new()
@@ -405,7 +410,7 @@ impl Band {
             Shape::new()
             .shape_type(ShapeType::Line)
             .x0(0.0).y0(1.0)
-            .x1(kmax).y1(1.0)
+            .x1(kmax).y1(1.0)       // add hline at the top
             .x_ref("x")
             .y_ref("paper")
             .line(ShapeLine::new()
@@ -647,7 +652,16 @@ impl OptProcess for Band {
                     .zero_line(true)
                     );
 
-        Self::plot_boundaries(&mut layout, &kpath, &segment_ranges);
+        let klabels = if let Some(label) = self.kpoint_labels.as_ref() {
+            if label.len() != segment_ranges.len() + 1 {
+                bail!("Inconsistent k-point label number with segment ranges");
+            }
+            label.to_owned()
+        } else {
+            vec!["".to_string(); segment_ranges.len()]
+        };
+
+        Self::plot_boundaries(&mut layout, &kpath, &segment_ranges, &klabels);
 
         plot.set_layout(layout);
 
