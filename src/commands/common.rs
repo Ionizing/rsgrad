@@ -11,13 +11,17 @@ use serde::{
 };
 use log::warn;
 use anyhow::{
+    anyhow,
     bail,
     Result,
     Context,
 };
-use plotly::common::color::{
-    Color,
-    ColorWrapper,
+use plotly::common::{
+    ColorScalePalette,
+    color::{
+        Color,
+        ColorWrapper,
+    },
 };
 use ndarray::Array1;
 
@@ -69,6 +73,36 @@ impl Color for CustomColor {
         self.0.clone()
     }
 }
+
+
+const PALETTES: &[&str] = &[
+    "blackbody",    "bluered",  "blues",    "cividis",  "earth",
+    "electric",     "greens",   "greys",    "hot",      "jet",
+    "picnic",       "portland", "rainbow",  "rdbu",     "reds",
+    "viridis",      "ylgnbu",   "ylorrd",
+];
+
+
+const PALETTES_ENUM: &[ColorScalePalette] = &[
+    ColorScalePalette::Blackbody,
+    ColorScalePalette::Bluered,
+    ColorScalePalette::Blackbody,
+    ColorScalePalette::Blackbody,
+    ColorScalePalette::Blackbody,
+    ColorScalePalette::Blackbody,
+    ColorScalePalette::Blackbody,
+    ColorScalePalette::Blackbody,
+    ColorScalePalette::Blackbody,
+    ColorScalePalette::Blackbody,
+    ColorScalePalette::Blackbody,
+    ColorScalePalette::Blackbody,
+    ColorScalePalette::Blackbody,
+    ColorScalePalette::Blackbody,
+    ColorScalePalette::Blackbody,
+    ColorScalePalette::Blackbody,
+    ColorScalePalette::Blackbody,
+    ColorScalePalette::Blackbody,
+];
 
 
 pub fn write_array_to_txt(file_name: &(impl AsRef<Path> + ?Sized), ys: Vec<&Array1<f64>>, comment: &str) -> Result<()> {
@@ -258,6 +292,15 @@ See \"https://developer.mozilla.org/en-US/docs/Web/CSS/color_value for availed n
             } else {
                 Ok(CustomColor(ret.unwrap()))
             }
+        }
+    }
+
+    pub fn parse_colormap(input: &str) -> Result<ColorScalePalette> {
+        match input.to_ascii_lowercase().as_str() {
+            "blackbody" => Ok(ColorScalePalette::Blackbody),
+            "bluered"   => Ok(ColorScalePalette::Bluered),
+            "blues"     => Ok(ColorScalePalette::Blues),
+            _ => bail!("Invalid colormap input, available colormaps: {:?}", PALETTES)
         }
     }
 }

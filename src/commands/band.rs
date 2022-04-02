@@ -37,7 +37,9 @@ use plotly::{
     self,
     NamedColor,
     Plot,
+    Scatter,
     common::color::Color,
+    common::ColorScalePalette,
     layout::{
         Shape,
         ShapeType,
@@ -236,7 +238,7 @@ impl Band {
                 kdiffs.into_iter()
             })
             .flatten()
-            .scan(0.0, |acc, x| {
+            .scan(0.0, |acc, x| {  // equal to cumsum
                 *acc += x;
                 Some(*acc)
             })
@@ -326,7 +328,7 @@ impl Band {
                     let dispersion = cropped_eigvals.slice(s![ispin, .., iband]).to_owned();
                     let show_legend = if 0 == iband && 0 == ispin { true } else { false };
 
-                    let tr = plotly::Scatter::from_array(kpath.clone(), dispersion.clone())
+                    let tr = Scatter::from_array(kpath.clone(), dispersion.clone())
                         .mode(plotly::common::Mode::Lines)
                         .marker(plotly::common::Marker::new().color(getcolor(ispin)))
                         .legend_group("Total bandstructure")
@@ -346,7 +348,7 @@ impl Band {
                     kj - ki + 1
                 }
             })
-            .scan(0, |acc, x| {
+            .scan(0, |acc, x| {  // equal to cumsum
                 *acc += x;
                 Some(*acc - 1)
             })
@@ -444,7 +446,76 @@ impl Band {
 
 
     fn plot_pband(plot: &mut Plot, selection: &Selection, kpath: &Vector<f64>, cropped_eigvals: &Cube<f64>, projections: &Cube<f64>) {
+        let nspin       = cropped_eigvals.shape()[0];
+        let nkpoints    = cropped_eigvals.shape()[1];
+        let nbands      = cropped_eigvals.shape()[2];
 
+        assert_eq!(kpath.len(), nkpoints);      // cropped_eigvals[ispin, ikpoint, iband]
+
+        let marker = if let Some(color) = selection.color.clone() {
+            plotly::common::Marker::new().color(color)
+        } else {
+            plotly::common::Marker::new()
+        };
+
+        for ispin in 0 .. nspin {
+            (0 .. nbands).into_iter()
+                .for_each(|iband| {
+                    let dispersion = cropped_eigvals.slice(s![ispin, .., iband]).to_owned();
+                    let projection = projections.slice(s![ispin, .., iband])
+                        .iter()
+                        .map(|x| {
+                            if *x < 0.0 {
+                                warn!("Negative projection number found: {} , it would be treated as zero", x);
+                            }
+                            (x * 20.0).round() as usize
+                        })  // negative numbers are treated as 0
+                        .collect::<Vec<usize>>();
+                    let show_legend = if 0 == iband && 0 == ispin { true } else { false };
+
+                    let tr = Scatter::from_array(kpath.clone(), dispersion)
+                        .mode(plotly::common::Mode::Markers)
+                        .marker(marker.clone().opacity(0.4).size_array(projection))
+                        .legend_group(&selection.label)
+                        .show_legend(show_legend)
+                        .name(&selection.label);
+                    plot.add_trace(tr);
+                });
+        }
+    }
+
+
+    fn plot_band_ncl(plot: &mut Plot, kpath: &Vector<f64>, cropped_eigvals: &Cube<f64>, 
+                     colormap: Option<plotly::common::ColorScalePalette>, projections: &Cube<f64>) {
+        let nspin       = cropped_eigvals.shape()[0];
+        let nkpoints    = cropped_eigvals.shape()[1];
+        let nbands      = cropped_eigvals.shape()[2];
+
+        assert_eq!(nspin, 1);
+        assert_eq!(kpath.len(), nkpoints);
+
+        let cmap = if let Some(cmap) = colormap {
+            cmap
+        } else {
+            plotly::common::ColorScalePalette::Jet
+        };
+
+        (0 .. nbands).into_iter()
+            .for_each(|iband| {
+                let dispersion = cropped_eigvals.slice(s![0, .., iband]).to_owned();
+                let projection = projections.slice(s![0, .., iband]).to_owned().into_raw_vec();
+                let show_legend = if 0 == iband { true} else { false };
+                
+                let tr = Scatter::from_array(kpath.clone(), dispersion)
+                    .mode(plotly::common::Mode::Lines)
+                    .marker(plotly::common::Marker::new()
+                            .color_scale(plotly::common::ColorScale::Palette(cmap.clone()))
+                            .color_array(projection))
+                    .legend_group("Projected Total Band")
+                    .show_legend(show_legend)
+                    .name("Projected Total Band");
+                plot.add_trace(tr);
+            });
     }
 
 
