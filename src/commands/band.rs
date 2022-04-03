@@ -694,6 +694,7 @@ impl OptProcess for Band {
         let ncl_spinor      = if let Some(cfg) = config.as_ref() { &cfg.ncl_spinor } else { &self.ncl_spinor };
         let colormap        = if let Some(cfg) = config.as_ref() { &cfg.colormap } else { &self.colormap };
         let kpoint_labels   = if let Some(cfg) = config.as_ref() { &cfg.kpoint_labels } else { &self.kpoint_labels };
+        let segment_ranges  = if let Some(cfg) = config.as_ref() { &cfg.segment_ranges } else { &None };
 
         let mut procar: Result<Procar> = Err(anyhow!(""));
         let mut outcar: Result<Outcar> = Err(anyhow!(""));
@@ -724,7 +725,7 @@ impl OptProcess for Band {
         procar.pdos.eigvals -= efermi;
         let procar = procar;  // rebind it, to remove mutability
 
-        let segment_ranges      = Self::find_segments(&procar.kpoints.kpointlist)?;
+        let segment_ranges      = segment_ranges.clone().unwrap_or(Self::find_segments(&procar.kpoints.kpointlist)?);
         let (kpath, kxs)        = Self::gen_kpath(&procar.kpoints.kpointlist, &bcell, &segment_ranges);
         let cropped_eigvals     = Self::gen_rawband(&procar.pdos.eigvals, &segment_ranges);
         let cropped_projections = Self::gen_cropped_projections(&procar.pdos.projected, &segment_ranges);
@@ -738,6 +739,8 @@ impl OptProcess for Band {
             vec!["".to_string(); kxs.len()]
         };
 
+
+        // Set up plot environment
         let mut plot = Plot::new();
         Self::plot_rawband(&mut plot, kpath.clone(), &cropped_eigvals);
 
@@ -760,7 +763,7 @@ impl OptProcess for Band {
             info!("Plotting ncl-band in {} direction", ax);
             let projected_band_ncl = Self::gen_nclband(&cropped_projections, *ax);
             let label = format!("NCL Band-{}", ax.to_string());
-            Self::plot_nclband(&mut plot, &kpath, &cropped_eigvals, &projected_band_ncl, self.colormap.clone(), &label);
+            Self::plot_nclband(&mut plot, &kpath, &cropped_eigvals, &projected_band_ncl, colormap.clone(), &label);
         }
 
         Self::plot_boundaries(&mut layout, &kxs);
