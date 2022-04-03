@@ -12,6 +12,7 @@ use structopt::{
 use log::{
     info,
     warn,
+    debug,
 };
 use rayon::{
     self,
@@ -79,11 +80,9 @@ const THRESHOLD: f64 = 1E-6;
 struct Selection {
     label:      String,
     ispins:     Vec<usize>,
-    //ikpoints:   Vec<usize>,
     iatoms:     Vec<usize>,
     iorbits:    Vec<usize>,
     color:      Option<CustomColor>,
-    factor:     f64,
 }
 
 
@@ -91,24 +90,19 @@ fn rawsel_to_sel(r: IndexMap<String, RawSelection>,
                  nspin: usize,
                  is_ncl: bool,
                  nlm: &[String], 
-                 nions: usize, 
-                 nkpoints: usize) -> Result<Vec<Selection>> {
+                 nions: usize) -> Result<Vec<Selection>> {
 
     let mut sel_vec = vec![];
 
     for (label, val) in r.into_iter() {
         let ispins      = RawSelection::parse_ispins(   val.spins.as_deref(),   nspin, is_ncl)?;
-        //let ikpoints    = RawSelection::parse_ikpoints( val.kpoints.as_deref(), nkpoints)?;
         let iatoms      = RawSelection::parse_iatoms(   val.atoms.as_deref(),   nions)?;
         let iorbits     = RawSelection::parse_iorbits(  val.orbits.as_deref(),  nlm)?;
-        let factor      = val.factor.unwrap_or(1.0);
         let color       = if let Some(color) = val.color {
             Some(RawSelection::parse_color(&color)?)
         } else {
             None
         };
-
-        if factor < 0.0 { bail!("The factor cannot be negative."); }
 
         let sel = Selection {
             label: label.to_string(),
@@ -117,7 +111,6 @@ fn rawsel_to_sel(r: IndexMap<String, RawSelection>,
             iatoms,
             iorbits,
             color,
-            factor,
         };
 
         sel_vec.push(sel);
@@ -128,6 +121,7 @@ fn rawsel_to_sel(r: IndexMap<String, RawSelection>,
 
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
+#[serde(rename_all = "kebab-case")]
 struct Configuration {
     kpoint_labels: Option<Vec<String>>,
 
@@ -137,8 +131,8 @@ struct Configuration {
     #[serde(default = "Configuration::outcar_default")]
     outcar: PathBuf,
 
-    #[serde(default = "Configuration::txtout_default")]
-    txtout: PathBuf,
+    #[serde(default = "Configuration::txtout_prefix_default")]
+    txtout_prefix: String,
 
     #[serde(default = "Configuration::htmlout_default")]
     htmlout: PathBuf,
@@ -159,7 +153,7 @@ struct Configuration {
 impl Configuration {
     pub fn procar_default()         -> PathBuf { PathBuf::from("./PROCAR") }
     pub fn outcar_default()         -> PathBuf { PathBuf::from("./OUTCAR") }
-    pub fn txtout_default()         -> PathBuf { PathBuf::from("./band_raw.txt") }
+    pub fn txtout_prefix_default()  -> String  { String::from("./band_raw") }
     pub fn htmlout_default()        -> PathBuf { PathBuf::from("./band.html") }
     pub fn colormap_default()       -> ColorScalePalette { ColorScalePalette::Jet }
     pub fn colormap_de<'de, D: Deserializer<'de>>(d: D) -> std::result::Result<ColorScalePalette, D::Error> {
@@ -221,11 +215,11 @@ pub struct Band {
     #[structopt(long, possible_values = &Axis::variants(), case_insensitive = true)]
     ncl_spinor: Option<Axis>,
 
-    #[structopt(long, default_value = "band.txt")]
+    #[structopt(long, default_value = "band_raw")]
     /// Save the raw data of band structure.
     ///
     /// Then you can replot it with more advanced tools.
-    txtout: PathBuf,
+    txtout_prefix: String,
 
     #[structopt(long, default_value = "band.html")]
     /// Save the band structure plot as HTML.
@@ -645,26 +639,81 @@ impl Band {
 }
 
 
+const TEMPLATE: &'static str = r#"# rsgrad Band plot configuration in toml format.
+# multiple tokens inside string are seperated by whitespace, if you 
+
+# kpoint-labels   = ["G", "K", "M", "G"]   # should be consistant with the boundaries in KPOINTS
+procar          = "PROCAR"
+outcar          = "OUTCAR"
+txtout-prefix   = "band_raw"
+htmlout         = "band.html"
+# segment-ranges  = [[1, 40], [41, 80], [81, 120]]  # if commented, rsgrad will find the boundaries by judging if k[i] == k[i+1]
+# ncl-spinor      = "Z"     # for vasp_ncl calculation
+colormap        = "jet"     # the colormap specified to plot ncl-band
+efermi          = 0.0       # if commented, rsgrad will read the efermi from OUTCAR, but if may be slightly different from scf's
+
+[pband.plot1]
+spins   = "up down"     # "u d" are also ok
+atoms   = "1 3..7 -1"   # which atoms to project on, if commented, all atoms are selected
+orbits  = "x px dxy"    # which orbits to project on, if commented, all orbits are selected
+color   = "red"         # the color of marker
+"#;
+
+
 impl OptProcess for Band {
     fn process(&self) -> Result<()> {
+        if self.gen_template {
+            let conf_filename = PathBuf::from("./pband.toml");
+
+            info!("Generating projected band configuration tempalte ...");
+            fs::write("pband.toml", TEMPLATE)?;
+            info!("Template file written to {:?}. Exiting", &conf_filename);
+
+            return Ok(());
+        }
+
+        
+        // reading configuration
+        let config = if let Some(config) = self.config.as_ref() {
+            info!("Reading porjected band configuration fomr {:?}", self.config.as_ref());
+            let config = fs::read_to_string(config)?;
+            let config: Configuration = toml::from_str(&config)?;
+
+            debug!("{:#?}", &config);
+
+            Some(config)
+        } else {
+            None
+        };
+
+        let procar_fname    = if let Some(cfg) = config.as_ref() { &cfg.procar } else { &self.procar };
+        let outcar_fname    = if let Some(cfg) = config.as_ref() { &cfg.outcar } else { &self.outcar };
+        let txtout_prefix   = if let Some(cfg) = config.as_ref() { &cfg.txtout_prefix } else { &self.txtout_prefix };
+        let htmlout         = if let Some(cfg) = config.as_ref() { &cfg.htmlout } else { &self.htmlout };
+        let efermi          = if let Some(cfg) = config.as_ref() { &cfg.efermi } else { &self.efermi };
+        let ncl_spinor      = if let Some(cfg) = config.as_ref() { &cfg.ncl_spinor } else { &self.ncl_spinor };
+        let colormap        = if let Some(cfg) = config.as_ref() { &cfg.colormap } else { &self.colormap };
+        let kpoint_labels   = if let Some(cfg) = config.as_ref() { &cfg.kpoint_labels } else { &self.kpoint_labels };
+
         let mut procar: Result<Procar> = Err(anyhow!(""));
         let mut outcar: Result<Outcar> = Err(anyhow!(""));
 
         rayon::scope(|s| {
             s.spawn(|_| {
-                info!("Reading band data from {:?}", &self.procar);
-                procar = Procar::from_file(&self.procar);
+                info!("Reading band data from {:?}", procar_fname);
+                procar = Procar::from_file(procar_fname);
             });
             s.spawn(|_| {
-                info!("Reading fermi level and lattice data from {:?}", &self.outcar);
-                outcar = Outcar::from_file(&self.outcar);
+                info!("Reading fermi level and lattice data from {:?}", outcar_fname);
+                outcar = Outcar::from_file(outcar_fname);
             });
         });
 
-        let mut procar = procar.context(format!("Parse PROCAR file {:?} failed.", self.procar))?;
-        let outcar = outcar.context(format!("Parse OUTCAR file {:?} failed.", self.procar))?;
+        let mut procar = procar.context(format!("Parse PROCAR file {:?} failed.", procar_fname))?;
+        let outcar = outcar.context(format!("Parse OUTCAR file {:?} failed.", outcar_fname))?;
 
-        let efermi = outcar.efermi;
+
+        let efermi = efermi.unwrap_or(outcar.efermi);
         let cell = outcar.ion_iters.last()
             .context("This OUTCAR doesn't complete at least one ionic step.")?
             .cell;
@@ -673,13 +722,14 @@ impl OptProcess for Band {
 
         info!("Found Fermi level: {}, shifting eigenvalues ...", efermi);
         procar.pdos.eigvals -= efermi;
+        let procar = procar;  // rebind it, to remove mutability
 
         let segment_ranges      = Self::find_segments(&procar.kpoints.kpointlist)?;
         let (kpath, kxs)        = Self::gen_kpath(&procar.kpoints.kpointlist, &bcell, &segment_ranges);
         let cropped_eigvals     = Self::gen_rawband(&procar.pdos.eigvals, &segment_ranges);
         let cropped_projections = Self::gen_cropped_projections(&procar.pdos.projected, &segment_ranges);
 
-        let klabels = if let Some(label) = self.kpoint_labels.as_ref() {
+        let klabels = if let Some(label) = kpoint_labels.as_ref() {
             if label.len() != kxs.len() {
                 bail!("Inconsistent k-point label number with segment ranges");
             }
@@ -706,7 +756,8 @@ impl OptProcess for Band {
                     .zero_line(true)
                     );
 
-        if let Some(ax) = self.ncl_spinor.as_ref() {
+        if let Some(ax) = ncl_spinor.as_ref() {
+            info!("Plotting ncl-band in {} direction", ax);
             let projected_band_ncl = Self::gen_nclband(&cropped_projections, *ax);
             let label = format!("NCL Band-{}", ax.to_string());
             Self::plot_nclband(&mut plot, &kpath, &cropped_eigvals, &projected_band_ncl, self.colormap.clone(), &label);
@@ -734,6 +785,26 @@ mod test {
         arr1,
         arr2,
     };
+
+    const TEMPLATE_TEST: &'static str = r#"# rsgrad Band plot configuration in toml format.
+# multiple tokens inside string are seperated by whitespace, if you 
+
+kpoint-labels   = ["G", "K", "M", "G"]   # should be consistant with the boundaries in KPOINTS
+procar          = "PROCAR"
+outcar          = "OUTCAR"
+txtout-prefix   = "band_raw"
+htmlout         = "band.html"
+segment-ranges  = [[1, 40], [41, 80], [81, 120]]
+ncl-spinor      = "Z"
+colormap        = "blues"
+efermi          = 0.0
+
+[pband.plot1]
+spins   = "up down"  # "u d"
+atoms   = "1 3..7 -1"
+orbits  = "s px dxy"
+color   = "red"
+"#;
 
     #[test]
     fn test_gen_kpath() {
@@ -773,5 +844,38 @@ mod test {
 
         let segment_ranges = Band::find_segments(&kpoints).unwrap();
         assert_eq!(segment_ranges, vec![(1, 5), (6, 10), (11, 15)]);
+    }
+
+
+    #[test]
+    fn test_config() {
+        let nlm = "s     py     pz     px    dxy    dyz    dz2    dxz    dx2" 
+            .split_whitespace()
+            .map(String::from)
+            .collect::<Vec<_>>();
+        let nspin = 2;
+        let nions = 8usize;
+        let is_ncl = false;
+        let kpoint_labels_ref = vec!["G", "K", "M", "G"].into_iter()
+            .map(String::from)
+            .collect::<Vec<String>>();
+
+        let c: Configuration = toml::from_str(TEMPLATE_TEST).unwrap();
+        let v = rawsel_to_sel(c.clone().pband.unwrap(), nspin, is_ncl, &nlm, nions).unwrap();
+
+        assert_eq!(c.kpoint_labels.as_ref(), Some(&kpoint_labels_ref));
+        assert_eq!(c.txtout_prefix, "band_raw");
+        assert_eq!(c.segment_ranges, Some(vec![(1, 40), (41, 80), (81, 120)]));
+        assert_eq!(c.ncl_spinor.unwrap(), Axis::Z);
+        //assert_eq!(c.colormap, ColorScalePalette::Blues);  // Palette doesn't derive Eq trait
+        assert_eq!(c.efermi.as_ref(), Some(&0.0));
+
+        assert_eq!(v[0].label, "plot1");
+        assert_eq!(v[0].iatoms, &[0, 2, 3, 4, 5, 6, 7]);
+        assert_eq!(v[0].iorbits, &[0, 3, 4]);
+
+        let s = toml::to_string(&c).unwrap();
+        println!("{}", s);
+        println!("{:?}", v);
     }
 }

@@ -32,7 +32,7 @@ use crate::types::{
 
 
 arg_enum! {
-    #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+    #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
     pub enum Axis {
         X,
         Y,
