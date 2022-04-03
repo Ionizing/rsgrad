@@ -430,9 +430,14 @@ impl Band {
         let nkpoints = cropped_projections.shape()[1];
         let nbands   = cropped_projections.shape()[2];
 
-        let mut summed_proj = Cube::<f64>::zeros([nspin % 4, nkpoints, nbands]);
+        let nspin = match nspin {
+            1 | 4 => 1usize,
+            2 => 2usize,
+            _ => unreachable!(),
+        };
+        let mut summed_proj = Cube::<f64>::zeros([nspin, nkpoints, nbands]);
 
-        if 1 == nspin || 4 == nspin {  // for ispin=1 or lsorbit=T system
+        if 1 == nspin {  // for ispin=1 or lsorbit=T system
             let proj = (0 .. nkpoints).into_par_iter()
                 .map(|ik| {
                     let mut weights = Vector::zeros(nbands);
@@ -518,13 +523,41 @@ impl Band {
     }
 
 
-    fn gen_band_ncl() {
+    fn gen_nclband(cropped_projections: &Array5<f64>, axis: Axis) -> Matrix<f64> {
+        let nspin       = cropped_projections.shape()[0];
+        let nkpoints    = cropped_projections.shape()[1];
+        let nbands      = cropped_projections.shape()[2];
 
+        assert_eq!(nspin, 4, "Not a NCL PROCAR");
+
+        let iaxis = match axis {
+            Axis::X => 1usize,
+            Axis::Y => 2,
+            Axis::Z => 3,
+        };
+
+        let mut summed_proj = Matrix::<f64>::zeros([nkpoints, nbands]);
+
+        let proj = (0 .. nkpoints).into_par_iter()
+            .map(|ik| {
+                let mut weights = Vector::<f64>::zeros(nbands);
+                for ib in 0 .. nbands {
+                    weights[ib] += cropped_projections.slice(s![iaxis, ik, ib, .., ..]).sum();
+                }
+                weights
+            })
+            .collect::<Vec<Vector<f64>>>();
+
+        for ik in 0 .. nkpoints {
+            summed_proj.slice_mut(s![ik, ..]).assign(&proj[ik]);
+        }
+
+        summed_proj
     }
 
 
-    fn plot_band_ncl(plot: &mut Plot, kpath: &Vector<f64>, cropped_eigvals: &Cube<f64>, 
-                     projections: &Cube<f64>, colormap: Option<plotly::common::ColorScalePalette>, 
+    fn plot_nclband(plot: &mut Plot, kpath: &Vector<f64>, cropped_eigvals: &Cube<f64>, 
+                     projections: &Matrix<f64>, colormap: plotly::common::ColorScalePalette, 
                      label: &str) {
         let nspin       = cropped_eigvals.shape()[0];
         let nkpoints    = cropped_eigvals.shape()[1];
@@ -533,23 +566,29 @@ impl Band {
         assert_eq!(nspin, 1);
         assert_eq!(kpath.len(), nkpoints);
 
-        let cmap = if let Some(cmap) = colormap {
-            cmap
-        } else {
-            plotly::common::ColorScalePalette::Jet
-        };
-
         (0 .. nbands).into_iter()
             .for_each(|iband| {
                 let dispersion = cropped_eigvals.slice(s![0, .., iband]).to_owned();
-                let projection = projections.slice(s![0, .., iband]).to_owned().into_raw_vec();
+                let projection = projections.slice(s![.., iband]).to_owned().into_raw_vec();
                 let show_legend = if 0 == iband { true} else { false };
-                
+
+                let marker = if 0 == iband {
+                    plotly::common::Marker::new()
+                } else {
+                    plotly::common::Marker::new()
+                        //.color_bar(plotly::common::ColorBar::new()        // TODO: commented due to plotly-rs's stack overflow bug
+                                   //.thickness(5)
+                                   //.tick_vals(vec![-1.0, 1.0])
+                                   //.outline_width(0))
+                };
+
                 let tr = Scatter::from_array(kpath.clone(), dispersion)
-                    .mode(plotly::common::Mode::Lines)
-                    .marker(plotly::common::Marker::new()
-                            .color_scale(plotly::common::ColorScale::Palette(cmap.clone()))
-                            .color_array(projection))
+                    .mode(plotly::common::Mode::Markers)
+                    .marker(marker
+                            .color_scale(plotly::common::ColorScale::Palette(colormap.clone()))
+                            .color_array(projection)
+                            .cmin(-1.0)
+                            .cmax(1.0))
                     .legend_group(label)
                     .show_legend(show_legend)
                     .name(label);
@@ -635,9 +674,10 @@ impl OptProcess for Band {
         info!("Found Fermi level: {}, shifting eigenvalues ...", efermi);
         procar.pdos.eigvals -= efermi;
 
-        let segment_ranges = Self::find_segments(&procar.kpoints.kpointlist)?;
-        let (kpath, kxs) = Self::gen_kpath(&procar.kpoints.kpointlist, &bcell, &segment_ranges);
-        let bands = Self::gen_rawband(&procar.pdos.eigvals, &segment_ranges);
+        let segment_ranges      = Self::find_segments(&procar.kpoints.kpointlist)?;
+        let (kpath, kxs)        = Self::gen_kpath(&procar.kpoints.kpointlist, &bcell, &segment_ranges);
+        let cropped_eigvals     = Self::gen_rawband(&procar.pdos.eigvals, &segment_ranges);
+        let cropped_projections = Self::gen_cropped_projections(&procar.pdos.projected, &segment_ranges);
 
         let klabels = if let Some(label) = self.kpoint_labels.as_ref() {
             if label.len() != kxs.len() {
@@ -649,13 +689,7 @@ impl OptProcess for Band {
         };
 
         let mut plot = Plot::new();
-        Self::plot_rawband(&mut plot, kpath.clone(), &bands);
-
-        if let Some(ax) = self.ncl_spinor.as_ref() {
-            match ax {
-                _ => todo!()
-            }           
-        }
+        Self::plot_rawband(&mut plot, kpath.clone(), &cropped_eigvals);
 
         plot.use_local_plotly();
         let mut layout = plotly::Layout::new()
@@ -671,6 +705,12 @@ impl OptProcess for Band {
                     .tick_text(klabels.clone())
                     .zero_line(true)
                     );
+
+        if let Some(ax) = self.ncl_spinor.as_ref() {
+            let projected_band_ncl = Self::gen_nclband(&cropped_projections, *ax);
+            let label = format!("NCL Band-{}", ax.to_string());
+            Self::plot_nclband(&mut plot, &kpath, &cropped_eigvals, &projected_band_ncl, self.colormap.clone(), &label);
+        }
 
         Self::plot_boundaries(&mut layout, &kxs);
 
