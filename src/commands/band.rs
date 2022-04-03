@@ -425,14 +425,14 @@ impl Band {
             );
     }
 
-    fn gen_pband(selection: &Selection, cropped_eigvals: Cube<f64>, cropped_projections: &Array5<f64>) -> Cube<f64> {
-        let nspin    = cropped_eigvals.shape()[0];
-        let nkpoints = cropped_eigvals.shape()[1];
-        let nbands   = cropped_eigvals.shape()[2];
+    fn gen_pband(selection: &Selection, cropped_projections: &Array5<f64>) -> Cube<f64> {
+        let nspin    = cropped_projections.shape()[0];
+        let nkpoints = cropped_projections.shape()[1];
+        let nbands   = cropped_projections.shape()[2];
 
-        let mut summed_proj = Cube::<f64>::zeros([nspin, nkpoints, nbands]);
+        let mut summed_proj = Cube::<f64>::zeros([nspin % 4, nkpoints, nbands]);
 
-        if 1 == nspin {
+        if 1 == nspin || 4 == nspin {  // for ispin=1 or lsorbit=T system
             let proj = (0 .. nkpoints).into_par_iter()
                 .map(|ik| {
                     let mut weights = Vector::zeros(nbands);
@@ -452,8 +452,8 @@ impl Band {
             for ik in 0 .. nkpoints {
                 summed_proj.slice_mut(s![0usize, ik, ..]).assign(&proj[ik]);
             }
-        } else {
-            for is in selection.iatoms.iter().cloned() {
+        } else {  // ispin == 2
+            for is in selection.ispins.iter().cloned() {
                 let proj = (0 .. nkpoints).into_par_iter()
                     .map(|ik| {
                         let mut weights = Vector::zeros(nbands);
@@ -515,6 +515,11 @@ impl Band {
                     plot.add_trace(tr);
                 });
         }
+    }
+
+
+    fn gen_band_ncl() {
+
     }
 
 
@@ -647,7 +652,9 @@ impl OptProcess for Band {
         Self::plot_rawband(&mut plot, kpath.clone(), &bands);
 
         if let Some(ax) = self.ncl_spinor.as_ref() {
-            
+            match ax {
+                _ => todo!()
+            }           
         }
 
         plot.use_local_plotly();
