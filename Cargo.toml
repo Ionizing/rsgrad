@@ -27,6 +27,7 @@ serde = "1.0"
 plotly = { version = "0.7", features = ["plotly_ndarray"] }
 toml = "0.5"
 indexmap = { version = "1.8", features = ["serde"] }
+rand = "0.8"
 
 [dev-dependencies]
 tempdir = "0.3"

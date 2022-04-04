@@ -313,6 +313,15 @@ See \"https://developer.mozilla.org/en-US/docs/Web/CSS/color_value for availed n
             bail!("Invlid colormap input, available colormaps: {:?}", PALETTES)
         }
     }
+
+    pub fn get_random_color() -> CustomColor {
+        use rand::Rng;
+
+        let mut rng = rand::thread_rng();
+        let id = rng.gen_range(0 .. NAMED_COLORS.len());
+        return Self::parse_color(NAMED_COLORS[id]).unwrap();
+    }
+
 }
 
 

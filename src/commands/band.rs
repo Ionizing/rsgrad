@@ -1,7 +1,7 @@
 use std::{
     fs,
-    iter,
     path::PathBuf,
+    time::Instant,
 };
 
 use indexmap::IndexMap;
@@ -39,7 +39,6 @@ use plotly::{
     NamedColor,
     Plot,
     Scatter,
-    common::color::Color,
     common::ColorScalePalette,
     layout::{
         Shape,
@@ -48,7 +47,6 @@ use plotly::{
         Layout,
     }
 };
-use itertools::Itertools;
 
 use crate::{
     Result,
@@ -56,10 +54,7 @@ use crate::{
     Procar,
     Outcar,
     Poscar,
-    vasp_parsers::outcar::GetEFermi,
     types::{
-        Mat33,
-        MatX3,
         Vector,
         Matrix,
         Cube,
@@ -107,7 +102,6 @@ fn rawsel_to_sel(r: IndexMap<String, RawSelection>,
         let sel = Selection {
             label: label.to_string(),
             ispins,
-            //ikpoints,
             iatoms,
             iorbits,
             color,
@@ -484,11 +478,9 @@ impl Band {
 
         assert_eq!(kpath.len(), nkpoints);      // cropped_eigvals[ispin, ikpoint, iband]
 
-        let marker = if let Some(color) = selection.color.clone() {
-            plotly::common::Marker::new().color(color)
-        } else {
-            plotly::common::Marker::new()
-        };
+        let rand_color = RawSelection::get_random_color();
+        let color = selection.color.clone().unwrap_or(rand_color);
+        let marker = plotly::common::Marker::new().color(color);
 
         for ispin in 0 .. nspin {
             (0 .. nbands).into_iter()
@@ -649,14 +641,14 @@ txtout-prefix   = "band_raw"
 htmlout         = "band.html"
 # segment-ranges  = [[1, 40], [41, 80], [81, 120]]  # if commented, rsgrad will find the boundaries by judging if k[i] == k[i+1]
 # ncl-spinor      = "Z"     # for vasp_ncl calculation
-colormap        = "jet"     # the colormap specified to plot ncl-band
-efermi          = 0.0       # if commented, rsgrad will read the efermi from OUTCAR, but if may be slightly different from scf's
+# colormap        = "jet"     # the colormap specified to plot ncl-band
+# efermi          = 0.0       # if commented, rsgrad will read the efermi from OUTCAR, but if may be slightly different from scf's
 
-[pband.plot1]
-spins   = "up down"     # "u d" are also ok
-atoms   = "1 3..7 -1"   # which atoms to project on, if commented, all atoms are selected
-orbits  = "x px dxy"    # which orbits to project on, if commented, all orbits are selected
-color   = "red"         # the color of marker
+# [pband.plot1]
+# spins   = "up down"     # "u d" are also ok, for ncl system, "tot x y z" are available
+# atoms   = "1 3..7 -1"   # which atoms to project on, if commented, all atoms are selected
+# orbits  = "x px dxy"    # which orbits to project on, if commented, all orbits are selected
+# color   = "red"         # the color of marker
 "#;
 
 
@@ -725,6 +717,12 @@ impl OptProcess for Band {
         procar.pdos.eigvals -= efermi;
         let procar = procar;  // rebind it, to remove mutability
 
+        let nspin  = procar.pdos.nspin as usize;
+        let is_ncl = procar.pdos.lsorbit;
+        let nlm    = procar.pdos.nlm;
+        let nions  = procar.pdos.nions as usize;
+        let nbands = procar.pdos.nbands as usize;
+
         let segment_ranges      = segment_ranges.clone().unwrap_or(Self::find_segments(&procar.kpoints.kpointlist)?);
         let (kpath, kxs)        = Self::gen_kpath(&procar.kpoints.kpointlist, &bcell, &segment_ranges);
         let cropped_eigvals     = Self::gen_rawband(&procar.pdos.eigvals, &segment_ranges);
@@ -736,15 +734,15 @@ impl OptProcess for Band {
             }
             label.to_owned()
         } else {
+            warn!("No k-point labels found, use empty labels instead");
             vec!["".to_string(); kxs.len()]
         };
 
 
         // Set up plot environment
         let mut plot = Plot::new();
-        Self::plot_rawband(&mut plot, kpath.clone(), &cropped_eigvals);
-
         plot.use_local_plotly();
+
         let mut layout = plotly::Layout::new()
             .title(plotly::common::Title::new("Bandstructure"))
             .y_axis(plotly::layout::Axis::new()
@@ -759,22 +757,108 @@ impl OptProcess for Band {
                     .zero_line(true)
                     );
 
+        // Plot raw band
+        info!("Plotting raw bands ...");
+        Self::plot_rawband(&mut plot, kpath.clone(), &cropped_eigvals);
+
+        // Plot ncl band
         if let Some(ax) = ncl_spinor.as_ref() {
             info!("Plotting ncl-band in {} direction", ax);
             let projected_band_ncl = Self::gen_nclband(&cropped_projections, *ax);
             let label = format!("NCL Band-{}", ax.to_string());
             Self::plot_nclband(&mut plot, &kpath, &cropped_eigvals, &projected_band_ncl, colormap.clone(), &label);
+
+            let fname = PathBuf::from(&format!("{}_ncl_{}.txt", txtout_prefix, ax));
+            let data = (0 .. nbands).into_iter()
+                .map(|iband| projected_band_ncl.slice(s![.., iband]).to_owned())
+                .collect::<Vec<_>>();
+            let data_ref = data.iter().collect::<Vec<&Vector<f64>>>();
+
+            info!("Writing ncl band raw data to {:?} ...", &fname);
+            write_array_to_txt(&fname, data_ref, "projection_coefficients nkpoints_x_nbands")?;
         }
 
-        Self::plot_boundaries(&mut layout, &kxs);
+        let selections = if config.as_ref().is_some() {
+            if let Some(pband) = config.clone().unwrap().pband {
+                Some(rawsel_to_sel(pband, nspin, is_ncl, &nlm, nions)?)
+            } else {
+                None
+            }
+        } else {
+            None
+        };
 
+        // Plot projected bands
+        if let Some(selections) = selections {
+            info!("Plotting projected bands ...");
+            let now = Instant::now();
+
+            let pbands = selections
+                .into_par_iter()
+                .map(|sel| {
+                    (
+                        sel.clone(),
+                        Self::gen_pband(&sel, &cropped_projections),
+                    )
+                })
+                .collect::<Vec<_>>();
+            
+            for (sel, band) in pbands.into_iter() {
+                Self::plot_pband(&mut plot, &sel, &kpath, &cropped_eigvals, &band);
+
+                for is in &sel.ispins {
+                    let spin_label = match (is_ncl, nspin, is) {
+                        (false, 1, _) => {     "" },
+                        (false, 2, 0) => {  "_up" },
+                        (false, 2, 1) => {  "_dn" },
+                        ( true, 1, 0) => { "_tot" },
+                        ( true, 1, 1) => {  "_mx" },
+                        ( true, 1, 2) => {  "_my" },
+                        ( true, 1, 3) => {  "_mz" },
+                        _ => { unreachable!("Invalied spin") },
+                    };
+
+                    let fname = PathBuf::from(&format!("{}_{}{}.txt", txtout_prefix, &sel.label, spin_label));
+                    let data = (0 .. nbands).into_iter()
+                        .map(|iband| band.slice(s![*is, .., iband]).to_owned())
+                        .collect::<Vec<_>>();
+                    let data_ref = data.iter().collect::<Vec<&Vector<f64>>>();
+
+                    info!("Writting projected band {} to {:?} ...", &sel.label, &fname);
+                    write_array_to_txt(&fname, data_ref, "projection_coefficients nkpoints_x_nbands")?;
+                }
+            }
+
+            info!("Projected band plot time usage: {:?}", now.elapsed());
+        };
+
+
+        Self::plot_boundaries(&mut layout, &kxs);
         plot.set_layout(layout);
 
 
         // save data
-
         info!("Writing Bandstructure to {:?}", &self.htmlout);
-        plot.to_html(&self.htmlout);
+        plot.to_html(htmlout);
+
+        for is in 0 .. nspin {
+            let spin_label = match (is_ncl, nspin, is) {
+                (    _, 1, _) => { "" },
+                (false, 2, 0) => { "_up" },
+                (false, 2, 1) => { "_dn" },
+                _ => { unreachable!("Invalied spin") },
+            };
+
+            let fname = PathBuf::from(&format!("{}{}.txt", txtout_prefix, spin_label));
+            let mut data = (0 .. nbands).into_iter()
+                .map(|iband| cropped_eigvals.slice(s![is, .., iband]).to_owned())
+                .collect::<Vec<_>>();
+            data.insert(0, kpath.to_owned());
+
+            let data_ref = data.iter().collect::<Vec<&Vector<f64>>>();
+            info!("Writing raw band data to {:?}", &fname);
+            write_array_to_txt(&fname, data_ref, "kpath(in_2pi) band-levels(nkpoints_x_nbands)")?;
+        }
         
         Ok(())
     }
