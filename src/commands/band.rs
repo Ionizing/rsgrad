@@ -336,6 +336,7 @@ impl Band {
         concatenate(ndarray::Axis(1), &projections).unwrap()
     }
 
+    /// Plot the band dispersion only
     fn plot_rawband(plot: &mut Plot, kpath: Vector<f64>, cropped_eigvals: &Cube<f64>) {
         let nspin     = cropped_eigvals.shape()[0];
         let nkpoints  = cropped_eigvals.shape()[1];
@@ -344,14 +345,11 @@ impl Band {
         assert_eq!(kpath.len(), nkpoints);    // cropped_eigvals[ispin, ikpoint, iband]
 
         let getcolor = |ispin: usize| {
-            if nspin == 1 {
-                return NamedColor::Black;
-            } else {
-                if ispin == 0 {
-                    return NamedColor::LightCoral;
-                } else {
-                    return NamedColor::LightSkyBlue;
-                }
+            match (nspin, ispin) {
+                (1, _) => NamedColor::Black,
+                (2, 0) => NamedColor::Red,
+                (2, 1) => NamedColor::Blue,
+                _ => unreachable!("Invalid spin index"),
             }
         };
 
@@ -359,14 +357,29 @@ impl Band {
             (0 .. nbands).into_iter()
                 .for_each(|iband| {
                     let dispersion = cropped_eigvals.slice(s![ispin, .., iband]).to_owned();
-                    let show_legend = if 0 == iband && 0 == ispin { true } else { false };
+                    let show_legend = if 0 == iband { true } else { false };
+                    let legend_name = match (nspin, ispin) {
+                        (1, _) => "Band Dispersion",
+                        (2, 0) => "Spin Up",
+                        (2, 1) => "Spin Down",
+                        _ => unreachable!("Invalied spin index"),
+                    };
+
+                    let hover_template0 = match (nspin, ispin) {
+                        (1, _) => format!("Band#: {}<br>", iband + 1),
+                        (2, 0) => format!("Spin up<br>Band#: {}<br>", iband + 1),
+                        (2, 1) => format!("Spin Down<br>Band#: {}<br>", iband + 1),
+                        _ => unreachable!("Only two spin components available"),
+                    };
 
                     let tr = Scatter::from_array(kpath.clone(), dispersion.clone())
                         .mode(plotly::common::Mode::Lines)
                         .marker(plotly::common::Marker::new().color(getcolor(ispin)))
                         .legend_group("Total bandstructure")
                         .show_legend(show_legend)
-                        .name("Total bandstructure");
+                        .hover_info(plotly::common::HoverInfo::Text)
+                        .hover_template(&(hover_template0 + "E-Ef: %{y:.4f} eV"))
+                        .name(legend_name);
                     plot.add_trace(tr);
                 });
         }
@@ -492,16 +505,30 @@ impl Band {
                             if *x < 0.0 {
                                 warn!("Negative projection number found: {} , it would be treated as zero", x);
                             }
-                            (x * 20.0).round() as usize
+                            (x * 20.0).ceil() as usize
                         })  // negative numbers are treated as 0
                         .collect::<Vec<usize>>();
                     let show_legend = if 0 == iband && 0 == ispin { true } else { false };
+                    let hover_template0 = match (nspin, ispin) {
+                        (1, _) => format!("Band#: {}<br>", iband + 1),
+                        (2, 0) => format!("Spin up<br>Band#: {}<br>", iband + 1),
+                        (2, 1) => format!("Spin Down<br>Band#: {}<br>", iband + 1),
+                        _ => unreachable!("Only two spin components available"),
+                    };
+                    let hover_template_array = projections.slice(s![ispin, .., iband])
+                        .iter()
+                        .map(|x| {
+                            format!("{}E-Ef: %{{y:.4f}} eV<br>Projection: {:.3}", hover_template0, x)
+                        })
+                        .collect::<Vec<String>>();
 
                     let tr = Scatter::from_array(kpath.clone(), dispersion)
                         .mode(plotly::common::Mode::Markers)
                         .marker(marker.clone().opacity(0.4).size_array(projection))
                         .legend_group(&selection.label)
                         .show_legend(show_legend)
+                        .hover_info(plotly::common::HoverInfo::Text)
+                        .hover_template_array(hover_template_array)
                         .name(&selection.label);
                     plot.add_trace(tr);
                 });
@@ -557,6 +584,11 @@ impl Band {
                 let dispersion = cropped_eigvals.slice(s![0, .., iband]).to_owned();
                 let projection = projections.slice(s![.., iband]).to_owned().into_raw_vec();
                 let show_legend = if 0 == iband { true} else { false };
+                let hover_template_array = projection.iter()
+                    .map(|x| {
+                        format!("Band#: {}<Br>E-Ef: %{{y:.4f}} eV<br>{} Projection: {:.3}", iband + 1, label, x)
+                    })
+                    .collect::<Vec<String>>();
 
                 let marker = if 0 == iband {
                     plotly::common::Marker::new()
@@ -577,6 +609,8 @@ impl Band {
                             .cmax(1.0))
                     .legend_group(label)
                     .show_legend(show_legend)
+                    .hover_info(plotly::common::HoverInfo::Text)
+                    .hover_template_array(hover_template_array)
                     .name(label);
                 plot.add_trace(tr);
             });
@@ -765,7 +799,7 @@ impl OptProcess for Band {
         if let Some(ax) = ncl_spinor.as_ref() {
             info!("Plotting ncl-band in {} direction", ax);
             let projected_band_ncl = Self::gen_nclband(&cropped_projections, *ax);
-            let label = format!("NCL Band-{}", ax.to_string());
+            let label = format!("Spinor {}", ax.to_string());
             Self::plot_nclband(&mut plot, &kpath, &cropped_eigvals, &projected_band_ncl, colormap.clone(), &label);
 
             let fname = PathBuf::from(&format!("{}_ncl_{}.txt", txtout_prefix, ax));
