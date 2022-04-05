@@ -1,6 +1,6 @@
 use std::time;
 
-use env_logger;
+use env_logger::init_from_env;
 use log::info;
 use rsgrad::{
     Result,
@@ -69,7 +69,7 @@ enum Opt {
 fn main() -> Result<()> {
     let now = time::Instant::now();
 
-    env_logger::init_from_env(
+    init_from_env(
         env_logger::Env::new().filter_or("RSGRAD_LOG", "info"));
 
     match Opt::from_args() {

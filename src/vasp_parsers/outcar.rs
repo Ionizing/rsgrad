@@ -44,18 +44,20 @@ pub struct IonicIteration {
     pub forces    : MatX3<f64>,
     pub cell      : Mat33<f64>,
 }
-
-impl IonicIteration {
-    pub fn new(nscf: i32, toten: f64, toten_z: f64, cputime: f64,
-               stress: f64, magmom: Option<Vec<f64>>, positions: MatX3<f64>,
-               forces: MatX3<f64>, cell: Mat33<f64>) -> Self {
-        Self {
-            nscf, toten, toten_z, cputime, stress,
-            magmom, positions, forces, cell
-        }
-    }
-    // The parsing process is done within `impl Outcar`
-}
+/*
+ *
+ *impl IonicIteration {
+ *    pub fn new(nscf: i32, toten: f64, toten_z: f64, cputime: f64,
+ *               stress: f64, magmom: Option<Vec<f64>>, positions: MatX3<f64>,
+ *               forces: MatX3<f64>, cell: Mat33<f64>) -> Self {
+ *        Self {
+ *            nscf, toten, toten_z, cputime, stress,
+ *            magmom, positions, forces, cell
+ *        }
+ *    }
+ *    // The parsing process is done within `impl Outcar`
+ *}
+ */
 
 
 #[derive(Clone, PartialEq, Debug)]
@@ -185,7 +187,17 @@ impl Outcar {
 
         let ion_iters = multizip((nscfv, totenv, toten_zv, magmomv, cputimev, ext_pressure, posv, forcev, cellv))
             .map(|(iscf, e, ez, mag, cpu, stress, pos, f, cell)| {
-                IonicIteration::new(iscf, e, ez, cpu, stress, mag, pos, f, cell)
+                IonicIteration{
+                    nscf: iscf,
+                    toten: e,
+                    toten_z: ez,
+                    cputime: cpu,
+                    stress,
+                    magmom: mag,
+                    positions: pos,
+                    forces: f,
+                    cell,
+                }
             })
             .collect::<Vec<IonicIteration>>();
 
@@ -250,8 +262,10 @@ impl Outcar {
                  .unwrap()
                  .as_str()
                  .parse::<f64>()
-                    .expect(&format!("Cannot parse TOTEN as float value: \"{}\"", 
-                                     x.get(0).unwrap().as_str()))
+                 .unwrap_or_else(|_| 
+                     panic!("Cannot parse TOTEN as float value: \"{}\"",
+                            x.get(0).unwrap().as_str())
+                 )
             })
             .collect()
     }
@@ -265,8 +279,10 @@ impl Outcar {
                  .unwrap()
                  .as_str()
                  .parse::<f64>()
-                    .expect(&format!("Cannot parse TOTENZ as float value: \"{}\"",
-                                     x.get(0).unwrap().as_str()))
+                 .unwrap_or_else(|_| 
+                     panic!("Cannot parse TOTENZ as float value: \"{}\"",
+                            x.get(0).unwrap().as_str())
+                 )
             })
             .collect()
     }
@@ -280,8 +296,10 @@ impl Outcar {
                  .unwrap()
                  .as_str()
                  .parse::<f64>()
-                    .expect(&format!("Cannot parse CPU time as float value: \"{}\"",
-                                     x.get(0).unwrap().as_str()))
+                 .unwrap_or_else(|_| 
+                     panic!("Cannot parse CPU time as float value: \"{}\"",
+                            x.get(0).unwrap().as_str())
+                 )
             })
             .collect()
     }
@@ -308,7 +326,8 @@ impl Outcar {
             .split_whitespace()
             .skip(5)
             .map(|x| x.trim().parse::<f64>()
-                 .expect(&format!("Cannot parse magmom as float value: \"{}\"", x)))
+                 .unwrap_or_else(|_| panic!("Cannot parse magmom as float value: \"{}\"", x))
+            )
             .collect::<Vec<_>>();
         match ret.len() {
             0 => None,
@@ -338,7 +357,9 @@ impl Outcar {
                .map(|x| {
                    x.split_whitespace()
                     .map(|x| x.parse::<f64>()
-                         .expect(&format!("Cannot parse position and force info as float value: \"{}\"", x))
+                         .unwrap_or_else(|_|
+                            panic!("Cannot parse position and force info as float value: \"{}\"", x)
+                         )
                     )
                     .collect::<Vec<f64>>()
                })
@@ -387,8 +408,10 @@ impl Outcar {
                     .map(|x| x.get(0).unwrap()
                               .as_str()
                               .parse::<f64>()
-                              .expect(&format!("Cannot parse lattice vector as float numbers: \"{}\"",
-                                               x.get(0).unwrap().as_str())))
+                              .unwrap_or_else(|_| 
+                                  panic!("Cannot parse lattice vector as float numbers: \"{}\"",
+                                         x.get(0).unwrap().as_str()))
+                    )
                     .collect::<Vec<f64>>();
                 [v[0], v[1], v[2]]
             })
@@ -398,7 +421,7 @@ impl Outcar {
 
     fn parse_opt_cells(context: &str) -> Vec<Mat33<f64>> {
         let skip_cnt: usize = 1 +
-            context.find(" old parameters").is_some() as usize;
+            context.contains(" old parameters") as usize;
 
         Regex::new(r"volume of cell : .*\n[ ]*direct lattice vectors")
             .unwrap()
@@ -417,7 +440,10 @@ impl Outcar {
             .as_str()
             .split_whitespace()
             .skip(4)
-            .map(|x| x.parse::<i32>().expect(&format!("Cannot parse ions per type as integer values: \"{}\"", x)))
+            .map(|x| x.parse::<i32>()
+                 .unwrap_or_else(|_|
+                     panic!("Cannot parse ions per type as integer values: \"{}\"", x))
+            )
             .collect()
     }
 
@@ -429,7 +455,7 @@ impl Outcar {
                 l.as_str()
                  .split_whitespace()
                  .nth(2)
-                 .expect(&format!("Parsing element symbols failed: \"{}\"", l.as_str()))
+                 .unwrap_or_else(|| panic!("Parsing element symbols failed: \"{}\"", l.as_str()))
                  .to_owned()
             })
             .collect::<Vec<String>>();
@@ -463,8 +489,10 @@ impl Outcar {
             .unwrap()
             .as_str()
             .parse::<i32>()
-            .expect(&format!("Cannot parse number of SCF iterations in current OUTCAR: \"{}\"",
-                             x.get(0).unwrap().as_str()))
+            .unwrap_or_else(|_|
+                panic!("Cannot parse number of SCF iterations in current OUTCAR: \"{}\"",
+                       x.get(0).unwrap().as_str())
+            )
     }
 
     fn parse_stress(context: &str) -> Vec<f64> {
@@ -476,8 +504,10 @@ impl Outcar {
                  .unwrap()
                  .as_str()
                  .parse::<f64>()
-                    .expect(&format!("Cannot parse external pressure info as float value: \"{}\"",
-                                     x.get(0).unwrap().as_str()))
+                 .unwrap_or_else(|_|
+                     panic!("Cannot parse external pressure info as float value: \"{}\"",
+                            x.get(0).unwrap().as_str())
+                 )
             })
             .collect()
     }
@@ -491,7 +521,9 @@ impl Outcar {
             .unwrap()
             .as_str()
             .parse::<i32>()
-            .expect(&format!("Cannot parse IBRION value: \"{}\"", x.get(0).unwrap().as_str()))
+            .unwrap_or_else(|_|
+                panic!("Cannot parse IBRION value: \"{}\"", x.get(0).unwrap().as_str())
+            )
     }
 
     fn parse_lsorbit(context: &str) -> bool {
@@ -510,7 +542,7 @@ impl Outcar {
 
     fn parse_ion_masses(context: &str) -> Vec<f64> {
         let ions_per_type = Self::parse_ions_per_type(context);
-        let masses_per_type = Regex::new(r"POMASS = \s*(\S+); ZVAL")
+        Regex::new(r"POMASS = \s*(\S+); ZVAL")
             .unwrap()
             .captures_iter(context)
             .map(|x| { x.get(1)
@@ -519,11 +551,8 @@ impl Outcar {
                        .parse::<f64>()
                        .unwrap()
             })
-            .collect::<Vec<f64>>();
-
-        ions_per_type.into_iter()
-            .zip(masses_per_type.into_iter())
-            .fold(vec![], |mut acc, (n, m): (i32, f64)| {
+            .zip(ions_per_type.into_iter())
+            .fold(vec![], |mut acc, (m, n): (f64, i32)| {
                 acc.extend(vec![m; n as usize]);
                 acc
             })
@@ -837,7 +866,7 @@ impl Outcar {
         assert!(1 <= index && index <= len, "Index out of bound.");
         let index = index - 1;
 
-        let cell     = self.ion_iters[index].cell.clone();
+        let cell     = self.ion_iters[index].cell;
         let car_pos  = self.ion_iters[index].positions.clone();
         let frac_pos = Poscar::convert_cart_to_frac(&car_pos, &cell).unwrap();
         let constr   = self.constraints.clone();
@@ -924,11 +953,11 @@ impl Trajectory {
             for elem in v.ion_types.iter() {
                 write!(f, "{:>4}", elem)?;
             }
-            writeln!(f, "")?;
+            writeln!(f)?;
             for nelm in v.ions_per_type.iter() {
                 write!(f, "{:>4}", nelm)?;
             }
-            writeln!(f, "")?;
+            writeln!(f)?;
 
             writeln!(f, "Direct configuration={:6}", i+1)?;
             for row in v.frac_pos.iter() {

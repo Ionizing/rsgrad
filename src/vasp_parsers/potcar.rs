@@ -100,7 +100,7 @@ impl AtomicPotcar {
         Ok(
             Self {
                 symbol: symbol.to_string(),
-                functional: functional.clone(),
+                functional: *functional,
                 specific_type: specific_type.to_string(),
                 content
             }
@@ -115,9 +115,9 @@ pub struct Potcar {
 
 
 impl Potcar {
-    pub fn from_config(symbols: &Vec<String>,
+    pub fn from_config(symbols: &[String],
                        functional: &FunctionalType,
-                       specific_types: &Vec<String>,
+                       specific_types: &[String],
                        prefix: &FunctionalPath) -> Result<Self> {
         let mut inner = Vec::<AtomicPotcar>::new();
 

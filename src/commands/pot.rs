@@ -71,7 +71,7 @@ impl OptProcess for Pot {
                     .to_string();
                 let specified_type = it.next()
                     .map(|x| "_".to_string() + x )
-                    .unwrap_or("".to_string());
+                    .unwrap_or_default();
 
                 symbols.push(symbol);
                 specified_types.push(specified_type);
