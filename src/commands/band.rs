@@ -793,6 +793,9 @@ impl OptProcess for Band {
                     .zero_line(true)
                     );
 
+        Self::plot_boundaries(&mut layout, &kxs);
+        plot.set_layout(layout);
+
         // Plot raw band
         info!("Plotting raw bands ...");
         Self::plot_rawband(&mut plot, kpath.clone(), &cropped_eigvals);
@@ -867,10 +870,6 @@ impl OptProcess for Band {
 
             info!("Projected band plot time usage: {:?}", now.elapsed());
         };
-
-
-        Self::plot_boundaries(&mut layout, &kxs);
-        plot.set_layout(layout);
 
 
         // save data
