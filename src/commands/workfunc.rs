@@ -55,8 +55,12 @@ pub struct Workfunc {
     axis: Axis,
 
     #[structopt(long)]
-    /// Open default browser to see the plot immediately
+    /// Open default browser to see the plot immediately.
     show: bool,
+
+    #[structopt(long)]
+    /// Render the plot and print the rendered code to stdout.
+    to_inline_html: bool,
 }
 
 
@@ -137,6 +141,11 @@ impl OptProcess for Workfunc {
 
         if self.show {
             plot.show();
+        }
+
+        if self.to_inline_html {
+            info!("Printing inline html to stdout ...");
+            println!("{}", plot.to_inline_html(None));
         }
 
         Ok(())

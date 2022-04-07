@@ -229,6 +229,10 @@ pub struct Band {
     #[structopt(long)]
     /// Open the browser and show the plot immediately.
     show: bool,
+
+    #[structopt(long)]
+    /// Render the plot and print the rendered code to stdout.
+    to_inline_html: bool,
 }
 
 
@@ -882,7 +886,6 @@ impl OptProcess for Band {
 
         // save data
         info!("Writing Bandstructure to {:?}", &self.htmlout);
-        plot.to_html(htmlout);
 
         for is in 0 .. nspin {
             let spin_label = match (is_ncl, nspin, is) {
@@ -901,6 +904,13 @@ impl OptProcess for Band {
             let data_ref = data.iter().collect::<Vec<&Vector<f64>>>();
             info!("Writing raw band data to {:?}", &fname);
             write_array_to_txt(&fname, data_ref, "kpath(in_2pi) band-levels(nkpoints_x_nbands)")?;
+        }
+
+        plot.to_html(htmlout);
+
+        if self.to_inline_html {
+            info!("Printing inline html to stdout ...");
+            println!("{}", plot.to_inline_html(None));
         }
 
         if self.show {

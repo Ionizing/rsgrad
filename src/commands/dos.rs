@@ -185,6 +185,10 @@ pub struct Dos {
     #[structopt(long)]
     /// Open the browser and show the plot immediately.
     show: bool,
+
+    #[structopt(long)]
+    /// Render the plot and print the rendered code to stdout.
+    to_inline_html: bool,
 }
 
 
@@ -558,6 +562,11 @@ impl OptProcess for Dos {
 
         if self.show {
             plot.show();
+        }
+
+        if self.to_inline_html {
+            info!("Printing inline html to stdout ...");
+            println!("{}", plot.to_inline_html(None));
         }
 
         Ok(())
