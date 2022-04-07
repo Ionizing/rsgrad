@@ -168,6 +168,10 @@ impl Configuration {
 #[derive(Debug, StructOpt, Clone)]
 #[structopt(setting = AppSettings::ColoredHelp,
             setting = AppSettings::ColorAuto)]
+/// Plot bandstructure and projected bandstructure
+/// 
+/// You may need to generate a template and then use the `--config` option to plot the projected
+/// bandstructure.
 pub struct Band {
     #[structopt(short, long)]
     /// Band structure plot configuration file path.
