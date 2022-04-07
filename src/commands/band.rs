@@ -225,6 +225,10 @@ pub struct Band {
     /// Note: Your browser should be able to run plotly.js. Chrome, Safari, Edge, Firefox and
     /// etc. are supported.
     htmlout: PathBuf,
+
+    #[structopt(long)]
+    /// Open the browser and show the plot immediately.
+    show: bool,
 }
 
 
@@ -897,6 +901,10 @@ impl OptProcess for Band {
             let data_ref = data.iter().collect::<Vec<&Vector<f64>>>();
             info!("Writing raw band data to {:?}", &fname);
             write_array_to_txt(&fname, data_ref, "kpath(in_2pi) band-levels(nkpoints_x_nbands)")?;
+        }
+
+        if self.show {
+            plot.show();
         }
         
         Ok(())

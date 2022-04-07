@@ -53,6 +53,10 @@ pub struct Workfunc {
                 case_insensitive = true)]
     /// Integration direction. e.g. if 'z' is provided, the XoY plane is integrated.
     axis: Axis,
+
+    #[structopt(long)]
+    /// Open default browser to see the plot immediately
+    show: bool,
 }
 
 
@@ -130,6 +134,10 @@ impl OptProcess for Workfunc {
 
         info!("Writing to {:?}", self.htmlout);
         plot.to_html(&self.htmlout);
+
+        if self.show {
+            plot.show();
+        }
 
         Ok(())
     }

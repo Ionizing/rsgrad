@@ -180,7 +180,11 @@ pub struct Dos {
 
     #[structopt(long)]
     /// Print brief info of PROCAR, this may be helpful when you write the configuration.
-    show_brief: bool
+    show_brief: bool,
+
+    #[structopt(long)]
+    /// Open the browser and show the plot immediately.
+    show: bool,
 }
 
 
@@ -551,6 +555,10 @@ impl OptProcess for Dos {
         let label = labels.join(" ");
         let raw_dats = raw_dats.iter().collect::<Vec<_>>();
         write_array_to_txt(txtout, raw_dats, &label)?;
+
+        if self.show {
+            plot.show();
+        }
 
         Ok(())
     }
