@@ -58,9 +58,9 @@ use crate::{
         Vector,
         Matrix,
         Cube,
+        Axis,
     },
     commands::common::{
-        Axis,
         write_array_to_txt,
         RawSelection,
         CustomColor,

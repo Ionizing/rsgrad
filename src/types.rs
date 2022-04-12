@@ -8,6 +8,11 @@ use ndarray::{
     Array3,
 };
 use regex::Regex;
+use structopt::clap::arg_enum;
+use serde::{
+    Serialize,
+    Deserialize,
+};
 
 pub type Result<T> = anyhow::Result<T>;
 
@@ -90,6 +95,16 @@ pub struct Structure {
     pub car_pos       : MatX3<f64>,
     pub frac_pos      : MatX3<f64>,
     pub constr        : Option<MatX3<bool>>,
+}
+
+
+arg_enum! {
+    #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+    pub enum Axis {
+        X,
+        Y,
+        Z,
+    }
 }
 
 

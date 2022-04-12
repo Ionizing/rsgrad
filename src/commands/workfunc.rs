@@ -13,15 +13,15 @@ use ndarray;
 use plotly;
 
 use crate::{
-    types::Result,
+    types::{
+        Result,
+        Axis,
+    },
     OptProcess,
     ChargeDensity,
     ChargeType,
     Outcar,
-    commands::common::{
-        Axis,
-        write_array_to_txt,
-    }
+    commands::common::write_array_to_txt,
 };
 
 #[derive(Debug, StructOpt)]
