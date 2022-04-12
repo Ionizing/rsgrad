@@ -58,7 +58,7 @@ pub enum WFPrecType {
 }
 
 /// WAVECAR type enumeration
-#[derive(Debug, Clone, Copy)]
+#[derive(PartialEq, Debug, Clone, Copy)]
 pub enum WavecarType {
     /// Most typical WAVECAR type. VASP is executed via `vasp_std`, calculation is done
     /// at all k-points.
@@ -384,4 +384,58 @@ impl Wavecar {
                 .collect()
         )
     }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::cmp::Ordering;
+    use ndarray::arr1;
+
+    fn generate_fft_grid_ref(ngrid: u64) -> Vec<i64> {
+        let ngrid = ngrid as i64;
+
+        (0 .. ngrid).map(|x| match x.cmp(&(ngrid/2 + 1)) {
+            Ordering::Less => x,
+            _ => x - ngrid,
+        })
+        .collect() }
+
+    #[test]
+    fn test_generate_fft_freq() {
+        for i in 2 ..= 50 {
+            assert_eq!(Wavecar::_generate_fft_freq(i as u64), generate_fft_grid_ref(i as u64));
+        }
+    }
+
+    #[test]
+    fn test_generate_fft_grid_general() {
+        let kvec = arr1(&[1.0/3.0, 1.0/3.0, 0.0]);
+        let ngrid = &[11u64, 11, 105];
+        let bcell = &[[0.313971743, 0.181271670, 0.000000000],
+                      [0.000000000, 0.362543340, 0.000000000],
+                      [0.000000000, 0.000000000, 0.028571429]];
+        let encut = 323.36125000000004; // little difference from it in OUTCAR: 323.4
+
+        let res = Wavecar::_generate_fft_grid_general(ngrid, &kvec, bcell, encut);
+        assert_eq!(res.len(), 3981);
+    }
+
+    #[test]
+    fn test_determine_wavecar_type() {
+        let kvec  = arr1(&[1.0/3.0, 1.0/3.0, 0.0]);
+        let ngrid = &[11u64, 11, 105];
+        let bcell = &[[0.313971743, 0.181271670, 0.000000000],
+                      [0.000000000, 0.362543340, 0.000000000],
+                      [0.000000000, 0.000000000, 0.028571429]];
+        let encut = 323.36125000000004; // little difference from it in OUTCAR: 323.4
+
+        let wavecar_type = Wavecar::_determine_wavecar_type(ngrid, &kvec, bcell, encut, 3981).unwrap();
+        assert_eq!(WavecarType::Standard, wavecar_type);
+
+        let wavecar_type = Wavecar::_determine_wavecar_type(ngrid, &kvec, bcell, encut, 3981 * 2).unwrap();
+        assert_eq!(WavecarType::NonCollinear, wavecar_type);
+    }
+
 }
