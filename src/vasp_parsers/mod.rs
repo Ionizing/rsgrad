@@ -6,4 +6,4 @@ pub mod potcar;
 pub mod chg;
 pub mod wavecar;
 
-mod binary_io;
+//mod binary_io;

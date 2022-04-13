@@ -6,7 +6,11 @@ use std::{
         SeekFrom,
     },
     fmt,
-    fs::File
+    fs::File,
+    path::{
+        Path,
+        PathBuf,
+    },
 };
 
 use byteorder::{
@@ -23,6 +27,7 @@ use ndarray::{
 };
 use anyhow::bail;
 use ndrustfft::Complex;
+//use itertools::Itertools;
 //use log::warn;
 //use rayon::prelude::*;
 
@@ -33,7 +38,10 @@ use crate::{
         MatX3,
         Result,
     },
-    vasp_parsers::binary_io::ReadArray,
+    vasp_parsers::{
+        //binary_io::ReadArray,
+        poscar::Poscar,
+    }
 };
 
 
@@ -116,6 +124,91 @@ pub struct Wavecar {
 
 
 impl Wavecar {
+
+    pub fn from_file(path: &(impl AsRef<Path> + ?Sized)) -> Result<Self> {
+        let mut file = File::open(path)?;
+        let file_len = file.metadata()?.len();
+
+        // Read RECLEN NSPIN and PRECTAG
+        file.seek(SeekFrom::Start(0))?;
+        let mut dump = [0f64; 3];
+        file.read_f64_into::<LittleEndian>(&mut dump)?;
+        let rec_len     = dump[0] as u64;
+        let nspin       = dump[1] as u64;
+        let prec_tag    = dump[2] as u64;
+
+        let prec_type = match prec_tag {
+            45200 => WFPrecType::Complex32,
+            45210 => WFPrecType::Complex64,
+            53300 => bail!("Unsupported WAVECAR: VASP5 with f32."),
+            53310 => bail!("Unsupported WAVECAR: VASP5 with f64."),
+            _     => bail!("Unknown WAVECAR format."),
+        };
+
+        // Read NKPTS NBANDS ENCUT and lattice info
+        file.seek(SeekFrom::Start(rec_len))?;
+        let mut dump = [0f64; 3 + 9 + 1];
+        file.read_f64_into::<LittleEndian>(&mut dump)?;
+        let nkpoints = dump[0] as u64;
+        let nbands   = dump[1] as u64;
+        let encut    = dump[2];
+
+        let mut acell = Mat33::<f64>::default();
+        acell.iter_mut().flatten()
+            .zip(dump[3 .. 12].iter())
+            .for_each(|(ac, du)| {
+                *ac = *du;
+            });
+        let efermi   = dump[12];
+
+        let bcell    = Poscar::mat33_transpose(&Poscar::mat33_inv(&acell).unwrap());
+        let volume   = Poscar::mat33_det(&acell);
+
+        let ngrid = {
+            let tmp = acell.iter()
+                .map(|[x, y, z]| f64::sqrt(x*x + y*y + z*z))    // lattice vector length
+                .map(|len| {
+                    ((encut / RY_TO_EV).sqrt() / 
+                     (PIx2 / (len / AU_TO_A))).ceil() as u64
+                })
+                .map(|x| x*2 + 1)
+                .collect::<Vec<u64>>();
+            [tmp[0], tmp[1], tmp[2]]
+        };
+
+        let (nplws, kvecs, band_eigs, band_fweights) =
+            Self::_read_band_info(&mut file, nspin, nkpoints, nbands, rec_len)?;
+
+        let wavecar_type = Self::_determine_wavecar_type(&ngrid, &kvecs.row(0).to_owned(), &bcell, encut, nplws[0])?;
+
+        Ok(Self {
+            file,
+
+            file_len,
+            rec_len,
+            prec_type,
+            wavecar_type,
+
+            nspin,
+            nkpoints,
+            nbands,
+
+            encut,
+            efermi,
+            acell,
+            bcell,
+
+            volume,
+            ngrid,
+
+            nplws,
+            kvecs,
+            band_eigs,
+            band_fweights,
+        })
+    }
+
+
     fn _read_band_info(file:   &mut File,
                        nspin:       u64,
                        nkpoints:    u64,
