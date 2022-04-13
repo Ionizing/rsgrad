@@ -209,6 +209,13 @@ impl Wavecar {
     }
 
 
+    pub fn set_wavecar_type(&mut self, t: WavecarType) -> Result<()> {
+        self.check_wavecar_type(t)?;
+        self.wavecar_type = t;
+        Ok(())
+    }
+
+
     fn _read_band_info(file:   &mut File,
                        nspin:       u64,
                        nkpoints:    u64,
@@ -476,6 +483,31 @@ impl Wavecar {
                 .map(|v| Complex::<f64>::new(v[0], v[1]))
                 .collect()
         )
+    }
+}
+
+
+impl fmt::Display for Wavecar {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:<10} = {:>20}",    "LENGTH",   self.file_len)?;
+        write!(f, "{:<10} = {:>20}",    "RECLEN",   self.rec_len)?;
+        write!(f, "{:<10} = {:>20}",    "TYPE",     self.wavecar_type)?;
+        write!(f, "{:<10} = {:>20}",    "NSPIN",    self.nspin)?;
+        write!(f, "{:<10} = {:>20}",    "NKPTS",    self.nkpoints)?;
+        write!(f, "{:<10} = {:>20}",    "NBANDS",   self.nbands)?;
+        write!(f, "{:<10} = {:>20}",    "ENCUT",    self.encut)?;
+        write!(f, "{:<10} = {:>20}",    "EFERMI",   self.efermi)?;
+        write!(f, "{:<10} = {:>20}",    "VOLUME",   self.volume)?;
+        write!(f, "{:<10} = {:>20?}",   "NGRID",    self.ngrid)?;
+        write!(f, "{:<10} = {:?}",      "NPLWS",    self.nplws)?;
+
+        if f.alternate() {
+            write!(f, "{:<10} = \n{:#?}",   "ACELL",    self.acell)?;
+            write!(f, "{:<10} = \n{:#?}",   "BCELL",    self.bcell)?;
+            write!(f, "{:<10} = {}",    "EIGS", self.band_eigs)?;
+        }
+
+        Ok(())
     }
 }
 
