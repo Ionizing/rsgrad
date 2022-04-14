@@ -95,6 +95,7 @@ impl fmt::Display for WavecarType {
 }
 
 
+#[derive(Debug)]
 pub struct Wavecar {
     file:           File,
 
@@ -163,6 +164,10 @@ impl Wavecar {
 
         let bcell    = Poscar::mat33_transpose(&Poscar::mat33_inv(&acell).unwrap());
         let volume   = Poscar::mat33_det(&acell);
+
+        if volume <= 1E-5 {
+            bail!("WAVECAR corruption: lattice info not correct: ACELL = {:#?} , VOLUME = {}", acell, volume);
+        }
 
         let ngrid = {
             let tmp = acell.iter()
@@ -266,7 +271,7 @@ impl Wavecar {
                           nkpoints: u64,
                           nbands:   u64) -> u64 {
         2 + ispin * nkpoints * (nbands + 1) +
-            ikpoint + (nbands + 1) +
+            ikpoint * (nbands + 1) +
             iband + 1
     }
 
@@ -484,27 +489,47 @@ impl Wavecar {
                 .collect()
         )
     }
+
+
+    pub fn show_eigs_fweights(&self) -> String {
+        let eigs = self.band_eigs.to_owned() - self.efermi;
+        let occs = &self.band_fweights;
+        let mut ret = String::new();
+
+        for ispin in 0 .. self.nspin as usize {
+            for ikpoint in 0 .. self.nkpoints as usize {
+                for iband in 0 .. self.nbands as usize {
+                    ret += &format!("ISPIN: {:2}  IKPOINT: {:4}  IBAND: {:5} E-Efermi: {:10.3} Occupation: {:5.3}\n",
+                                    ispin + 1, ikpoint + 1, iband + 1,
+                                    eigs[[ispin, ikpoint, iband]], occs[[ispin, ikpoint, iband]]);
+                }
+            }
+        }
+
+        ret
+    }
 }
 
 
 impl fmt::Display for Wavecar {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:<10} = {:>20}",    "LENGTH",   self.file_len)?;
-        write!(f, "{:<10} = {:>20}",    "RECLEN",   self.rec_len)?;
-        write!(f, "{:<10} = {:>20}",    "TYPE",     self.wavecar_type)?;
-        write!(f, "{:<10} = {:>20}",    "NSPIN",    self.nspin)?;
-        write!(f, "{:<10} = {:>20}",    "NKPTS",    self.nkpoints)?;
-        write!(f, "{:<10} = {:>20}",    "NBANDS",   self.nbands)?;
-        write!(f, "{:<10} = {:>20}",    "ENCUT",    self.encut)?;
-        write!(f, "{:<10} = {:>20}",    "EFERMI",   self.efermi)?;
-        write!(f, "{:<10} = {:>20}",    "VOLUME",   self.volume)?;
-        write!(f, "{:<10} = {:>20?}",   "NGRID",    self.ngrid)?;
-        write!(f, "{:<10} = {:?}",      "NPLWS",    self.nplws)?;
+        writeln!(f, "{:<10} = {:>20}",      "LENGTH",   self.file_len)?;
+        writeln!(f, "{:<10} = {:>20}",      "RECLEN",   self.rec_len)?;
+        writeln!(f, "{:<10} = {:>20}",      "TYPE",     self.wavecar_type.to_string())?;
+        writeln!(f, "{:<10} = {:>20}",      "NSPIN",    self.nspin)?;
+        writeln!(f, "{:<10} = {:>20}",      "NKPTS",    self.nkpoints)?;
+        writeln!(f, "{:<10} = {:>20}",      "NBANDS",   self.nbands)?;
+        writeln!(f, "{:<10} = {:>20.3}",    "ENCUT",    self.encut)?;
+        writeln!(f, "{:<10} = {:>20.3}",    "EFERMI",   self.efermi)?;
+        writeln!(f, "{:<10} = {:>20.3}",    "VOLUME",   self.volume)?;
+        writeln!(f, "{:<10} = {:>4?}",      "NGRID",    self.ngrid)?;
+        writeln!(f, "{:<10} = {:>5?}",      "NPLWS",    self.nplws)?;
+        writeln!(f, "{:<10} = {:>8.3?}",    "ACELL",    self.acell)?;
+        writeln!(f, "{:<10} = {:>8.3?}",    "BCELL",    self.bcell)?;
+        writeln!(f)?;
 
         if f.alternate() {
-            write!(f, "{:<10} = \n{:#?}",   "ACELL",    self.acell)?;
-            write!(f, "{:<10} = \n{:#?}",   "BCELL",    self.bcell)?;
-            write!(f, "{:<10} = {}",    "EIGS", self.band_eigs)?;
+            f.write_str(&self.show_eigs_fweights())?;
         }
 
         Ok(())
@@ -561,6 +586,11 @@ mod tests {
 
         let wavecar_type = Wavecar::_determine_wavecar_type(ngrid, &kvec, bcell, encut, 3981 * 2).unwrap();
         assert_eq!(WavecarType::NonCollinear, wavecar_type);
+    }
+
+    #[test]
+    fn test_calc_record_index() {
+        assert_eq!(Wavecar::_calc_record_index(0, 0, 0, 10, 10), 3);
     }
 
 }
