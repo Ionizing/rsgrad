@@ -1,7 +1,10 @@
 #![allow(non_upper_case_globals)]
 
 use std::{
+    mem,
+    slice,
     io::{
+        Read,
         Seek,
         SeekFrom,
     },
@@ -23,10 +26,14 @@ use ndarray::{
     Array3,
     arr1,
     arr2,
-    
 };
 use anyhow::bail;
-use ndrustfft::Complex;
+use ndrustfft::{
+    R2cFftHandler,
+    ndifft,
+    ndifft_r2c,
+    Complex,
+};
 //use itertools::Itertools;
 //use log::warn;
 //use rayon::prelude::*;
@@ -95,32 +102,41 @@ impl fmt::Display for WavecarType {
 }
 
 
+#[derive(Clone)]
+pub enum Wavefunction {
+    Complex32Array1(Array1<Complex<f32>>),
+    Complex64Array1(Array1<Complex<f64>>),
+    Complex32Array3(Array3<Complex<f32>>),
+    Complex64Array3(Array3<Complex<f64>>),
+}
+
+
 #[derive(Debug)]
 pub struct Wavecar {
     file:           File,
 
-    file_len:       u64,
-    rec_len:        u64,
-    prec_type:      WFPrecType,
-    wavecar_type:   WavecarType,
+    pub file_len:       u64,
+    pub rec_len:        u64,
+    pub prec_type:      WFPrecType,
+    pub wavecar_type:   WavecarType,
 
-    nspin:          u64,
-    nkpoints:       u64,
-    nbands:         u64,
+    pub nspin:          u64,
+    pub nkpoints:       u64,
+    pub nbands:         u64,
 
-    encut:          f64,
-    efermi:         f64,
+    pub encut:          f64,
+    pub efermi:         f64,
 
-    acell:          Mat33<f64>,
-    bcell:          Mat33<f64>,
+    pub acell:          Mat33<f64>,
+    pub bcell:          Mat33<f64>,
 
-    volume:         f64,
-    ngrid:          [u64; 3],
+    pub volume:         f64,
+    pub ngrid:          [u64; 3],
 
-    nplws:          Vec<u64>,
-    kvecs:          Array2<f64>,
-    band_eigs:      Array3<f64>,
-    band_fweights:  Array3<f64>,
+    pub nplws:          Vec<u64>,
+    pub kvecs:          Array2<f64>,
+    pub band_eigs:      Array3<f64>,
+    pub band_fweights:  Array3<f64>,
 }
 
 
@@ -460,34 +476,71 @@ impl Wavecar {
                                   t)
     }
 
-    pub fn read_wavefunction_coeffs(&mut self,
-                                    ispin: u64,
-                                    ikpoint: u64,
-                                    iband: u64) -> Result<Array1<Complex<f64>>> {
+/*
+ *    pub fn read_wavefunction_coeffs(&mut self,
+ *                                    ispin: u64,
+ *                                    ikpoint: u64,
+ *                                    iband: u64) -> Result<Wavefunction> {
+ *        let seek_pos = self.calc_record_location(ispin, ikpoint, iband)?;
+ *        self.file.seek(seek_pos).unwrap();
+ *
+ *        let nplw = self.nplws[ikpoint as usize] as usize;
+ *        match self.prec_type {
+ *            WFPrecType::Complex32 => {
+ *                let mut ret = vec![0f32; nplw * 2];
+ *                self.file.read_f32_into::<LittleEndian>(&mut ret)?;
+ *                let ret = ret.into_iter()
+ *                    .collect::<Vec<f32>>()
+ *                    .chunks_exact(2)
+ *                    .map(|v| Complex::<f32>::new(v[0], v[1]))
+ *                    .collect();
+ *                Ok(Wavefunction::Complex32Array1(ret))
+ *            },
+ *            WFPrecType::Complex64 => {
+ *                let mut ret = vec![0f64; nplw * 2];
+ *                self.file.read_f64_into::<LittleEndian>(&mut ret)?;
+ *                let ret = ret.into_iter()
+ *                    .collect::<Vec<f64>>()
+ *                    .chunks_exact(2)
+ *                    .map(|v| Complex::<f64>::new(v[0], v[1]))
+ *                    .collect();
+ *                Ok(Wavefunction::Complex64Array1(ret))
+ *            }
+ *        }
+ *    }
+ */
+
+
+    pub fn read_wavefunction(&mut self,
+                             ispin: u64,
+                             ikpoint: u64,
+                             iband: u64) -> Result<Wavefunction> {
         let seek_pos = self.calc_record_location(ispin, ikpoint, iband)?;
         self.file.seek(seek_pos).unwrap();
 
         let nplw = self.nplws[ikpoint as usize] as usize;
-        let dump = match self.prec_type {
+        match self.prec_type {
             WFPrecType::Complex32 => {
-                let mut ret = vec![0f32; nplw * 2];
-                self.file.read_f32_into::<LittleEndian>(&mut ret)?;
-                ret.into_iter()
-                    .map(|x| x as f64)
-                    .collect::<Vec<f64>>()
+                let size = nplw * mem::size_of::<Complex<f32>>();
+                let mut ret = Array1::<Complex<f32>>::zeros(nplw);
+                unsafe {
+                    let ptr = ret.as_mut_ptr();
+                    let ret_slice = slice::from_raw_parts_mut(ptr as *mut u8, size);
+                    self.file.read_exact(ret_slice).unwrap();
+                }
+                Ok(Wavefunction::Complex32Array1(ret))
             },
             WFPrecType::Complex64 => {
-                let mut ret = vec![0f64; nplw * 2];
-                self.file.read_f64_into::<LittleEndian>(&mut ret)?;
-                ret
-            }
-        };
-
-        Ok(
-            dump.chunks_exact(2)
-                .map(|v| Complex::<f64>::new(v[0], v[1]))
-                .collect()
-        )
+                let size = nplw * mem::size_of::<Complex<f64>>() * 2;
+                let mut ret = Array1::<Complex<f64>>::zeros(nplw);
+                unsafe {
+                    let ptr = ret.as_mut_ptr();
+                    let ret_slice = slice::from_raw_parts_mut(ptr as *mut u8, size);
+                    self.file.read_exact(ret_slice).unwrap();
+                }
+                Ok(Wavefunction::Complex64Array1(ret))
+            },
+        }
     }
 
 
