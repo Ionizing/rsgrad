@@ -10,10 +10,7 @@ use std::{
     },
     fmt,
     fs::File,
-    path::{
-        Path,
-        PathBuf,
-    },
+    path::Path,
 };
 
 use byteorder::{
@@ -29,6 +26,7 @@ use ndarray::{
 };
 use anyhow::bail;
 use ndrustfft::{
+    FftHandler,
     R2cFftHandler,
     ndifft,
     ndifft_r2c,
@@ -102,7 +100,7 @@ impl fmt::Display for WavecarType {
 }
 
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Wavefunction {
     Complex32Array1(Array1<Complex<f32>>),
     Complex64Array1(Array1<Complex<f64>>),
@@ -646,4 +644,14 @@ mod tests {
         assert_eq!(Wavecar::_calc_record_index(0, 0, 0, 10, 10), 3);
     }
 
+    #[test]
+    #[ignore]
+    fn test_print_eigs_and_wavefunction() {
+        let mut wav = Wavecar::from_file("WAVECAR").unwrap();
+        println!("{}", &wav);
+        println!("{:#}", &wav);
+
+        println!("wfc111:\n{:#?}", wav.read_wavefunction(0, 0, 0).unwrap());
+        println!("wfc222:\n{:#?}", wav.read_wavefunction(1, 1, 1).unwrap());
+    }
 }

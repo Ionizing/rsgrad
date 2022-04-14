@@ -1958,7 +1958,7 @@ Direct
     fn test_print_all_modes() {
         let vibs: PrintAllVibFreqs = _generate_vibration().into();
         let fmtstr = format!("{}", vibs);
-        let refstr = "# \u{1b}[93m--------------- Vibration modes for this system ---------------\u{1b}[0m #
+        let refstr = "# \u{1b}[93m--------------- Vibration modes for this system ----------------\u{1b}[0m #
   ModeIndex: \u{1b}[95m   1\u{1b}[0m  Frequency/cm-1:  \u{1b}[92m  3627.91026\u{1b}[0m  IsImagine: \u{1b}[92mFalse\u{1b}[0m
   ModeIndex: \u{1b}[95m   2\u{1b}[0m  Frequency/cm-1:  \u{1b}[92m  3620.67362\u{1b}[0m  IsImagine: \u{1b}[92mFalse\u{1b}[0m
   ModeIndex: \u{1b}[95m   3\u{1b}[0m  Frequency/cm-1:  \u{1b}[92m     0.75226\u{1b}[0m  IsImagine: \u{1b}[93m True\u{1b}[0m

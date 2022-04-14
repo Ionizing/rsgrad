@@ -18,12 +18,6 @@ pub struct Wav {
 
 impl OptProcess for Wav {
     fn process(&self) -> Result<()> {
-        let fname = PathBuf::from("WAVECAR");
-        let wav = Wavecar::from_file(&fname)?;
-
-        println!("{}", &wav);
-        println!("{:#}", &wav);
-
         Ok(())
     }
 }
