@@ -17,6 +17,7 @@ use byteorder::{
     ReadBytesExt,
     LittleEndian,
 };
+use rayon::prelude::*;
 use ndarray::{
     Array1,
     Array2,
@@ -106,6 +107,46 @@ pub enum Wavefunction {
     Complex64Array1(Array1<Complex<f64>>),
     Complex32Array3(Array3<Complex<f32>>),
     Complex64Array3(Array3<Complex<f64>>),
+}
+
+
+impl Wavefunction {
+    pub fn normalize(mut self) -> Self {
+        match self {
+            Self::Complex32Array1(mut wav) => {
+                let norm = wav.iter()
+                    .map(|c| c.norm_sqr())
+                    .sum::<f32>()
+                    .sqrt();
+                wav.mapv_inplace(|v| v.unscale(norm));
+                Self::Complex32Array1(wav)
+            },
+            Self::Complex64Array1(mut wav) => {
+                let norm = wav.iter()
+                    .map(|c| c.norm_sqr())
+                    .sum::<f64>()
+                    .sqrt();
+                wav.mapv_inplace(|v| v.unscale(norm));
+                Self::Complex64Array1(wav)
+            },
+            Self::Complex32Array3(mut wav) => {
+                let norm = wav.iter()
+                    .map(|c| c.norm_sqr())
+                    .sum::<f32>()
+                    .sqrt();
+                wav.mapv_inplace(|v| v.unscale(norm));
+                Self::Complex32Array3(wav)
+            },
+            Self::Complex64Array3(mut wav) => {
+                let norm = wav.iter()
+                    .map(|c| c.norm_sqr())
+                    .sum::<f64>()
+                    .sqrt();
+                wav.mapv_inplace(|v| v.unscale(norm));
+                Self::Complex64Array3(wav)
+            },
+        }
+    }
 }
 
 
@@ -275,6 +316,7 @@ impl Wavecar {
         Ok((nplws, kvecs, band_eigs, band_fweights))
     }
 
+
     /// Indices starts from 0.
     ///
     /// First 2 means two records for headers
@@ -289,6 +331,7 @@ impl Wavecar {
             iband + 1
     }
 
+
     #[inline]
     fn _calc_record_location(ispin: u64,
                              ikpoint: u64,
@@ -301,12 +344,14 @@ impl Wavecar {
         )
     }
 
+
     /// Indices starts from 0
     #[inline]
     fn calc_record_location(&self, ispin: u64, ikpoint: u64, iband: u64) -> Result<SeekFrom> {
         self.check_indices(ispin, ikpoint, iband)?;
         Ok(Self::_calc_record_location(ispin, ikpoint, iband, self.nkpoints, self.nbands, self.rec_len))
     }
+
 
     /// Indices starts from 0
     #[inline]
@@ -322,17 +367,20 @@ impl Wavecar {
         Ok(())
     }
 
+
     #[inline]
     pub fn check_kpoint_index(&self, ikpoint: u64) -> Result<()> {
         if ikpoint >= self.nkpoints { bail!("K point index outbound."); }
         Ok(())
     }
 
+
     #[inline]
     pub fn check_band_index(&self, iband: u64) -> Result<()> {
         if iband >= self.nbands { bail!("Band index outbound."); }
         Ok(())
     }
+
 
     fn _generate_fft_freq(ngrid: u64) -> Vec<i64> {
         // ret = [0 ..= ngrid/2] ++ [(1 + ngrid/2 - ngrid) ..= -1];
@@ -344,6 +392,7 @@ impl Wavecar {
             );
         ret
     }
+
 
     fn _generate_fft_grid_general(ngrid:    &[u64; 3],
                                   kvec:     &Array1<f64>,
@@ -378,6 +427,7 @@ impl Wavecar {
         ret
     }
 
+
     fn _filter_fft_grid(gvecs: MatX3<i64>, axis: Axis) -> MatX3<i64> {
         match axis {
             Axis::X => {
@@ -404,6 +454,7 @@ impl Wavecar {
         }
     }
 
+
     fn _generate_fft_grid_specific(ngrid:   &[u64; 3],
                                    kvec:    &Array1<f64>,
                                    bcell:   &Mat33<f64>,
@@ -417,6 +468,7 @@ impl Wavecar {
         }
     }
 
+
     /// Returns the kgrid indices corresponds to coefficients in WAVECAR.
     pub fn generate_fft_grid(&self, ikpoint: u64) -> MatX3<i64> {
         Self::_generate_fft_grid_specific(
@@ -427,6 +479,7 @@ impl Wavecar {
             self.wavecar_type,
         )
     }
+
 
     fn _determine_wavecar_type(ngrid:   &[u64; 3],
                                kvec:    &Array1<f64>,
@@ -448,6 +501,7 @@ impl Wavecar {
         }
     }
 
+
     fn _check_wavecar_type(ngrid: &[u64; 3],
                            kvec: &Array1<f64>,
                            bcell: &Mat33<f64>,
@@ -465,6 +519,7 @@ impl Wavecar {
         bail!("Unmatched WAVECAR type: {}, suggested: {}", t, suggest_type);
     }
 
+
     pub fn check_wavecar_type(&self, t: WavecarType) -> Result<()> {
         Self::_check_wavecar_type(&self.ngrid,
                                   &self.kvecs.row(0).to_owned(),
@@ -474,45 +529,12 @@ impl Wavecar {
                                   t)
     }
 
-/*
- *    pub fn read_wavefunction_coeffs(&mut self,
- *                                    ispin: u64,
- *                                    ikpoint: u64,
- *                                    iband: u64) -> Result<Wavefunction> {
- *        let seek_pos = self.calc_record_location(ispin, ikpoint, iband)?;
- *        self.file.seek(seek_pos).unwrap();
- *
- *        let nplw = self.nplws[ikpoint as usize] as usize;
- *        match self.prec_type {
- *            WFPrecType::Complex32 => {
- *                let mut ret = vec![0f32; nplw * 2];
- *                self.file.read_f32_into::<LittleEndian>(&mut ret)?;
- *                let ret = ret.into_iter()
- *                    .collect::<Vec<f32>>()
- *                    .chunks_exact(2)
- *                    .map(|v| Complex::<f32>::new(v[0], v[1]))
- *                    .collect();
- *                Ok(Wavefunction::Complex32Array1(ret))
- *            },
- *            WFPrecType::Complex64 => {
- *                let mut ret = vec![0f64; nplw * 2];
- *                self.file.read_f64_into::<LittleEndian>(&mut ret)?;
- *                let ret = ret.into_iter()
- *                    .collect::<Vec<f64>>()
- *                    .chunks_exact(2)
- *                    .map(|v| Complex::<f64>::new(v[0], v[1]))
- *                    .collect();
- *                Ok(Wavefunction::Complex64Array1(ret))
- *            }
- *        }
- *    }
- */
-
 
     pub fn read_wavefunction(&mut self,
                              ispin: u64,
                              ikpoint: u64,
-                             iband: u64) -> Result<Wavefunction> {
+                             iband: u64,
+                             normalize: bool) -> Result<Wavefunction> {
         let seek_pos = self.calc_record_location(ispin, ikpoint, iband)?;
         self.file.seek(seek_pos).unwrap();
 
@@ -539,6 +561,11 @@ impl Wavecar {
                 Ok(Wavefunction::Complex64Array1(ret))
             },
         }
+        .map(|v| if normalize {
+            v.normalize()
+        } else {
+            v
+        })
     }
 
 
