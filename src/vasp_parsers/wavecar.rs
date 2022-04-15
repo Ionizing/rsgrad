@@ -658,6 +658,8 @@ impl Wavecar {
 
 
     fn _get_wavefunction_realspace_std(&mut self, ispin: u64, ikpoint :u64, iband: u64) -> Result<Wavefunction> {
+        assert_eq!(self.wavecar_type, WavecarType::Standard);
+
         let ngxr = self.ngrid[0] as i64 * 2;
         let ngyr = self.ngrid[1] as i64 * 2;
         let ngzr = self.ngrid[2] as i64 * 2;
@@ -680,6 +682,7 @@ impl Wavecar {
         match self.prec_type {
             WFPrecType::Complex32 => {
                 let coeffs: Array1<Complex<f32>> = self._read_wavefunction_raw(ispin, ikpoint, iband)?;
+                assert_eq!(coeffs.len(), gvecs.len());
                 let mut wavk = Array3::<Complex<f32>>::zeros((ngxr, ngyr, ngzr));
                 let mut wavr = Array3::<Complex<f32>>::zeros((ngxr, ngyr, ngzr));
 
@@ -693,6 +696,7 @@ impl Wavecar {
             },
             WFPrecType::Complex64 => {
                 let coeffs: Array1<Complex<f64>> = self._read_wavefunction_raw(ispin, ikpoint, iband)?;
+                assert_eq!(coeffs.len(), gvecs.len());
                 let mut wavk = Array3::<Complex<f64>>::zeros((ngxr, ngyr, ngzr));
                 let mut wavr = Array3::<Complex<f64>>::zeros((ngxr, ngyr, ngzr));
 
@@ -709,6 +713,8 @@ impl Wavecar {
 
 
     fn _get_wavefunction_realspace_gamx(&mut self, ispin: u64, ikpoint: u64, iband: u64) -> Result<Wavefunction> {
+        assert_eq!(self.wavecar_type, WavecarType::GamaHalf(Axis::X));
+
         let ngxr = self.ngrid[0] as i64 * 2;
         let ngyr = self.ngrid[1] as i64 * 2;
         let ngzr = self.ngrid[2] as i64 * 2;
@@ -796,6 +802,8 @@ impl Wavecar {
 
 
     fn _get_wavefunction_realspace_gamz(&mut self, ispin: u64, ikpoint: u64, iband: u64) -> Result<Wavefunction> {
+        assert_eq!(self.wavecar_type, WavecarType::GamaHalf(Axis::Z));
+
         let ngxr = self.ngrid[0] as i64 * 2;
         let ngyr = self.ngrid[1] as i64 * 2;
         let ngzr = self.ngrid[2] as i64 * 2;
@@ -883,6 +891,8 @@ impl Wavecar {
 
 
     fn _get_wavefunction_realspace_ncl(&mut self, ispin: u64, ikpoint: u64, iband: u64) -> Result<Wavefunction> {
+        assert_eq!(self.wavecar_type, WavecarType::NonCollinear);
+
         let ngxr = self.ngrid[0] as i64 * 2;
         let ngyr = self.ngrid[1] as i64 * 2;
         let ngzr = self.ngrid[2] as i64 * 2;
@@ -982,6 +992,9 @@ mod tests {
     use std::cmp::Ordering;
     use ndarray::arr1;
 
+    use crate::vasp_parsers::chg;
+    use crate::vasp_parsers::poscar;
+
     fn generate_fft_grid_ref(ngrid: u64) -> Vec<i64> {
         let ngrid = ngrid as i64;
 
@@ -1039,7 +1052,40 @@ mod tests {
         println!("{}", &wav);
         println!("{:#}", &wav);
 
-        println!("wfc111:\n{:#?}", wav.read_wavefunction(0, 0, 0).unwrap());
-        println!("wfc222:\n{:#?}", wav.read_wavefunction(1, 1, 1).unwrap());
+        println!("wfc111:\n{:?}", wav.read_wavefunction(0, 0, 0).unwrap());
+        println!("wfc222:\n{:?}", wav.read_wavefunction(1, 1, 1).unwrap());
+    }
+
+    #[test]
+    #[ignore]
+    fn test_wavefunction_realspace_std() {
+        let mut wav = Wavecar::from_file("WAVECAR").unwrap();
+
+        for i in 0 .. 8 {
+            let wavr = wav._get_wavefunction_realspace_std(0, i, 0).unwrap(); // 1 (i+1) 1
+            let mut wavr = match wavr {
+                Wavefunction::Complex32Array3(dump) => dump,
+                _ => panic!(),
+            };
+
+            let normfact = (wavr.len() as f32).sqrt();
+            wavr.mapv_inplace(|v| v.scale(normfact));
+
+            println!("{:.10E}\n{:.10E}\n{:.10E}\n", wavr[[0, 0, 0]], wavr[[0, 0, 1]], wavr[[0, 0, 2]]);
+
+            let chgd = wavr.map(|v| v.re as f64);
+            let ngrid = [wav.ngrid[0] as usize, wav.ngrid[1] as usize, wav.ngrid[2] as usize];
+
+            let pos = poscar::Poscar::from_file("POSCAR").unwrap();
+            let chg = chg::ChargeDensity {
+                chgtype: chg::ChargeType::Chgcar,
+                pos,
+                ngrid,
+                chg: vec![chgd],
+                aug: vec![],
+            };
+            chg.to_file(&format!("{}.vasp", i)).unwrap();
+        }
+
     }
 }
