@@ -107,15 +107,19 @@ pub enum Wavefunction {
     Complex64Array1(Array1<Complex<f64>>),
     Complex32Array3(Array3<Complex<f32>>),
     Complex64Array3(Array3<Complex<f64>>),
+    Ncl32Array1([Array1<Complex<f32>>; 2]),
+    Ncl64Array1([Array1<Complex<f64>>; 2]),
+    Ncl32Array3([Array3<Complex<f32>>; 2]),
+    Ncl64Array3([Array3<Complex<f64>>; 2]),
 }
 
 
 impl Wavefunction {
-    pub fn normalize(mut self) -> Self {
+    pub fn normalize(self) -> Self {
         match self {
             Self::Complex32Array1(mut wav) => {
                 let norm = wav.iter()
-                    .map(|c| c.norm_sqr())
+                    .map(Complex::<f32>::norm_sqr)
                     .sum::<f32>()
                     .sqrt();
                 wav.mapv_inplace(|v| v.unscale(norm));
@@ -123,7 +127,7 @@ impl Wavefunction {
             },
             Self::Complex64Array1(mut wav) => {
                 let norm = wav.iter()
-                    .map(|c| c.norm_sqr())
+                    .map(Complex::<f64>::norm_sqr)
                     .sum::<f64>()
                     .sqrt();
                 wav.mapv_inplace(|v| v.unscale(norm));
@@ -131,7 +135,7 @@ impl Wavefunction {
             },
             Self::Complex32Array3(mut wav) => {
                 let norm = wav.iter()
-                    .map(|c| c.norm_sqr())
+                    .map(Complex::<f32>::norm_sqr)
                     .sum::<f32>()
                     .sqrt();
                 wav.mapv_inplace(|v| v.unscale(norm));
@@ -139,11 +143,47 @@ impl Wavefunction {
             },
             Self::Complex64Array3(mut wav) => {
                 let norm = wav.iter()
-                    .map(|c| c.norm_sqr())
+                    .map(Complex::<f64>::norm_sqr)
                     .sum::<f64>()
                     .sqrt();
                 wav.mapv_inplace(|v| v.unscale(norm));
                 Self::Complex64Array3(wav)
+            },
+            Self::Ncl32Array1(mut wav) => {
+                let norm = wav.iter()
+                    .flatten()
+                    .map(Complex::<f32>::norm_sqr)
+                    .sum::<f32>()
+                    .sqrt();
+                wav.iter_mut().for_each(|v| v.mapv_inplace(|x| x.unscale(norm)));
+                Self::Ncl32Array1(wav)
+            },
+            Self::Ncl64Array1(mut wav) => {
+                let norm = wav.iter()
+                    .flatten()
+                    .map(Complex::<f64>::norm_sqr)
+                    .sum::<f64>()
+                    .sqrt();
+                wav.iter_mut().for_each(|v| v.mapv_inplace(|x| x.unscale(norm)));
+                Self::Ncl64Array1(wav)
+            },
+            Self::Ncl32Array3(mut wav) => {
+                let norm = wav.iter()
+                    .flatten()
+                    .map(Complex::<f32>::norm_sqr)
+                    .sum::<f32>()
+                    .sqrt();
+                wav.iter_mut().for_each(|v| v.mapv_inplace(|x| x.unscale(norm)));
+                Self::Ncl32Array3(wav)
+            },
+            Self::Ncl64Array3(mut wav) => {
+                let norm = wav.iter()
+                    .flatten()
+                    .map(Complex::<f64>::norm_sqr)
+                    .sum::<f64>()
+                    .sqrt();
+                wav.iter_mut().for_each(|v| v.mapv_inplace(|x| x.unscale(norm)));
+                Self::Ncl64Array3(wav)
             },
         }
     }
@@ -533,8 +573,7 @@ impl Wavecar {
     pub fn read_wavefunction(&mut self,
                              ispin: u64,
                              ikpoint: u64,
-                             iband: u64,
-                             normalize: bool) -> Result<Wavefunction> {
+                             iband: u64) -> Result<Wavefunction> {
         let seek_pos = self.calc_record_location(ispin, ikpoint, iband)?;
         self.file.seek(seek_pos).unwrap();
 
@@ -561,11 +600,6 @@ impl Wavecar {
                 Ok(Wavefunction::Complex64Array1(ret))
             },
         }
-        .map(|v| if normalize {
-            v.normalize()
-        } else {
-            v
-        })
     }
 
 
@@ -585,6 +619,49 @@ impl Wavecar {
         }
 
         ret
+    }
+
+
+    fn _ifft_std<T>(&self, wav: Array3<Complex<T>>, grid: (usize, usize, usize)) -> Array3<Complex<T>> {
+        todo!()
+    }
+
+
+    fn _ifft_gam<T>(&self, wav: Array3<Complex<T>>, grid: (usize, usize, usize)) -> Array3<Complex<T>> {
+        todo!()
+    }
+
+
+    pub fn get_wavefunction_realspace(&mut self,
+                                      ispin: u64,
+                                      ikpoint: u64,
+                                      iband: u64,
+                                      ngrid: [u64; 3]) -> Result<Wavefunction> {
+        let [ngx, ngy, ngz] = ngrid;
+
+        let coeffs = 
+            match self.wavecar_type {
+                WavecarType::NonCollinear => {
+                    let ret = self.read_wavefunction(0, ikpoint, iband)?;
+                    //match ispin {
+                        
+                    //}
+                },
+                _ => {
+                },
+            };
+
+        let gvecs: MatX3<usize> = self.generate_fft_grid(ikpoint)
+            .into_iter()
+            .map(|[x, y, z]| {
+                let gx = x.rem_euclid(ngx as i64);
+                let gy = y.rem_euclid(ngy as i64);
+                let gz = z.rem_euclid(ngz as i64);
+                [gx as usize, gy as usize, gz as usize]
+            })
+            .collect();
+
+        todo!()
     }
 }
 
