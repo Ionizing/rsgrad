@@ -27,6 +27,7 @@ use ndarray::{
     arr2,
     s,
 };
+use ndarray_npy::write_npy;
 use anyhow::bail;
 use ndrustfft::{
     FftNum,
@@ -686,11 +687,21 @@ impl Wavecar {
                 let mut wavk = Array3::<Complex<f32>>::zeros((ngxr, ngyr, ngzr));
                 let mut wavr = Array3::<Complex<f32>>::zeros((ngxr, ngyr, ngzr));
 
+                println!("Here");
+
                 gvecs.into_iter().zip(coeffs.into_iter())
                     .for_each(|(idx, v)| wavk[idx] = v);
 
+                let mut handler: FftHandler<f32> = FftHandler::new(ngxr);
+                ndifft(&wavk, &mut wavr, &mut handler, 0);
+
+                let mut handler: FftHandler<f32> = FftHandler::new(ngyr);
+                ndifft(&wavr, &mut wavk, &mut handler, 1);
+
                 let mut handler: FftHandler<f32> = FftHandler::new(ngzr);
                 ndifft(&wavk, &mut wavr, &mut handler, 2);
+
+                write_npy("dump.npy", &wavr).unwrap();
 
                 Ok(Wavefunction::Complex32Array3(wavr))
             },
@@ -1061,7 +1072,7 @@ mod tests {
     fn test_wavefunction_realspace_std() {
         let mut wav = Wavecar::from_file("WAVECAR").unwrap();
 
-        for i in 0 .. 8 {
+        for i in 0 .. 1 {
             let wavr = wav._get_wavefunction_realspace_std(0, i, 0).unwrap(); // 1 (i+1) 1
             let mut wavr = match wavr {
                 Wavefunction::Complex32Array3(dump) => dump,
