@@ -689,8 +689,14 @@ impl Wavecar {
                 gvecs.into_iter().zip(coeffs.into_iter())
                     .for_each(|(idx, v)| wavk[idx] = v);
 
-                let mut handler: FftHandler<f32> = FftHandler::new(ngzr);
-                ndifft(&wavk, &mut wavr, &mut handler, 2);
+                let mut handlers: [FftHandler<f32>; 3] = [
+                    FftHandler::new(ngxr),
+                    FftHandler::new(ngyr),
+                    FftHandler::new(ngzr),
+                ];
+                ndifft(&wavk, &mut wavr, &mut handlers[0], 0);
+                ndifft(&wavr, &mut wavk, &mut handlers[1], 1);
+                ndifft(&wavk, &mut wavr, &mut handlers[2], 2);
 
                 Ok(Wavefunction::Complex32Array3(wavr))
             },
@@ -703,8 +709,14 @@ impl Wavecar {
                 gvecs.into_iter().zip(coeffs.into_iter())
                     .for_each(|(idx, v)| wavk[idx] = v);
 
-                let mut handler: FftHandler<f64> = FftHandler::new(ngzr);
-                ndifft(&wavk, &mut wavr, &mut handler, 2);
+                let mut handlers: [FftHandler<f64>; 3] = [
+                    FftHandler::new(ngxr),
+                    FftHandler::new(ngyr),
+                    FftHandler::new(ngzr),
+                ];
+                ndifft(&wavk, &mut wavr, &mut handlers[0], 0);
+                ndifft(&wavr, &mut wavk, &mut handlers[1], 1);
+                ndifft(&wavk, &mut wavr, &mut handlers[2], 2);
 
                 Ok(Wavefunction::Complex64Array3(wavr))
             },
@@ -765,9 +777,15 @@ impl Wavecar {
 
                 wavk.mapv_inplace(|v| v.unscale(f32::sqrt(2.0)));
                 wavk[[0, 0, 0]].scale(f32::sqrt(2.0));
-                
-                let mut handler = R2cFftHandler::<f32>::new(ngxr);
-                ndifft_r2c(&wavk, &mut wavr, &mut handler, 0);
+
+                let mut work = Array3::<Complex<f32>>::zeros(wavk.dim());
+                let mut handler_x = R2cFftHandler::<f32>::new(ngxr);
+                let mut handler_y =    FftHandler::<f32>::new(ngyr);
+                let mut handler_z =    FftHandler::<f32>::new(ngzr);
+                ndifft    (&wavk, &mut work, &mut handler_y, 1);
+                ndifft    (&work, &mut wavk, &mut handler_z, 2);
+                ndifft_r2c(&wavk, &mut wavr, &mut handler_x, 0);
+
                 Ok(Wavefunction::Float32Array3(wavr))
             },
             WFPrecType::Complex64 => {
@@ -793,8 +811,14 @@ impl Wavecar {
                 wavk.mapv_inplace(|v| v.unscale(f64::sqrt(2.0)));
                 wavk[[0, 0, 0]].scale(f64::sqrt(2.0));
                 
-                let mut handler = R2cFftHandler::<f64>::new(ngxr);
-                ndifft_r2c(&wavk, &mut wavr, &mut handler, 0);
+                let mut work = Array3::<Complex<f64>>::zeros(wavk.dim());
+                let mut handler_x = R2cFftHandler::<f64>::new(ngxr);
+                let mut handler_y =    FftHandler::<f64>::new(ngyr);
+                let mut handler_z =    FftHandler::<f64>::new(ngzr);
+                ndifft    (&wavk, &mut work, &mut handler_y, 1);
+                ndifft    (&work, &mut wavk, &mut handler_z, 2);
+                ndifft_r2c(&wavk, &mut wavr, &mut handler_x, 0);
+
                 Ok(Wavefunction::Float64Array3(wavr))
             },
         }
@@ -855,8 +879,14 @@ impl Wavecar {
                 wavk.mapv_inplace(|v| v.unscale(f32::sqrt(2.0)));
                 wavk[[0, 0, 0]].scale(f32::sqrt(2.0));
                 
-                let mut handler = R2cFftHandler::<f32>::new(ngzr);
-                ndifft_r2c(&wavk, &mut wavr, &mut handler, 2);
+                let mut work = Array3::<Complex<f32>>::zeros(wavk.dim());
+                let mut handler_x =    FftHandler::<f32>::new(ngxr);
+                let mut handler_y =    FftHandler::<f32>::new(ngyr);
+                let mut handler_z = R2cFftHandler::<f32>::new(ngzr);
+                ndifft    (&wavk, &mut work, &mut handler_x, 0);
+                ndifft    (&work, &mut wavk, &mut handler_y, 1);
+                ndifft_r2c(&wavk, &mut wavr, &mut handler_z, 2);
+
                 Ok(Wavefunction::Float32Array3(wavr))
             },
             WFPrecType::Complex64 => {
@@ -882,8 +912,14 @@ impl Wavecar {
                 wavk.mapv_inplace(|v| v.unscale(f64::sqrt(2.0)));
                 wavk[[0, 0, 0]].scale(f64::sqrt(2.0));
                 
-                let mut handler = R2cFftHandler::<f64>::new(ngzr);
-                ndifft_r2c(&wavk, &mut wavr, &mut handler, 2);
+                let mut work = Array3::<Complex<f64>>::zeros(wavk.dim());
+                let mut handler_x =    FftHandler::<f64>::new(ngxr);
+                let mut handler_y =    FftHandler::<f64>::new(ngyr);
+                let mut handler_z = R2cFftHandler::<f64>::new(ngzr);
+                ndifft    (&wavk, &mut work, &mut handler_x, 0);
+                ndifft    (&work, &mut wavk, &mut handler_y, 1);
+                ndifft_r2c(&wavk, &mut wavr, &mut handler_z, 2);
+
                 Ok(Wavefunction::Float64Array3(wavr))
             },
         }
@@ -927,8 +963,14 @@ impl Wavecar {
                     gvecs.iter().zip(coeffs.slice(s![ispinor, ..]))
                         .for_each(|(idx, v)| wk[*idx] = *v);
 
-                    let mut handler = FftHandler::<f32>::new(ngzr);
-                    ndifft(&wk, &mut wr, &mut handler, 2);
+                    let mut handlers: [FftHandler<f32>; 3] = [
+                        FftHandler::new(ngxr),
+                        FftHandler::new(ngyr),
+                        FftHandler::new(ngzr),
+                    ];
+                    ndifft(&wk, &mut wr, &mut handlers[0], 0);
+                    ndifft(&wr, &mut wk, &mut handlers[1], 1);
+                    ndifft(&wk, &mut wr, &mut handlers[2], 2);
                 }
 
                 Ok(Wavefunction::Ncl32Array4(wavr))
@@ -947,8 +989,14 @@ impl Wavecar {
                     gvecs.iter().zip(coeffs.slice(s![ispinor, ..]))
                         .for_each(|(idx, v)| wk[*idx] = *v);
 
-                    let mut handler = FftHandler::<f64>::new(ngzr);
-                    ndifft(&wk, &mut wr, &mut handler, 2);
+                    let mut handlers: [FftHandler<f64>; 3] = [
+                        FftHandler::new(ngxr),
+                        FftHandler::new(ngyr),
+                        FftHandler::new(ngzr),
+                    ];
+                    ndifft(&wk, &mut wr, &mut handlers[0], 0);
+                    ndifft(&wr, &mut wk, &mut handlers[1], 1);
+                    ndifft(&wk, &mut wr, &mut handlers[2], 2);
                 }
 
                 Ok(Wavefunction::Ncl64Array4(wavr))
@@ -1073,8 +1121,10 @@ mod tests {
 
             println!("{:.10E}\n{:.10E}\n{:.10E}\n", wavr[[0, 0, 0]], wavr[[0, 0, 1]], wavr[[0, 0, 2]]);
 
+            let shape = wavr.shape();
+
             let chgd = wavr.map(|v| v.re as f64);
-            let ngrid = [wav.ngrid[0] as usize, wav.ngrid[1] as usize, wav.ngrid[2] as usize];
+            let ngrid = [shape[0], shape[1], shape[2]];
 
             let pos = poscar::Poscar::from_file("POSCAR").unwrap();
             let chg = chg::ChargeDensity {
