@@ -770,7 +770,7 @@ impl Wavecar {
                     for (iy, fy) in freqs_y.iter().cloned().enumerate() {
                         for (iz, fz) in freqs_z.iter().cloned().enumerate() {
                             if fy > 0 || (0 == fy && fz >= 0) { continue; }
-                            wavk[[0, iy, iz]] = wavk[[0, ngyk-iy, ngzk-iz]].conj();
+                            wavk[[0, iy, iz]] = wavk[[0, ngyk-iy-1, ngzk-iz-1]].conj();
                         }
                     }
                 }
@@ -803,7 +803,7 @@ impl Wavecar {
                     for (iy, fy) in freqs_y.iter().cloned().enumerate() {
                         for (iz, fz) in freqs_z.iter().cloned().enumerate() {
                             if fy > 0 || (0 == fy && fz >= 0) { continue; }
-                            wavk[[0, iy, iz]] = wavk[[0, ngyk-iy, ngzk-iz]].conj();
+                            wavk[[0, iy, iz]] = wavk[[0, ngyk-iy-1, ngzk-iz-1]].conj();
                         }
                     }
                 }
@@ -871,7 +871,7 @@ impl Wavecar {
                     for (ix, fx) in freqs_x.iter().cloned().enumerate() {
                         for (iy, fy) in freqs_y.iter().cloned().enumerate() {
                             if fy > 0 || (0 == fy && fx >= 0) { continue; }
-                            wavk[[ix, iy, 0]] = wavk[[ngxk-ix, ngyk-iy, 0]].conj();
+                            wavk[[ix, iy, 0]] = wavk[[ngxk-ix-1, ngyk-iy-1, 0]].conj();
                         }
                     }
                 }
@@ -904,7 +904,7 @@ impl Wavecar {
                     for (ix, fx) in freqs_x.iter().cloned().enumerate() {
                         for (iy, fy) in freqs_y.iter().cloned().enumerate() {
                             if fy > 0 || (0 == fy && fx >= 0) { continue; }
-                            wavk[[ix, iy, 0]] = wavk[[ngxk-ix, ngyk-iy, 0]].conj();
+                            wavk[[ix, iy, 0]] = wavk[[ngxk-ix-1, ngyk-iy-1, 0]].conj();
                         }
                     }
                 }
@@ -1134,6 +1134,113 @@ mod tests {
                 chg: vec![chgd],
                 aug: vec![],
             };
+            chg.to_file(&format!("{}.vasp", i)).unwrap();
+        }
+
+    }
+
+    #[test]
+    #[ignore]
+    fn test_wavefunction_realspace_ncl() {
+        let mut wav = Wavecar::from_file("WAVECAR").unwrap();
+
+        for i in 0 .. 64 {
+            let wavr = wav._get_wavefunction_realspace_ncl(0, 0, i).unwrap(); // 1 (i+1) 1
+            let mut wavr = match wavr {
+                Wavefunction::Ncl32Array4(dump) => dump,
+                _ => panic!(),
+            };
+
+            let normfact = (wavr.len() as f32).sqrt();
+            wavr.mapv_inplace(|v| v.scale(normfact));
+
+            println!("{:.10E}\n{:.10E}\n{:.10E}\n", wavr[[0, 0, 0, 0]], wavr[[0, 0, 0, 1]], wavr[[0, 0, 0, 2]]);
+
+            let shape = wavr.shape();
+
+            let chgd = wavr.slice(s![0, .., .., ..]).map(|v| v.re as f64);
+            let ngrid = [shape[1], shape[2], shape[3]];
+
+            let pos = poscar::Poscar::from_file("POSCAR").unwrap();
+            let chg = chg::ChargeDensity {
+                chgtype: chg::ChargeType::Chgcar,
+                pos,
+                ngrid,
+                chg: vec![chgd],
+                aug: vec![],
+            };
+            chg.to_file(&format!("{}.vasp", i)).unwrap();
+        }
+
+    }
+
+    #[test]
+    #[ignore]
+    fn test_wavefunction_realspace_gamx() {
+        let mut wav = Wavecar::from_file("WAVECAR").unwrap();
+
+        for i in 0 .. 1 {
+            let wavr = wav._get_wavefunction_realspace_gamx(0, i, 0).unwrap(); // 1 (i+1) 1
+            let mut wavr = match wavr {
+                Wavefunction::Float32Array3(dump) => dump,
+                _ => panic!(),
+            };
+
+            let normfact = (wavr.len() as f32).sqrt();
+            wavr.mapv_inplace(|v| v / normfact);
+
+            println!("{:.10E}\n{:.10E}\n{:.10E}\n", wavr[[0, 0, 0]], wavr[[0, 0, 1]], wavr[[0, 0, 2]]);
+
+            let shape = wavr.shape();
+
+            let chgd = wavr.map(|v| *v as f64);
+            let ngrid = [shape[0], shape[1], shape[2]];
+
+            let pos = poscar::Poscar::from_file("POSCAR").unwrap();
+            let chg = chg::ChargeDensity {
+                chgtype: chg::ChargeType::Chgcar,
+                pos,
+                ngrid,
+                chg: vec![chgd],
+                aug: vec![],
+            };
+            chg.to_file(&format!("{}.vasp", i)).unwrap();
+        }
+
+    }
+
+    #[test]
+    #[ignore]
+    fn test_wavefunction_realspace_gamz() {
+        let mut wav = Wavecar::from_file("WAVECAR").unwrap();
+        wav.set_wavecar_type(WavecarType::GamaHalf(Axis::Z)).unwrap();
+
+        for i in 0 .. 1 {
+            let wavr = wav._get_wavefunction_realspace_gamz(0, i, 0).unwrap(); // 1 (i+1) 1
+            let mut wavr = match wavr {
+                Wavefunction::Float32Array3(dump) => dump,
+                _ => panic!(),
+            };
+
+            let normfact = (wavr.len() as f32).sqrt();
+            wavr.mapv_inplace(|v| v / normfact);
+
+            println!("{:.10E}\n{:.10E}\n{:.10E}\n", wavr[[0, 0, 0]], wavr[[0, 0, 1]], wavr[[0, 0, 2]]);
+
+            let shape = wavr.shape();
+
+            let chgd = wavr.mapv(|v| v as f64);
+            let ngrid = [shape[0], shape[1], shape[2]];
+
+            let pos = poscar::Poscar::from_file("POSCAR").unwrap();
+            let chg = chg::ChargeDensity {
+                chgtype: chg::ChargeType::Chgcar,
+                pos,
+                ngrid,
+                chg: vec![chgd],
+                aug: vec![],
+            };
+
             chg.to_file(&format!("{}.vasp", i)).unwrap();
         }
 
