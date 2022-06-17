@@ -1,0 +1,11 @@
+[book]
+authors = ["Ionizing"]
+language = "en"
+multilingual = false
+src = "src"
+title = "RSGRAD'S BOOK"
+
+[output.html]
+mathjax-support = true
+
+[output.pdf]
