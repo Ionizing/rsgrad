@@ -180,22 +180,22 @@ impl ChargeDensity {
     }
 
 
-    /// Read CHGCAR header to get POSCAR info
+    // Read CHGCAR header to get POSCAR info
     fn read_poscar(txt: &str) -> Result<Poscar> {
         Poscar::from_txt(txt)
     }
 
 
-    /// This function reads the grid data.  input str should be like:
-    ///
-    ///  2 3 4
-    ///  ... ...
-    ///  ... ...
-    ///  augmentation ....
-    ///  ...
-    ///  ...
-    ///
-    ///  The augmentation part is dropped
+    // This function reads the grid data.  input str should be like:
+    //
+    //  2 3 4
+    //  ... ...
+    //  ... ...
+    //  augmentation ....
+    //  ...
+    //  ...
+    //
+    //  The augmentation part is dropped
     fn read_chg(txt: &str) -> Result<Array3<f64>> {
         let _regex = Regex::new(r"(?m)^\s+\d+\s+\d+\s+\d+\s*$").unwrap();
         let mat = _regex.find(txt).unwrap();
@@ -227,7 +227,7 @@ impl ChargeDensity {
     }
 
 
-    /// All augmentation data is extracted without parsing. The tail linebreaks are preserved.
+    // All augmentation data is extracted without parsing. The tail linebreaks are preserved.
     fn read_raw_aug(txt: &str) -> Option<String> {
         let start_pos = txt.find("augmentation")?;
         let end_pos = Regex::new(r"(?m)^\s+\d+\s+\d+\s+\d+\s*$")  // find NGX NGY NGZ
@@ -313,8 +313,8 @@ fn mat33_approx_eq(ma: &Mat33<f64>, mb: &Mat33<f64>) -> bool {
 impl Add for ChargeDensity {
     type Output=Result<Self>;
 
-    /// Add two provided ChargeDensity object, they should have same cell and grid size.
-    /// The augmentation part will be dropped.
+    // Add two provided ChargeDensity object, they should have same cell and grid size.
+    // The augmentation part will be dropped.
     fn add(mut self, mut other:Self) -> Self::Output {
         self.pos = self.pos.normalize();
         other.pos = other.pos.normalize();
@@ -406,7 +406,7 @@ impl Add for ChargeDensity {
 impl Sub for ChargeDensity {
     type Output=Result<Self>;
 
-    /// Subtract self's charge density from other's.
+    // Subtract self's charge density from other's.
     fn sub(mut self, mut other: Self) -> Self::Output {
         self.pos = self.pos.normalize();
         other.pos = other.pos.normalize();
