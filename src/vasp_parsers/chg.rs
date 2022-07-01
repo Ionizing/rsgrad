@@ -243,8 +243,9 @@ impl ChargeDensity {
 
 impl fmt::Display for ChargeDensity {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        assert_eq!(self.chg[0].len(), self.ngrid.iter().product::<usize>());
 
-        // Flatten chg struct
+        // Flatten chg struct. BUGFIXED: the array layout should be column-major.
         let chg = match self.chgtype {
             ChargeType::Chgcar => {
                 let chg = self.chg.clone();
@@ -252,13 +253,23 @@ impl fmt::Display for ChargeDensity {
                 chg.into_par_iter()
                     .map(|mut charge| {
                         charge *= vol;
-                        charge.into_raw_vec()
+                        if charge.is_standard_layout() {
+                            charge.reversed_axes().into_iter().collect()
+                        } else {
+                            charge.into_raw_vec()
+                        }
                     })
                     .collect::<Vec<_>>()
             },
             ChargeType::Locpot => {
-                self.chg.par_iter()
-                    .map(|charge| charge.clone().into_raw_vec())
+                self.chg.clone().into_par_iter()
+                    .map(|charge| {
+                        if charge.is_standard_layout() {
+                            charge.reversed_axes().into_iter().collect()
+                        } else {
+                            charge.into_raw_vec()
+                        }
+                    })
                     .collect::<Vec<_>>()
             }
         };

@@ -6,6 +6,6 @@ pub mod pot;
 pub mod rlx;
 pub mod traj;
 pub mod vib;
-pub mod wav;
+pub mod wav3d;
 pub mod chgdiff;
 pub mod common;
