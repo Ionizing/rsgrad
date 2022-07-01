@@ -11,6 +11,10 @@ use std::{
     fmt,
     fs::File,
     path::Path,
+    sync::{
+        Arc,
+        Mutex,
+    },
 };
 
 use byteorder::{
@@ -43,10 +47,7 @@ use crate::{
         MatX3,
         Result,
     },
-    vasp_parsers::{
-        //binary_io::ReadArray,
-        poscar::Poscar,
-    }
+    vasp_parsers::poscar::Poscar,
 };
 
 
@@ -178,7 +179,7 @@ impl Wavefunction {
 
 #[derive(Debug)]
 pub struct Wavecar {
-    file:           File,
+    file:               Arc<Mutex<File>>,
 
     pub file_len:       u64,
     pub rec_len:        u64,
@@ -268,7 +269,7 @@ impl Wavecar {
         let wavecar_type = Self::_determine_wavecar_type(&ngrid, &kvecs.row(0).to_owned(), &bcell, encut, nplws[0])?;
 
         Ok(Self {
-            file,
+            file: Arc::new(Mutex::new(file)),
 
             file_len,
             rec_len,
@@ -556,12 +557,12 @@ impl Wavecar {
     }
 
 
-    fn _read_wavefunction_raw<T: FftNum>(&mut self,
+    fn _read_wavefunction_raw<T: FftNum>(&self,
                                          ispin: u64,
                                          ikpoint: u64,
                                          iband: u64) -> Result<Array1<Complex<T>>> {
         let seek_pos = self.calc_record_location(ispin, ikpoint, iband)?;
-        self.file.seek(seek_pos)?;
+        self.file.lock().unwrap().seek(seek_pos)?;
 
         let nplw = self.nplws[ikpoint as usize] as usize;
         let size = nplw * mem::size_of::<Complex<T>>();
@@ -570,14 +571,14 @@ impl Wavecar {
         unsafe {
             let ptr = ret.as_mut_ptr();
             let ret_slice = slice::from_raw_parts_mut(ptr as *mut u8, size);
-            self.file.read_exact(ret_slice).unwrap();
+            self.file.lock().unwrap().read_exact(ret_slice).unwrap();
         }
 
         Ok(ret)
     }
 
 
-    pub fn read_wavefunction(&mut self,
+    pub fn read_wavefunction(&self,
                              ispin: u64,
                              ikpoint: u64,
                              iband: u64) -> Result<Wavefunction> {
@@ -627,7 +628,7 @@ impl Wavecar {
 
 
     // indices start from 0
-    pub fn get_wavefunction_realspace(&mut self, ispin: u64, ikpoint: u64, iband: u64) -> Result<Wavefunction> {
+    pub fn get_wavefunction_realspace(&self, ispin: u64, ikpoint: u64, iband: u64) -> Result<Wavefunction> {
         assert!(ispin < self.nspin, "Invalid ispin: {}, nspin = {}", ispin + 1, self.nspin);
         assert!(ikpoint < self.nkpoints, "Invalid ikpoint: {}, nkpoints = {}", ikpoint + 1, self.nkpoints);
         assert!(iband < self.nbands, "Invalid iband: {}, nbands = {}", iband + 1, self.nbands);
@@ -642,7 +643,7 @@ impl Wavecar {
     }
 
 
-    fn _get_wavefunction_realspace_std(&mut self, ispin: u64, ikpoint :u64, iband: u64) -> Result<Wavefunction> {
+    fn _get_wavefunction_realspace_std(&self, ispin: u64, ikpoint :u64, iband: u64) -> Result<Wavefunction> {
         assert_eq!(self.wavecar_type, WavecarType::Standard);
 
         let ngxr = self.ngrid[0] as i64 * 2;
@@ -690,7 +691,7 @@ impl Wavecar {
     }
 
 
-    fn _get_wavefunction_realspace_gamx(&mut self, ispin: u64, ikpoint: u64, iband: u64) -> Result<Wavefunction> {
+    fn _get_wavefunction_realspace_gamx(&self, ispin: u64, ikpoint: u64, iband: u64) -> Result<Wavefunction> {
         assert_eq!(self.wavecar_type, WavecarType::GamaHalf(Axis::X));
 
         let ngxr = self.ngrid[0] as i64 * 2;
@@ -758,7 +759,7 @@ impl Wavecar {
     }
 
 
-    fn _get_wavefunction_realspace_gamz(&mut self, ispin: u64, ikpoint: u64, iband: u64) -> Result<Wavefunction> {
+    fn _get_wavefunction_realspace_gamz(&self, ispin: u64, ikpoint: u64, iband: u64) -> Result<Wavefunction> {
         assert_eq!(self.wavecar_type, WavecarType::GamaHalf(Axis::Z));
 
         let ngxr = self.ngrid[0] as i64 * 2;
@@ -827,7 +828,7 @@ impl Wavecar {
     }
 
 
-    fn _get_wavefunction_realspace_ncl(&mut self, ispin: u64, ikpoint: u64, iband: u64) -> Result<Wavefunction> {
+    fn _get_wavefunction_realspace_ncl(&self, ispin: u64, ikpoint: u64, iband: u64) -> Result<Wavefunction> {
         assert_eq!(self.wavecar_type, WavecarType::NonCollinear);
 
         let ngxr = self.ngrid[0] as i64 * 2;
@@ -972,7 +973,7 @@ mod tests {
     #[test]
     #[ignore]
     fn test_print_eigs_and_wavefunction() {
-        let mut wav = Wavecar::from_file("WAVECAR").unwrap();
+        let wav = Wavecar::from_file("WAVECAR").unwrap();
         println!("{}", &wav);
         println!("{:#}", &wav);
 
@@ -983,16 +984,16 @@ mod tests {
     #[test]
     #[ignore]
     fn test_wavefunction_realspace_std() {
-        let mut wav = Wavecar::from_file("WAVECAR").unwrap();
+        let wav = Wavecar::from_file("WAVECAR").unwrap();
 
         for i in 0 .. 8 {
             let wavr = wav._get_wavefunction_realspace_std(0, i, 0).unwrap(); // 1 (i+1) 1
             let mut wavr = match wavr {
-                Wavefunction::Complex32Array3(dump) => dump,
+                Wavefunction::Complex64Array3(dump) => dump,
                 _ => panic!(),
             };
 
-            let normfact = (wavr.len() as f32).sqrt();
+            let normfact = (wavr.len() as f64).sqrt();
             wavr.mapv_inplace(|v| v.scale(normfact));
 
             println!("{:.10E}\n{:.10E}\n{:.10E}\n", wavr[[0, 0, 0]], wavr[[0, 0, 1]], wavr[[0, 0, 2]]);
@@ -1018,16 +1019,16 @@ mod tests {
     #[test]
     #[ignore]
     fn test_wavefunction_realspace_ncl() {
-        let mut wav = Wavecar::from_file("WAVECAR").unwrap();
+        let wav = Wavecar::from_file("WAVECAR").unwrap();
 
         for i in 0 .. 64 {
             let wavr = wav._get_wavefunction_realspace_ncl(0, 0, i).unwrap(); // 1 (i+1) 1
             let mut wavr = match wavr {
-                Wavefunction::Ncl32Array4(dump) => dump,
+                Wavefunction::Ncl64Array4(dump) => dump,
                 _ => panic!(),
             };
 
-            let normfact = (wavr.len() as f32).sqrt();
+            let normfact = (wavr.len() as f64).sqrt();
             wavr.mapv_inplace(|v| v.scale(normfact));
 
             println!("{:.10E}\n{:.10E}\n{:.10E}\n", wavr[[0, 0, 0, 0]], wavr[[0, 0, 0, 1]], wavr[[0, 0, 0, 2]]);
@@ -1053,16 +1054,16 @@ mod tests {
     #[test]
     #[ignore]
     fn test_wavefunction_realspace_gamx() {
-        let mut wav = Wavecar::from_file("WAVECAR").unwrap();
+        let wav = Wavecar::from_file("WAVECAR").unwrap();
 
         for i in 0 .. 1 {
             let wavr = wav._get_wavefunction_realspace_gamx(0, i, 0).unwrap(); // 1 (i+1) 1
             let mut wavr = match wavr {
-                Wavefunction::Float32Array3(dump) => dump,
+                Wavefunction::Float64Array3(dump) => dump,
                 _ => panic!(),
             };
 
-            let normfact = (wavr.len() as f32).sqrt();
+            let normfact = (wavr.len() as f64).sqrt();
             wavr.mapv_inplace(|v| v / normfact);
 
             println!("{:.10E}\n{:.10E}\n{:.10E}\n", wavr[[0, 0, 0]], wavr[[0, 0, 1]], wavr[[0, 0, 2]]);
@@ -1094,11 +1095,11 @@ mod tests {
         for i in 0 .. 1 {
             let wavr = wav._get_wavefunction_realspace_gamz(0, i, 0).unwrap(); // 1 (i+1) 1
             let mut wavr = match wavr {
-                Wavefunction::Float32Array3(dump) => dump,
+                Wavefunction::Float64Array3(dump) => dump,
                 _ => panic!(),
             };
 
-            let normfact = (wavr.len() as f32).sqrt();
+            let normfact = (wavr.len() as f64).sqrt();
             wavr.mapv_inplace(|v| v / normfact);
 
             println!("{:.10E}\n{:.10E}\n{:.10E}\n", wavr[[0, 0, 0]], wavr[[0, 0, 1]], wavr[[0, 0, 2]]);

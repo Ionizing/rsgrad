@@ -10,6 +10,8 @@ use log::{
 };
 use anyhow::bail;
 use ndarray::s;
+use rayon::prelude::*;
+use itertools::iproduct;
 
 use crate::{
     vasp_parsers::{
@@ -50,7 +52,7 @@ pub struct Wav3D {
     /// Select kpoint index, starting from 1.
     ikpoints: Vec<i32>,
 
-    #[structopt(long, short="b", default_value="1")]
+    #[structopt(long, short="b")]
     /// Select band index, starting from 1.
     ibands: Vec<i32>,
 
@@ -146,7 +148,7 @@ I suggest you provide `gamma_half` argument to avoid confusion.");
         let has_real = self.output_parts.iter().any(|s| s == "real" || s == "re" || s == "reim");
         let has_imag = self.output_parts.iter().any(|s| s == "imag" || s == "im" || s == "reim");
 
-        if !(has_normsquared || has_real || has_imag || self.list) {
+        if !(has_normsquared || has_real || has_imag) {
             warn!("You have not specify the `output_parts` or `list`, rsgrad did nothing.");
             return Ok(())
         }
@@ -165,80 +167,85 @@ I suggest you provide `gamma_half` argument to avoid confusion.");
             .map(|v| v as u64 - 1)
             .collect::<Vec<_>>();
 
-        for ispin in ispins {
-            for ikpoint in ikpoints.iter().cloned() {
-                for iband in ibands.iter().cloned() {
-                    let eigs_suffix = if self.show_eigs_suffix {
-                        format!("_{:06.3}eV", eigs[[ispin as usize, ikpoint as usize, iband as usize]] - efermi)
-                    } else {
-                        String::new()
-                    };
+        let indices = iproduct!(ispins, ikpoints, ibands)
+            .collect::<Vec<(u64, u64, u64)>>();
 
-                    let wavr = wav.get_wavefunction_realspace(ispin, ikpoint, iband)?.normalize();
-                    let chgd = match wavr.clone() {
-                        Wavefunction::Complex64Array3(w)  => w.mapv(|v| v.norm_sqr() * factor),
-                        Wavefunction::Float64Array3(w)    => w.mapv(|v| v * v * factor),
-                        Wavefunction::Ncl64Array4(w)      => {
-                            w.slice(s![0usize, .., .., ..]).mapv(|v| v.norm_sqr() * factor) +
-                                w.slice(s![1usize, .., .., ..]).mapv(|v| v.norm_sqr() * factor)
-                        },
-                        _ => unreachable!("Invalid Wavefunction type."),
-                    };
+        let wavecar_type = wav.wavecar_type.clone();
+        let wav = wav;
 
-                    if has_normsquared {
-                        let ofname = format!("{}_{}-{}-{}{}.vasp", &self.prefix, ispin+1, ikpoint+1, iband+1, eigs_suffix);
-                        save_to_vasp(&ofname, chgd, &pos)?;
-                    }
+        indices.into_par_iter()
+            .map(|(ispin, ikpoint, iband)| {
+                info!("Processing spin {}, k-point {:3}, band {:4} ...", ispin, ikpoint, iband);
 
-                    let (d1, d2, d3, d4) = match wavr {
-                        Wavefunction::Complex64Array3(w) => ( Some(w.mapv(|x| x.re * factor)), Some(w.mapv(|x| x.im * factor)), None, None ),
-                        Wavefunction::Float64Array3(w)   => ( Some(w), None, None, None),
-                        Wavefunction::Ncl64Array4(w)     => (
-                            Some(w.slice(s![0usize, .. ,.. ,..]).mapv(|v| v.re * factor)),
-                            Some(w.slice(s![0usize, .. ,.. ,..]).mapv(|v| v.im * factor)),
-                            Some(w.slice(s![1usize, .. ,.. ,..]).mapv(|v| v.re * factor)),
-                            Some(w.slice(s![1usize, .. ,.. ,..]).mapv(|v| v.im * factor)),
+                let eigs_suffix = if self.show_eigs_suffix {
+                    format!("_{:06.3}eV", eigs[[ispin as usize, ikpoint as usize, iband as usize]] - efermi)
+                } else {
+                    String::new()
+                };
+
+                let wavr = wav.get_wavefunction_realspace(ispin, ikpoint, iband)?.normalize();
+                let chgd = match wavr.clone() {
+                    Wavefunction::Complex64Array3(w)  => w.mapv(|v| v.norm_sqr() * factor),
+                    Wavefunction::Float64Array3(w)    => w.mapv(|v| v * v * factor),
+                    Wavefunction::Ncl64Array4(w)      => {
+                        w.slice(s![0usize, .., .., ..]).mapv(|v| v.norm_sqr() * factor) +
+                            w.slice(s![1usize, .., .., ..]).mapv(|v| v.norm_sqr() * factor)
+                    },
+                    _ => unreachable!("Invalid Wavefunction type."),
+                };
+
+                if has_normsquared {
+                    let ofname = format!("{}_{}-{}-{}{}.vasp", &self.prefix, ispin+1, ikpoint+1, iband+1, eigs_suffix);
+                    save_to_vasp(&ofname, chgd, &pos)?;
+                }
+
+                let (d1, d2, d3, d4) = match wavr {
+                    Wavefunction::Complex64Array3(w) => ( Some(w.mapv(|x| x.re * factor)), Some(w.mapv(|x| x.im * factor)), None, None ),
+                    Wavefunction::Float64Array3(w)   => ( Some(w), None, None, None),
+                    Wavefunction::Ncl64Array4(w)     => (
+                        Some(w.slice(s![0usize, .. ,.. ,..]).mapv(|v| v.re * factor)),
+                        Some(w.slice(s![0usize, .. ,.. ,..]).mapv(|v| v.im * factor)),
+                        Some(w.slice(s![1usize, .. ,.. ,..]).mapv(|v| v.re * factor)),
+                        Some(w.slice(s![1usize, .. ,.. ,..]).mapv(|v| v.im * factor)),
                         ),
-                        _ => unreachable!("Invalid Wavefunction type."),
-                    };
+                    _ => unreachable!("Invalid Wavefunction type."),
+                };
 
-                    if has_real {
-                        match wav.wavecar_type {
-                            WavecarType::NonCollinear => {
-                                let ofname = format!("{}_{}-{}-{}{}_ure.vasp", &self.prefix, ispin+1, ikpoint+1, iband+1, eigs_suffix);
-                                save_to_vasp(&ofname, d1.unwrap(), &pos)?;
-                                let ofname = format!("{}_{}-{}-{}{}_dre.vasp", &self.prefix, ispin+1, ikpoint+1, iband+1, eigs_suffix);
-                                save_to_vasp(&ofname, d3.unwrap(), &pos)?;
-                            },
-                            _ => {
-                                let ofname = format!("{}_{}-{}-{}{}_re.vasp", &self.prefix, ispin+1, ikpoint+1, iband+1, eigs_suffix);
-                                save_to_vasp(&ofname, d1.unwrap(), &pos)?;
-                            },
-                        }
+                if has_real {
+                    match wavecar_type {
+                        WavecarType::NonCollinear => {
+                            let ofname = format!("{}_{}-{}-{}{}_ure.vasp", &self.prefix, ispin+1, ikpoint+1, iband+1, eigs_suffix);
+                            save_to_vasp(&ofname, d1.unwrap(), &pos)?;
+                            let ofname = format!("{}_{}-{}-{}{}_dre.vasp", &self.prefix, ispin+1, ikpoint+1, iband+1, eigs_suffix);
+                            save_to_vasp(&ofname, d3.unwrap(), &pos)?;
+                        },
+                        _ => {
+                            let ofname = format!("{}_{}-{}-{}{}_re.vasp", &self.prefix, ispin+1, ikpoint+1, iband+1, eigs_suffix);
+                            save_to_vasp(&ofname, d1.unwrap(), &pos)?;
+                        },
                     }
+                }
 
-                    if has_imag {
-                        match wav.wavecar_type {
-                            WavecarType::Standard => {
-                                let ofname = format!("{}_{}-{}-{}{}_im.vasp", &self.prefix, ispin+1, ikpoint+1, iband+1, eigs_suffix);
-                                save_to_vasp(&ofname, d2.unwrap(), &pos)?;
-                            },
-                            WavecarType::GamaHalf(_) => {
-                                bail!("Gamma-halved wavefunction doesn't have imaginary part, please check your input.");
-                            },
-                            WavecarType::NonCollinear => {
-                                let ofname = format!("{}_{}-{}-{}{}_uim.vasp", &self.prefix, ispin+1, ikpoint+1, iband+1, eigs_suffix);
-                                save_to_vasp(&ofname, d2.unwrap(), &pos)?;
-                                let ofname = format!("{}_{}-{}-{}{}_dim.vasp", &self.prefix, ispin+1, ikpoint+1, iband+1, eigs_suffix);
-                                save_to_vasp(&ofname, d4.unwrap(), &pos)?;
-                            },
-                        }
+                if has_imag {
+                    match wavecar_type {
+                        WavecarType::Standard => {
+                            let ofname = format!("{}_{}-{}-{}{}_im.vasp", &self.prefix, ispin+1, ikpoint+1, iband+1, eigs_suffix);
+                            save_to_vasp(&ofname, d2.unwrap(), &pos)?;
+                        },
+                        WavecarType::GamaHalf(_) => {
+                            bail!("Gamma-halved wavefunction doesn't have imaginary part, please check your input.");
+                        },
+                        WavecarType::NonCollinear => {
+                            let ofname = format!("{}_{}-{}-{}{}_uim.vasp", &self.prefix, ispin+1, ikpoint+1, iband+1, eigs_suffix);
+                            save_to_vasp(&ofname, d2.unwrap(), &pos)?;
+                            let ofname = format!("{}_{}-{}-{}{}_dim.vasp", &self.prefix, ispin+1, ikpoint+1, iband+1, eigs_suffix);
+                            save_to_vasp(&ofname, d4.unwrap(), &pos)?;
+                        },
                     }
+                }
 
-                } // for iband
-            } // for ikpoint
-        } // for ispin
-
-        Ok(())
+                Ok(())
+            })
+            .collect::<Result<()>>()
     }
 }
