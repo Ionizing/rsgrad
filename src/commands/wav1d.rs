@@ -63,15 +63,16 @@ pub struct Wav1D {
     /// processing WAVECAR produced by `vasp_gam`.
     gamma_half: Option<String>,
 
-    #[structopt(long, short="o", possible_values=&["normsquared", "ns", "real", "re", "imag", "im", "reim"])]
-    /// Specify output part of the wavefunction.
-    ///
-    /// Detailed message:{n}
-    /// - normsquared/ns: Perform `ρ(r) = |ѱ(r)|^2` action to get the spatial distribution of selected band.{n}
-    /// - real/re: Real part of the wavefunction, suffix '_re.vasp' is added to the output filename.{n}
-    /// - imag/im: Imaginary part of the wavefunction, suffix '_im.vasp' is added to the output filename.{n}
-    /// - reim: Output both real part and imaginary parts of the wavefunction.
-    output_parts: Vec<String>,
+//  #[structopt(long, short="o", default_value="ns",
+//              possible_values=&["normsquared", "ns", "real", "re", "imag", "im"])]
+//  /// Specify output part of the wavefunction.
+//  ///
+//  /// Detailed message:{n}
+//  /// - normsquared/ns: Perform `ρ(r) = |ѱ(r)|^2` action to get the spatial distribution of selected band.{n}
+//  /// - real/re: Real part of the wavefunction, suffix '_re.vasp' is added to the output filename.{n}
+//  /// - imag/im: Imaginary part of the wavefunction, suffix '_im.vasp' is added to the output filename.{n}
+//  /// - reim: Output both real part and imaginary parts of the wavefunction.
+//  output_part: String,
 
     #[structopt(long, default_value="wav1d.txt")]
     /// Specify the file to be written with raw wav1d data.
@@ -122,16 +123,6 @@ I suggest you provide `gamma_half` argument to avoid confusion.");
         let efermi = wav.efermi;
         let eigs   = wav.band_eigs.clone();
 
-        let has_normsquared = self.output_parts.iter().any(|s| s == "normsquared" || s == "ns");
-        let has_real = self.output_parts.iter().any(|s| s == "real" || s == "re" || s == "reim");
-        let has_imag = self.output_parts.iter().any(|s| s == "imag" || s == "im" || s == "reim");
-
-        if !(has_normsquared || has_real || has_imag) {
-            warn!("You have not specify the `output_parts` or `list`, rsgrad did nothing.");
-            return Ok(())
-        }
-
-
         let ispins = self.ispins.iter()
             .cloned()
             .map(|v| v as u64 - 1)
@@ -151,9 +142,9 @@ I suggest you provide `gamma_half` argument to avoid confusion.");
         let wavecar_type = wav.wavecar_type.clone();
         let wav = wav;  // Cancel the mutability
 
-        indices.into_par_iter()
+        let mut dat = indices.into_par_iter()
             .map(|(ispin, ikpoint, iband)| {
-                info!("Processing spin {}, k-point {:3}, band {:4} ...", ispin, ikpoint, iband);
+                info!("Processing spin {}, k-point {:3}, band {:4} ...", ispin+1, ikpoint+1, iband+1);
                 let eig = eigs[[ispin as usize, ikpoint as usize, iband as usize]] - efermi;
                 let label = format!("s{} k{} b{} {:06.3}eV", ispin+1, ikpoint+1, iband+1, eig);
 
@@ -171,22 +162,27 @@ I suggest you provide `gamma_half` argument to avoid confusion.");
                     _ => unreachable!("Invalid Wavefunction type."),
                 };
 
-                let (d1, d2, d3, d4) = match wavr {
-                    Wavefunction::Complex64Array3(w) => ( Some(w.mapv(|x| x.re)), Some(w.mapv(|x| x.im)), None, None ),
-                    Wavefunction::Float64Array3(w)   => ( Some(w), None, None, None),
-                    Wavefunction::Ncl64Array4(w)     => (
-                        Some(w.slice(s![0usize, .. ,.. ,..]).mapv(|v| v.re)),
-                        Some(w.slice(s![0usize, .. ,.. ,..]).mapv(|v| v.im)),
-                        Some(w.slice(s![1usize, .. ,.. ,..]).mapv(|v| v.re)),
-                        Some(w.slice(s![1usize, .. ,.. ,..]).mapv(|v| v.im)),
-                        ),
-                    _ => unreachable!("Invalid Wavefunction type."),
+                let chg1d = match self.axis {
+                    Axis::X => {
+                        chgd.mean_axis(ndarray::Axis(2)).unwrap()
+                            .mean_axis(ndarray::Axis(1)).unwrap()
+                    },
+                    Axis::Y => {
+                        chgd.mean_axis(ndarray::Axis(2)).unwrap()
+                            .mean_axis(ndarray::Axis(0)).unwrap()
+                    },
+                    Axis::Z => {
+                        chgd.mean_axis(ndarray::Axis(1)).unwrap()
+                            .mean_axis(ndarray::Axis(0)).unwrap()
+                    },
                 };
 
-
-                todo!()
+                (eig, label, chg1d)
             })
             .collect::<Vec<(f64, String, Array1<f64>)>>();
+
+        //dat.sort_unstable_by(|()|)
+
 
 
         Ok(())

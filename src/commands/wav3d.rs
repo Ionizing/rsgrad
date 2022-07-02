@@ -173,7 +173,7 @@ I suggest you provide `gamma_half` argument to avoid confusion.");
 
         indices.into_par_iter()
             .map(|(ispin, ikpoint, iband)| {
-                info!("Processing spin {}, k-point {:3}, band {:4} ...", ispin, ikpoint, iband);
+                info!("Processing spin {}, k-point {:3}, band {:4} ...", ispin+1, ikpoint+1, iband+1);
 
                 let eigs_suffix = if self.show_eigs_suffix {
                     format!("_{:06.3}eV", eigs[[ispin as usize, ikpoint as usize, iband as usize]] - efermi)
