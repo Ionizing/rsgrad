@@ -13,15 +13,15 @@ use ndarray;
 use plotly;
 
 use crate::{
-    types::Result,
+    types::{
+        Result,
+        Axis,
+    },
     OptProcess,
     ChargeDensity,
     ChargeType,
     Outcar,
-    commands::common::{
-        Axis,
-        write_array_to_txt,
-    }
+    commands::common::write_array_to_txt,
 };
 
 #[derive(Debug, StructOpt)]
@@ -53,6 +53,14 @@ pub struct Workfunc {
                 case_insensitive = true)]
     /// Integration direction. e.g. if 'z' is provided, the XoY plane is integrated.
     axis: Axis,
+
+    #[structopt(long)]
+    /// Open default browser to see the plot immediately.
+    show: bool,
+
+    #[structopt(long)]
+    /// Render the plot and print the rendered code to stdout.
+    to_inline_html: bool,
 }
 
 
@@ -130,6 +138,15 @@ impl OptProcess for Workfunc {
 
         info!("Writing to {:?}", self.htmlout);
         plot.to_html(&self.htmlout);
+
+        if self.show {
+            plot.show();
+        }
+
+        if self.to_inline_html {
+            info!("Printing inline html to stdout ...");
+            println!("{}", plot.to_inline_html(None));
+        }
 
         Ok(())
     }

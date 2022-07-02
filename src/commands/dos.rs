@@ -180,7 +180,15 @@ pub struct Dos {
 
     #[structopt(long)]
     /// Print brief info of PROCAR, this may be helpful when you write the configuration.
-    show_brief: bool
+    show_brief: bool,
+
+    #[structopt(long)]
+    /// Open the browser and show the plot immediately.
+    show: bool,
+
+    #[structopt(long)]
+    /// Render the plot and print the rendered code to stdout.
+    to_inline_html: bool,
 }
 
 
@@ -275,8 +283,7 @@ impl Dos {
         }
 
         totdos.into_iter()
-            .map(|x| x.into_iter())
-            .flatten()
+            .flat_map(|x| x.into_iter())
             .collect()
     }
 
@@ -329,14 +336,13 @@ impl Dos {
         }
 
         totdos.into_iter()
-            .map(|x| x.into_iter())
-            .flatten()
+            .flat_map(|x| x.into_iter())
             .collect()
     }
 }
 
 
-const TEMPLATE: &'static str = r#"# rsgrad DOS configuration in toml format.
+const TEMPLATE: &str = r#"# rsgrad DOS configuration in toml format.
 # multiple tokens inside string are seperated by whitespace
 method      = "Gaussian"        # smearing method
 sigma       = 0.05              # smearing width, (eV)
@@ -485,7 +491,7 @@ impl OptProcess for Dos {
         if is_totdos {
             info!("Plotting Total DOS ...");
             let now = Instant::now();
-            let tr = plotly::Scatter::from_array(xvals_plot.clone(), totdos.clone())
+            let tr = plotly::Scatter::from_array(xvals_plot.clone(), totdos)
                 .mode(plotly::common::Mode::Lines)
                 .marker(plotly::common::Marker::new()
                         .color(plotly::NamedColor::Gray))
@@ -551,8 +557,17 @@ impl OptProcess for Dos {
 
         info!("Writing raw DOS data to {:?}", txtout);
         let label = labels.join(" ");
-        let raw_dats = raw_dats.iter().map(|x| x).collect::<Vec<_>>();
+        let raw_dats = raw_dats.iter().collect::<Vec<_>>();
         write_array_to_txt(txtout, raw_dats, &label)?;
+
+        if self.show {
+            plot.show();
+        }
+
+        if self.to_inline_html {
+            info!("Printing inline html to stdout ...");
+            println!("{}", plot.to_inline_html(None));
+        }
 
         Ok(())
     }

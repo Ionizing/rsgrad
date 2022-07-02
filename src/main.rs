@@ -1,6 +1,6 @@
 use std::time;
 
-use env_logger;
+use env_logger::init_from_env;
 use log::info;
 use rsgrad::{
     Result,
@@ -63,13 +63,19 @@ enum Opt {
     #[structopt(setting = AppSettings::ColoredHelp,
                 setting = AppSettings::ColorAuto)]
     Band(commands::band::Band),
+
+
+    #[structopt(setting = AppSettings::ColoredHelp,
+                setting = AppSettings::ColorAuto,
+                name = "wav3d")]
+    Wav3D(commands::wav3d::Wav3D),
 }
 
 
 fn main() -> Result<()> {
     let now = time::Instant::now();
 
-    env_logger::init_from_env(
+    init_from_env(
         env_logger::Env::new().filter_or("RSGRAD_LOG", "info"));
 
     match Opt::from_args() {
@@ -82,6 +88,7 @@ fn main() -> Result<()> {
         Opt::Workfunc(cmd)  => cmd.process()?,
         Opt::Dos(cmd)       => cmd.process()?,
         Opt::Band(cmd)      => cmd.process()?,
+        Opt::Wav3D(cmd)       => cmd.process()?,
     }
 
     info!("Time used: {:?}", now.elapsed());

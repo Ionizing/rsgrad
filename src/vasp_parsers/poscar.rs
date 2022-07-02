@@ -39,10 +39,10 @@ impl Poscar {
             .take_while(|x| !x.trim().is_empty())
             .collect::<Vec<_>>()
             .join("\n");
-        Self::from_str(&txt)
+        Self::from_txt(&txt)
     }
 
-    pub fn from_str(txt: &str) -> Result<Self> {
+    pub fn from_txt(txt: &str) -> Result<Self> {
         let mut lines = txt.lines();
         let comment: String = lines.next().context("[POSCAR]: File may be blank.")?.trim().to_string();
         let scale: f64 = lines.next().context("[POSCAR]: Cannot parse scale constant.")?
@@ -60,7 +60,7 @@ impl Poscar {
         
         let cell: Mat33<f64> = {
             let mut v = [[0.0f64; 3]; 3];
-            for i in 0..3 {
+            for it in &mut v {
                 let line = lines.next().context("[POSCAR]: Incomplete lines for cell info.")?;
                 let row = line.split_whitespace().take(3).collect::<Vec<_>>();
                 if row.len() < 3 {
@@ -71,7 +71,7 @@ impl Poscar {
                     if val.is_nan() {
                         return Err(anyhow!("[POSCAR]: Cell lines contain NaN value."));
                     }
-                    v[i][j] = val;
+                    it[j] = val;
                 }
             }
             v
@@ -81,10 +81,10 @@ impl Poscar {
             let words = lines.next()
                 .context("[POSCAR]: Element tags line not found, rsgrad has no plan to support vasp4 format.")?
                 .split_whitespace()
-                .take_while(|x| !x.contains("!"))
+                .take_while(|x| !x.contains('!'))
                 .map(|x| x.to_string())
                 .collect::<Vec<_>>();
-            if words.len() == 0 {
+            if words.is_empty() {
                 return Err(anyhow!("[POSCAR]: At lease one element is needed."));
             }
             words
@@ -94,7 +94,7 @@ impl Poscar {
             let numbers = lines.next()
                 .context("[POSCAR]: Count of each element not found.")?
                 .split_whitespace()
-                .take_while(|x| !x.contains("!"))
+                .take_while(|x| !x.contains('!'))
                 .map(|x| x.parse::<i32>().context("[POSCAR]: Invalid atom count of element."))
                 .collect::<Result<Vec<_>>>()?;
             if numbers.len() != ion_types.len() {
@@ -130,7 +130,7 @@ impl Poscar {
 
         let mut coords: MatX3<f64> = vec![];
         let mut constraints: Option<MatX3<bool>> = if has_constraints { Some(vec![]) } else { None };
-        while let Some(line) = lines.next() {
+        for line in lines {
             if line.trim().is_empty() {
                 break;
             }
@@ -211,7 +211,7 @@ impl Poscar {
 
 
     pub fn to_formatter(&self) -> PoscarFormatter<'_> {
-        PoscarFormatter::new(&self)
+        PoscarFormatter::new(self)
     }
 
 
@@ -281,9 +281,9 @@ impl Poscar {
 
     #[inline]
     pub fn mat33_det(mat: &Mat33<f64>) -> f64 {
-        return mat[0][0] * (mat[1][1] * mat[2][2] - mat[2][1] * mat[1][2])
-             - mat[0][1] * (mat[1][0] * mat[2][2] - mat[1][2] * mat[2][0])
-             + mat[0][2] * (mat[1][0] * mat[2][1] - mat[1][1] * mat[2][0]);
+           mat[0][0] * (mat[1][1] * mat[2][2] - mat[2][1] * mat[1][2])
+         - mat[0][1] * (mat[1][0] * mat[2][2] - mat[1][2] * mat[2][0])
+         + mat[0][2] * (mat[1][0] * mat[2][1] - mat[1][1] * mat[2][0])
     }
 
 
@@ -337,7 +337,7 @@ impl Poscar {
     }
 
     pub fn mat33_transpose(mat: &Mat33<f64>) -> Mat33<f64> {
-        let mut ret = mat.clone();
+        let mut ret = *mat;
         ret[0][1] = mat[1][0];
         ret[0][2] = mat[2][0];
         ret[1][0] = mat[0][1];
@@ -372,7 +372,7 @@ pub struct PoscarFormatter<'a> {
 impl<'a> PoscarFormatter<'a> {
     pub fn new(poscar: &'a Poscar) -> Self {
         Self {
-            poscar: &poscar,
+            poscar,
             preserve_constraints: true,
             fraction_coordinates: true,
             add_symbol_tags: true,

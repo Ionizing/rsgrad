@@ -1,3 +1,5 @@
+#![allow(clippy::reversed_empty_ranges)]
+
 use std::{
     fs,
     path::Path,
@@ -177,11 +179,10 @@ impl Procar {
         let pdos = txt.lines()
             .filter(|l| reg.is_match(l))
             .take(nspinor * nions)
-            .map(|l| {
+            .flat_map(|l| {
                 l.split_whitespace()
                  .map(|t| t.parse::<f64>().unwrap())
             })
-            .flatten()
             .collect::<Vec<_>>();
 
         let ncol = pdos.len() / nions / nspinor;
@@ -217,7 +218,7 @@ impl Procar {
         let mut occups = Vec::<f64>::with_capacity(64);
 
         Regex::new(r"(?m)^band.{4,6} # energy\s*([+-]?([0-9]+([.][0-9]*)?|[.][0-9]+)) # occ\.\s*([+-]?([0-9]+([.][0-9]*)?|[.][0-9]+))")?
-            .captures_iter(&txt)
+            .captures_iter(txt)
             .for_each(|m| {
                 levels.push(m.get(1).unwrap().as_str().parse::<f64>().unwrap());
                 occups.push(m.get(5).unwrap().as_str().parse::<f64>().unwrap());

@@ -113,7 +113,7 @@ Please replace {} with actual path of corresponding PP's directory, for example:
     }
 
     // copied from https://stackoverflow.com/a/70926549/8977923
-    fn expand_home_dir<'a, P: AsRef<Path> + ?Sized>(path: &'a P) -> PathBuf {
+    fn expand_home_dir<P: AsRef<Path> + ?Sized>(path: &P) -> PathBuf {
         let path = path.as_ref();
 
         if !path.starts_with("~") {

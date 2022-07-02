@@ -23,22 +23,11 @@ use plotly::common::{
     },
 };
 use ndarray::Array1;
-use structopt::clap::arg_enum;
 
 use crate::types::{
     range_parse,
     index_transform,
 };
-
-
-arg_enum! {
-    #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
-    pub enum Axis {
-        X,
-        Y,
-        Z,
-    }
-}
 
 
 const NAMED_COLORS: &[&str] = &[
@@ -116,8 +105,6 @@ const PALETTES_ENUM: &[ColorScalePalette] = &[
 
 
 pub fn write_array_to_txt(file_name: &(impl AsRef<Path> + ?Sized), ys: Vec<&Array1<f64>>, comment: &str) -> Result<()> {
-    let ncol = ys.len();
-
     let x = ys.get(0).context("At lease two data sets are needed")?;
     let nrow = x.len();
 
@@ -135,12 +122,12 @@ pub fn write_array_to_txt(file_name: &(impl AsRef<Path> + ?Sized), ys: Vec<&Arra
 
     for irow in 0 .. nrow {
         let mut s = String::with_capacity(8);
-        for icol in 0 .. ncol {
-            s.push_str(&format!("  {:15.6}", ys[icol][irow]));
+        for col in ys.iter() {  //  for icol in 0 .. ncol
+            s.push_str(&format!("  {:15.6}", col[irow]));
         }
         s.push('\n');
 
-        f.write(s.as_bytes())?;
+        f.write_all(s.as_bytes())?;
     }
     
     Ok(())
@@ -202,7 +189,7 @@ bail!("[DOS]: Invalid spin component selected: `{}`, available components are `u
             })
         }?;
 
-        ret.sort();
+        ret.sort_unstable();
         ret.dedup();
         Ok(ret)
     }
@@ -215,11 +202,10 @@ bail!("[DOS]: Invalid spin component selected: `{}`, available components are `u
     pub fn parse_iatoms(input: Option<&str>, nions: usize) -> Result<Vec<usize>> {
         if let Some(atoms) = input {
             let mut ret = atoms.split_whitespace()
-                .map(|x| range_parse(x))
+                .map(range_parse)
                 .collect::<Result<Vec<Vec<i32>>>>()?
                 .into_iter()
-                .map(|x| index_transform(x, nions).into_iter())
-                .flatten()
+                .flat_map(|x| index_transform(x, nions).into_iter())
                 .map(|x| (x - 1).rem_euclid(nions))
                 .collect::<Vec<usize>>();
 
@@ -227,7 +213,7 @@ bail!("[DOS]: Invalid spin component selected: `{}`, available components are `u
                 bail!("[DOS]: No atoms selected.");
             }
 
-            ret.sort();
+            ret.sort_unstable();
             ret.dedup();
             Ok(ret)
         } else {  // All atoms selected if left blank
@@ -242,11 +228,10 @@ bail!("[DOS]: Invalid spin component selected: `{}`, available components are `u
     pub fn parse_ikpoints(input: Option<&str>, nkpoints: usize) -> Result<Vec<usize>> {
         if let Some(kpoints) = input {
             let mut ret = kpoints.split_whitespace()
-                .map(|x| range_parse(x))
+                .map(range_parse)
                 .collect::<Result<Vec<Vec<i32>>>>()?
                 .into_iter()
-                .map(|x| index_transform(x, nkpoints).into_iter())
-                .flatten()
+                .flat_map(|x| index_transform(x, nkpoints).into_iter())
                 .map(|x| (x - 1).rem_euclid(nkpoints))
                 .collect::<Vec<usize>>();
 
@@ -254,7 +239,7 @@ bail!("[DOS]: Invalid spin component selected: `{}`, available components are `u
                 bail!("[DOS]: No ikpoints selected.");
             }
 
-            ret.sort();
+            ret.sort_unstable();
             ret.dedup();
             Ok(ret)
         } else {
@@ -273,12 +258,12 @@ bail!("[DOS]: Invalid spin component selected: `{}`, available components are `u
 
             let mut ret = orbits.split_whitespace()
                 .map(|x| {
-                    nlm.iter().position(|x2| x2 == &x)
+                    nlm.iter().position(|x2| x2 == x)
                         .context(format!("Selected orbit {:?} not available in {:?}", x, &nlm))
                 })
             .collect::<Result<Vec<_>>>()?;
             
-            ret.sort();
+            ret.sort_unstable();
             ret.dedup();
 
             Ok(ret)
@@ -290,17 +275,17 @@ bail!("[DOS]: Invalid spin component selected: `{}`, available components are `u
     /// Parse the color to this curve.
     pub fn parse_color(input: &str) -> Result<CustomColor> {
         if NAMED_COLORS.contains(&input.to_ascii_lowercase().as_ref()) {
-            return Ok(CustomColor(ColorWrapper::S(input.to_owned())))
+            Ok(CustomColor(ColorWrapper::S(input.to_owned())))
         } else {
             let ret = catch_unwind(|| {
                 input.to_color()
             });
 
-            if ret.is_err() {
+            if let Ok(c) = ret {
+                Ok(CustomColor(c))
+            } else {
                 bail!("The input color is neither a named color nor a valid hex code. 
 See \"https://developer.mozilla.org/en-US/docs/Web/CSS/color_value for availed named colors.\"");
-            } else {
-                Ok(CustomColor(ret.unwrap()))
             }
         }
     }
@@ -319,7 +304,7 @@ See \"https://developer.mozilla.org/en-US/docs/Web/CSS/color_value for availed n
 
         let mut rng = rand::thread_rng();
         let id = rng.gen_range(0 .. NAMED_COLORS.len());
-        return Self::parse_color(NAMED_COLORS[id]).unwrap();
+        Self::parse_color(NAMED_COLORS[id]).unwrap()
     }
 
 }

@@ -58,9 +58,9 @@ use crate::{
         Vector,
         Matrix,
         Cube,
+        Axis,
     },
     commands::common::{
-        Axis,
         write_array_to_txt,
         RawSelection,
         CustomColor,
@@ -155,12 +155,12 @@ impl Configuration {
         if let Some(s) = s {
             let cmap = RawSelection::parse_colormap(&s);
             match cmap {
-                Ok(c) => { return Ok(c) },
-                Err(e) => { return Err(serde::de::Error::custom(e.to_string())) },
+                Ok(c) => { Ok(c) },
+                Err(e) => { Err(serde::de::Error::custom(e.to_string())) },
             }
         } else {
-            return Ok(ColorScalePalette::Jet);
-        };
+            Ok(ColorScalePalette::Jet)
+        }
     }
 }
 
@@ -168,6 +168,10 @@ impl Configuration {
 #[derive(Debug, StructOpt, Clone)]
 #[structopt(setting = AppSettings::ColoredHelp,
             setting = AppSettings::ColorAuto)]
+/// Plot bandstructure and projected bandstructure
+/// 
+/// You may need to generate a template and then use the `--config` option to plot the projected
+/// bandstructure.
 pub struct Band {
     #[structopt(short, long)]
     /// Band structure plot configuration file path.
@@ -221,6 +225,14 @@ pub struct Band {
     /// Note: Your browser should be able to run plotly.js. Chrome, Safari, Edge, Firefox and
     /// etc. are supported.
     htmlout: PathBuf,
+
+    #[structopt(long)]
+    /// Open the browser and show the plot immediately.
+    show: bool,
+
+    #[structopt(long)]
+    /// Render the plot and print the rendered code to stdout.
+    to_inline_html: bool,
 }
 
 
@@ -236,7 +248,7 @@ impl Band {
         let kpath = segment_ranges
             .iter()
             .cloned()
-            .map(|(beg, end)| {
+            .flat_map(|(beg, end)| {
                 let (rng, lrng) = if beg < end {    // Forward range (e.g. 1..5)
                     (s![beg..end,    ..], s![(beg-1)..(end-1),    ..])
                 } else {                            // Backward range (e.g.  5..1)
@@ -251,7 +263,6 @@ impl Band {
                 kdiffs.insert(0, 0.0);
                 kdiffs.into_iter()
             })
-            .flatten()
             .scan(0.0, |acc, x| {  // equal to cumsum
                 *acc += x;
                 Some(*acc)
@@ -357,7 +368,7 @@ impl Band {
             (0 .. nbands).into_iter()
                 .for_each(|iband| {
                     let dispersion = cropped_eigvals.slice(s![ispin, .., iband]).to_owned();
-                    let show_legend = if 0 == iband { true } else { false };
+                    let show_legend = 0 == iband;
                     let legend_name = match (nspin, ispin) {
                         (1, _) => "Band Dispersion",
                         (2, 0) => "Spin Up",
@@ -372,7 +383,7 @@ impl Band {
                         _ => unreachable!("Only two spin components available"),
                     };
 
-                    let tr = Scatter::from_array(kpath.clone(), dispersion.clone())
+                    let tr = Scatter::from_array(kpath.clone(), dispersion)
                         .mode(plotly::common::Mode::Lines)
                         .marker(plotly::common::Marker::new().color(getcolor(ispin)))
                         .legend_group("Total bandstructure")
@@ -455,8 +466,8 @@ impl Band {
                 })
                 .collect::<Vec<Vector<f64>>>();
 
-            for ik in 0 .. nkpoints {
-                summed_proj.slice_mut(s![0usize, ik, ..]).assign(&proj[ik]);
+            for (ik, proj_item) in proj.iter().enumerate() {
+                summed_proj.slice_mut(s![0usize, ik, ..]).assign(proj_item);
             }
         } else {  // ispin == 2
             for is in selection.ispins.iter().cloned() {
@@ -474,8 +485,8 @@ impl Band {
                     })
                     .collect::<Vec<Vector<f64>>>();
 
-                for ik in 0 .. nkpoints {
-                    summed_proj.slice_mut(s![is, ik, ..]).assign(&proj[ik]);
+                for (ik, proj_item) in proj.iter().enumerate() {
+                    summed_proj.slice_mut(s![is, ik, ..]).assign(proj_item);
                 }
             }
         };
@@ -508,7 +519,7 @@ impl Band {
                             (x * 20.0).ceil() as usize
                         })  // negative numbers are treated as 0
                         .collect::<Vec<usize>>();
-                    let show_legend = if 0 == iband && 0 == ispin { true } else { false };
+                    let show_legend = 0 == iband && 0 == ispin;
                     let hover_template0 = match (nspin, ispin) {
                         (1, _) => format!("Band#: {}<br>", iband + 1),
                         (2, 0) => format!("Spin up<br>Band#: {}<br>", iband + 1),
@@ -561,8 +572,8 @@ impl Band {
             })
             .collect::<Vec<Vector<f64>>>();
 
-        for ik in 0 .. nkpoints {
-            summed_proj.slice_mut(s![ik, ..]).assign(&proj[ik]);
+        for (ik, proj_item) in proj.iter().enumerate() {
+            summed_proj.slice_mut(s![ik, ..]).assign(proj_item);
         }
 
         summed_proj
@@ -583,22 +594,25 @@ impl Band {
             .for_each(|iband| {
                 let dispersion = cropped_eigvals.slice(s![0, .., iband]).to_owned();
                 let projection = projections.slice(s![.., iband]).to_owned().into_raw_vec();
-                let show_legend = if 0 == iband { true} else { false };
+                let show_legend = 0 == iband;
                 let hover_template_array = projection.iter()
                     .map(|x| {
                         format!("Band#: {}<Br>E-Ef: %{{y:.4f}} eV<br>{} Projection: {:.3}", iband + 1, label, x)
                     })
                     .collect::<Vec<String>>();
 
-                let marker = if 0 == iband {
-                    plotly::common::Marker::new()
-                } else {
-                    plotly::common::Marker::new()
-                        //.color_bar(plotly::common::ColorBar::new()        // TODO: commented due to plotly-rs's stack overflow bug
-                                   //.thickness(5)
-                                   //.tick_vals(vec![-1.0, 1.0])
-                                   //.outline_width(0))
-                };
+                let marker = plotly::common::Marker::new();
+                /*
+                 *let marker = if 0 == iband {
+                 *    plotly::common::Marker::new()
+                 *} else {
+                 *    plotly::common::Marker::new()
+                 *        //.color_bar(plotly::common::ColorBar::new()        // TODO: commented due to plotly-rs's stack overflow bug
+                 *                   //.thickness(5)
+                 *                   //.tick_vals(vec![-1.0, 1.0])
+                 *                   //.outline_width(0))
+                 *};
+                 */
 
                 let tr = Scatter::from_array(kpath.clone(), dispersion)
                     .mode(plotly::common::Mode::Markers)
@@ -665,7 +679,7 @@ impl Band {
 }
 
 
-const TEMPLATE: &'static str = r#"# rsgrad Band plot configuration in toml format.
+const TEMPLATE: &str = r#"# rsgrad Band plot configuration in toml format.
 # multiple tokens inside string are seperated by whitespace, if you 
 
 # kpoint-labels   = ["G", "K", "M", "G"]   # should be consistant with the boundaries in KPOINTS
@@ -787,9 +801,12 @@ impl OptProcess for Band {
             .x_axis(plotly::layout::Axis::new()
                     .title(plotly::common::Title::new("Wavevector"))
                     .tick_values(kxs.clone())
-                    .tick_text(klabels.clone())
+                    .tick_text(klabels)
                     .zero_line(true)
                     );
+
+        Self::plot_boundaries(&mut layout, &kxs);
+        plot.set_layout(layout);
 
         // Plot raw band
         info!("Plotting raw bands ...");
@@ -799,7 +816,7 @@ impl OptProcess for Band {
         if let Some(ax) = ncl_spinor.as_ref() {
             info!("Plotting ncl-band in {} direction", ax);
             let projected_band_ncl = Self::gen_nclband(&cropped_projections, *ax);
-            let label = format!("Spinor {}", ax.to_string());
+            let label = format!("Spinor {}", ax);
             Self::plot_nclband(&mut plot, &kpath, &cropped_eigvals, &projected_band_ncl, colormap.clone(), &label);
 
             let fname = PathBuf::from(&format!("{}_ncl_{}.txt", txtout_prefix, ax));
@@ -867,13 +884,8 @@ impl OptProcess for Band {
         };
 
 
-        Self::plot_boundaries(&mut layout, &kxs);
-        plot.set_layout(layout);
-
-
         // save data
         info!("Writing Bandstructure to {:?}", &self.htmlout);
-        plot.to_html(htmlout);
 
         for is in 0 .. nspin {
             let spin_label = match (is_ncl, nspin, is) {
@@ -892,6 +904,17 @@ impl OptProcess for Band {
             let data_ref = data.iter().collect::<Vec<&Vector<f64>>>();
             info!("Writing raw band data to {:?}", &fname);
             write_array_to_txt(&fname, data_ref, "kpath(in_2pi) band-levels(nkpoints_x_nbands)")?;
+        }
+
+        plot.to_html(htmlout);
+
+        if self.to_inline_html {
+            info!("Printing inline html to stdout ...");
+            println!("{}", plot.to_inline_html(None));
+        }
+
+        if self.show {
+            plot.show();
         }
         
         Ok(())

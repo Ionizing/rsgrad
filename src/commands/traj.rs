@@ -101,7 +101,7 @@ impl OptProcess for Traj {
 
         let inds = {
             let select_indices = self.select_indices.clone().unwrap_or_default();
-            if 0 == select_indices.len() {
+            if select_indices.is_empty() {
                 warn!("No steps are selected to operate !");
             }
             index_transform(select_indices, traj.0.len())

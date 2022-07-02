@@ -116,12 +116,12 @@ impl ChargeDensity {
     /// Read CHGCAR like volumetric data from file.
     pub fn from_file(path: &(impl AsRef<Path> + ?Sized), chgtype: ChargeType) -> Result<Self> {
         let txt = fs::read_to_string(path)?;
-        Self::from_str(&txt, chgtype)
+        Self::from_txt(&txt, chgtype)
     }
 
 
     /// Parse CHGCAR like volumetric data from string.
-    pub fn from_str(txt: &str, chgtype: ChargeType) -> Result<Self> {
+    pub fn from_txt(txt: &str, chgtype: ChargeType) -> Result<Self> {
         let separate_pos = Regex::new(r"(?m)^\s*$").unwrap()
             .find(txt)
             .context("[CHG]: This file has no empty line to separate position data and grid data.")?
@@ -134,7 +134,7 @@ impl ChargeDensity {
             .map(|m| m.start() + separate_pos)
             .collect::<Vec<usize>>();
 
-        if chg_starts.len() == 0 {
+        if chg_starts.is_empty() {
             bail!("[CHG]: This file has no grid size data.");
         }
 
@@ -158,7 +158,7 @@ impl ChargeDensity {
 
         let aug = chg_starts.par_iter()
             .map(|p| Self::read_raw_aug(&txt[*p ..]))
-            .collect::<Option<Vec<String>>>().unwrap_or(vec![]);
+            .collect::<Option<Vec<String>>>().unwrap_or_default();
 
         if !aug.is_empty() && chg.len() != aug.len() {
             bail!("[CHG]: Augmentation data sets' count not consistent with chage densities' : {} != {}", aug.len(), chg.len());
@@ -180,22 +180,22 @@ impl ChargeDensity {
     }
 
 
-    /// Read CHGCAR header to get POSCAR info
+    // Read CHGCAR header to get POSCAR info
     fn read_poscar(txt: &str) -> Result<Poscar> {
-        Poscar::from_str(txt)
+        Poscar::from_txt(txt)
     }
 
 
-    /// This function reads the grid data.  input str should be like:
-    ///
-    ///  2 3 4
-    ///  ... ...
-    ///  ... ...
-    ///  augmentation ....
-    ///  ...
-    ///  ...
-    ///
-    ///  The augmentation part is dropped
+    // This function reads the grid data.  input str should be like:
+    //
+    //  2 3 4
+    //  ... ...
+    //  ... ...
+    //  augmentation ....
+    //  ...
+    //  ...
+    //
+    //  The augmentation part is dropped
     fn read_chg(txt: &str) -> Result<Array3<f64>> {
         let _regex = Regex::new(r"(?m)^\s+\d+\s+\d+\s+\d+\s*$").unwrap();
         let mat = _regex.find(txt).unwrap();
@@ -219,7 +219,7 @@ impl ChargeDensity {
 
         let chg_vec = txt[start_pos .. end_pos]
             .split_whitespace()
-            .map(|s| s.parse::<f64>().expect(&format!("[CHG]: Cannot parse {} into float number", s)))
+            .map(|s| s.parse::<f64>().unwrap_or_else(|_| panic!("[CHG]: Cannot parse {} into float number", s)))
             .collect::<Vec<f64>>();
         let chg = Array3::from_shape_vec(ngrid.f(), chg_vec)?;
 
@@ -227,7 +227,7 @@ impl ChargeDensity {
     }
 
 
-    /// All augmentation data is extracted without parsing. The tail linebreaks are preserved.
+    // All augmentation data is extracted without parsing. The tail linebreaks are preserved.
     fn read_raw_aug(txt: &str) -> Option<String> {
         let start_pos = txt.find("augmentation")?;
         let end_pos = Regex::new(r"(?m)^\s+\d+\s+\d+\s+\d+\s*$")  // find NGX NGY NGZ
@@ -243,8 +243,9 @@ impl ChargeDensity {
 
 impl fmt::Display for ChargeDensity {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        assert_eq!(self.chg[0].len(), self.ngrid.iter().product::<usize>());
 
-        // Flatten chg struct
+        // Flatten chg struct. BUGFIXED: the array layout should be column-major.
         let chg = match self.chgtype {
             ChargeType::Chgcar => {
                 let chg = self.chg.clone();
@@ -252,13 +253,23 @@ impl fmt::Display for ChargeDensity {
                 chg.into_par_iter()
                     .map(|mut charge| {
                         charge *= vol;
-                        charge.into_raw_vec()
+                        if charge.is_standard_layout() {
+                            charge.reversed_axes().into_iter().collect()
+                        } else {
+                            charge.into_raw_vec()
+                        }
                     })
                     .collect::<Vec<_>>()
             },
             ChargeType::Locpot => {
-                self.chg.par_iter()
-                    .map(|charge| charge.clone().into_raw_vec())
+                self.chg.clone().into_par_iter()
+                    .map(|charge| {
+                        if charge.is_standard_layout() {
+                            charge.reversed_axes().into_iter().collect()
+                        } else {
+                            charge.into_raw_vec()
+                        }
+                    })
                     .collect::<Vec<_>>()
             }
         };
@@ -266,7 +277,7 @@ impl fmt::Display for ChargeDensity {
         writeln!(f, "{}", self.pos.to_formatter())?;  // contains the empty line for seperation already
 
         let empty_aug = vec!["".to_string()];
-        let aug = if self.aug.len() != 0 {
+        let aug = if !self.aug.is_empty() {
             &self.aug
         } else {
             &empty_aug
@@ -302,8 +313,8 @@ fn mat33_approx_eq(ma: &Mat33<f64>, mb: &Mat33<f64>) -> bool {
 impl Add for ChargeDensity {
     type Output=Result<Self>;
 
-    /// Add two provided ChargeDensity object, they should have same cell and grid size.
-    /// The augmentation part will be dropped.
+    // Add two provided ChargeDensity object, they should have same cell and grid size.
+    // The augmentation part will be dropped.
     fn add(mut self, mut other:Self) -> Self::Output {
         self.pos = self.pos.normalize();
         other.pos = other.pos.normalize();
@@ -323,7 +334,7 @@ impl Add for ChargeDensity {
                   self.ngrid, other.ngrid);
         }
 
-        if self.chg.len() == 0 || self.chg.len() != other.chg.len() {
+        if self.chg.is_empty() || self.chg.len() != other.chg.len() {
             bail!("[CHG_ADD]: No charge densitie found or two systems' charge densitie set counts not match: {} != {}",
                   self.chg.len(), other.chg.len());
         }
@@ -395,7 +406,7 @@ impl Add for ChargeDensity {
 impl Sub for ChargeDensity {
     type Output=Result<Self>;
 
-    /// Subtract self's charge density from other's.
+    // Subtract self's charge density from other's.
     fn sub(mut self, mut other: Self) -> Self::Output {
         self.pos = self.pos.normalize();
         other.pos = other.pos.normalize();
@@ -415,7 +426,7 @@ impl Sub for ChargeDensity {
                   self.ngrid, other.ngrid);
         }
 
-        if self.chg.len() == 0 || self.chg.len() != other.chg.len() {
+        if self.chg.is_empty() || self.chg.len() != other.chg.len() {
             bail!("[CHG_SUB]: No charge densitie found or two systems' charge densitie set counts not match: {} != {}",
                   self.chg.len(), other.chg.len());
         }
@@ -550,13 +561,13 @@ Direct
     }
 
     #[test]
-    fn test_from_str() {
-        let chg = ChargeDensity::from_str(SAMPLE_CHGCAR, ChargeType::Chgcar).unwrap();
+    fn test_from_txt() {
+        let chg = ChargeDensity::from_txt(SAMPLE_CHGCAR, ChargeType::Chgcar).unwrap();
         assert_eq!(chg.ngrid, [2, 3, 4]);
         assert_eq!(chg.chg.len(), 2);
         assert_eq!(chg.aug.len(), 2);
 
-        let chg = ChargeDensity::from_str(SAMPLE_CHG, ChargeType::Chgcar).unwrap();
+        let chg = ChargeDensity::from_txt(SAMPLE_CHG, ChargeType::Chgcar).unwrap();
         assert_eq!(chg.ngrid, [2, 3, 4]);
         assert_eq!(chg.chg.len(), 2);
         assert_eq!(chg.aug.len(), 0);
@@ -611,9 +622,9 @@ augmentation occupancies 2 15
   0.5875445E-05 -0.7209739E-05 -0.3625569E-05  0.1019266E-04 -0.0038244E-05
 ";
 
-        let chg = ChargeDensity::from_str(SAMPLE_CHGCAR, ChargeType::Chgcar).unwrap();
+        let chg = ChargeDensity::from_txt(SAMPLE_CHGCAR, ChargeType::Chgcar).unwrap();
         assert_eq!(chg.to_string(), format_expect);
-        ChargeDensity::from_str(format_expect, ChargeType::Chgcar).unwrap();
+        ChargeDensity::from_txt(format_expect, ChargeType::Chgcar).unwrap();
         
         let format_expect = "\
 unknown system
@@ -640,15 +651,15 @@ Direct
    1.06770090230E0   1.07093929900E0   1.06770090230E0   1.26681536160E0
 ";
 
-        let chg = ChargeDensity::from_str(SAMPLE_CHG, ChargeType::Chgcar).unwrap();
+        let chg = ChargeDensity::from_txt(SAMPLE_CHG, ChargeType::Chgcar).unwrap();
         assert_eq!(chg.to_string(), format_expect);
-        ChargeDensity::from_str(format_expect, ChargeType::Chgcar).unwrap();
+        ChargeDensity::from_txt(format_expect, ChargeType::Chgcar).unwrap();
     }
 
     #[test]
     fn test_chg_add() {
-        let chg1 = ChargeDensity::from_str(SAMPLE_CHGCAR, ChargeType::Chgcar).unwrap();
-        let chg2 = ChargeDensity::from_str(SAMPLE_CHG, ChargeType::Chgcar).unwrap();
+        let chg1 = ChargeDensity::from_txt(SAMPLE_CHGCAR, ChargeType::Chgcar).unwrap();
+        let chg2 = ChargeDensity::from_txt(SAMPLE_CHG, ChargeType::Chgcar).unwrap();
 
         let chgdat = chg1.chg[0].clone() * 2.0;
 
@@ -660,15 +671,15 @@ Direct
     #[test]
     #[should_panic]
     fn test_chg_add_failed() {
-        let chg1 = ChargeDensity::from_str(SAMPLE_CHGCAR, ChargeType::Chgcar).unwrap();
-        let chg2 = ChargeDensity::from_str(SAMPLE_CHG, ChargeType::Locpot).unwrap();
+        let chg1 = ChargeDensity::from_txt(SAMPLE_CHGCAR, ChargeType::Chgcar).unwrap();
+        let chg2 = ChargeDensity::from_txt(SAMPLE_CHG, ChargeType::Locpot).unwrap();
         (chg1 + chg2).unwrap();
     }
 
     #[test]
     fn test_chg_sub() {
-        let chg1 = ChargeDensity::from_str(SAMPLE_CHGCAR, ChargeType::Chgcar).unwrap();
-        let chg2 = ChargeDensity::from_str(SAMPLE_CHG, ChargeType::Chgcar).unwrap();
+        let chg1 = ChargeDensity::from_txt(SAMPLE_CHGCAR, ChargeType::Chgcar).unwrap();
+        let chg2 = ChargeDensity::from_txt(SAMPLE_CHG, ChargeType::Chgcar).unwrap();
         
         let chg3 = (chg1 - chg2).unwrap();
         assert!(chg3.chg[0].iter().all(|x| *x == 0.0f64));
@@ -677,8 +688,8 @@ Direct
     #[test]
     #[should_panic]
     fn test_chg_sub_failed() {
-        let chg1 = ChargeDensity::from_str(SAMPLE_CHGCAR, ChargeType::Chgcar).unwrap();
-        let chg2 = ChargeDensity::from_str(SAMPLE_CHG, ChargeType::Locpot).unwrap();
+        let chg1 = ChargeDensity::from_txt(SAMPLE_CHGCAR, ChargeType::Chgcar).unwrap();
+        let chg2 = ChargeDensity::from_txt(SAMPLE_CHG, ChargeType::Locpot).unwrap();
         (chg1 - chg2).unwrap();
     }
 }
