@@ -22,9 +22,9 @@ jobs:
     - name: Install Rust
       run: | 
         curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y --target x86_64-unknown-linux-musl x86_64-unknown-linux-gnu
-        export PATH=/root/.cargo/bin:$PATH
         source $HOME/.cargo/env
-        rustup target add x86_64-unknown-linux-musl
+        which rustup
+        which cargo
     - name: Build
       run: cargo build --verbose --release
     - name: Run tests
