@@ -66,8 +66,9 @@ enum Opt {
 
 
     #[structopt(setting = AppSettings::ColoredHelp,
-                setting = AppSettings::ColorAuto)]
-    Wav(commands::wav::Wav),
+                setting = AppSettings::ColorAuto,
+                name = "wav3d")]
+    Wav3D(commands::wav3d::Wav3D),
 }
 
 
@@ -87,7 +88,7 @@ fn main() -> Result<()> {
         Opt::Workfunc(cmd)  => cmd.process()?,
         Opt::Dos(cmd)       => cmd.process()?,
         Opt::Band(cmd)      => cmd.process()?,
-        Opt::Wav(cmd)       => cmd.process()?,
+        Opt::Wav3D(cmd)       => cmd.process()?,
     }
 
     info!("Time used: {:?}", now.elapsed());
