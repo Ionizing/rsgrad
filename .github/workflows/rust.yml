@@ -20,9 +20,12 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Install Rust
-      run: | 
+      run: |
+        yum install -y gcc g++ which
         curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y --target x86_64-unknown-linux-musl x86_64-unknown-linux-gnu
         source $HOME/.cargo/env
+        ls $HOME/.cargo
+        ls /root/.cargo
         which rustup
         which cargo
     - name: Build
