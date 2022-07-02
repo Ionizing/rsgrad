@@ -7,5 +7,6 @@ pub mod rlx;
 pub mod traj;
 pub mod vib;
 pub mod wav3d;
+pub mod wav1d;
 pub mod chgdiff;
 pub mod common;

@@ -12,6 +12,7 @@ use anyhow::bail;
 use ndarray::s;
 use rayon::prelude::*;
 use itertools::iproduct;
+use ndarray::Array1;
 
 use crate::{
     vasp_parsers::{
@@ -30,19 +31,16 @@ use crate::{
     Poscar,
 };
 
+
 #[derive(Debug, StructOpt)]
 #[structopt(setting = AppSettings::ColoredHelp,
             setting = AppSettings::ColorAuto,
             setting = AppSettings::AllowNegativeNumbers)]
-/// Plot wavefunction in realspace, and save it as '.vasp' file.
-pub struct Wav3D {
+/// Plot wavefunction in realspace, then integrate over some plane, and save it as '.txt' file.
+pub struct Wav1D {
     #[structopt(long, short="w", default_value="./WAVECAR")]
     /// WAVECAR file name.
     wavecar: PathBuf,
-
-    #[structopt(long, short="p", default_value="./POSCAR")]
-    /// POSCAR filename, POSCAR is needed to get the real-space wavefunction.
-    poscar: PathBuf,
 
     #[structopt(long, short="s", default_value="1")]
     /// Select spin index, starting from 1.
@@ -75,36 +73,23 @@ pub struct Wav3D {
     /// - reim: Output both real part and imaginary parts of the wavefunction.
     output_parts: Vec<String>,
 
-    #[structopt(long, default_value="wav")]
-    /// Prefix of output filename.
-    prefix: String,
+    #[structopt(long, default_value="wav1d.txt")]
+    /// Specify the file to be written with raw wav1d data.
+    txtout: PathBuf,
 
-    #[structopt(long, short="e")]
-    /// Add eigen value suffix to the filename
-    show_eigs_suffix: bool,
+    #[structopt(long, default_value="z",
+                possible_values = &Axis::variants(),
+                case_insensitive = true)]
+    /// Integration direction. e.g. if 'z' is provided, the XoY plane is integrated.
+    axis: Axis,
+
+    #[structopt(long)]
+    /// Render the plot and print thw rendered code to stdout.
+    to_inline_html: bool,
 }
 
 
-fn save_to_vasp(fname: &str, chgd: ndarray::Array3<f64>, pos: &Poscar) -> Result<()> {
-    let ngrid = [chgd.raw_dim()[0], chgd.raw_dim()[1], chgd.raw_dim()[2]];
-
-    let fname = PathBuf::from(fname);
-    if fname.is_file() {
-        warn!("File {:?} exists, overwriting ...", fname);
-    } else {
-        info!("Writing {:?} ...", fname);
-    }
-    chg::ChargeDensity {
-        chgtype: chg::ChargeType::Locpot,
-        pos: pos.clone(),
-        ngrid,
-        chg: vec![chgd],
-        aug: vec![],
-    }.to_file(&fname)
-}
-
-
-impl OptProcess for Wav3D {
+impl OptProcess for Wav1D {
     fn process(&self) -> Result<()> {
         info!("Reading WAVECAR: {:?}", &self.wavecar);
         let mut wav = Wavecar::from_file(&self.wavecar)?;
@@ -134,13 +119,8 @@ I suggest you provide `gamma_half` argument to avoid confusion.");
             println!("{}", wav);
         }
 
-        info!("Reading POSCAR: {:?}", &self.poscar);
-        let pos = Poscar::from_file(&self.poscar)?;
-
-        let ngrid = wav.ngrid;
         let efermi = wav.efermi;
         let eigs   = wav.band_eigs.clone();
-        let factor = ngrid.iter().product::<u64>() as f64 * 8.0;
 
         let has_normsquared = self.output_parts.iter().any(|s| s == "normsquared" || s == "ns");
         let has_real = self.output_parts.iter().any(|s| s == "real" || s == "re" || s == "reim");
@@ -174,76 +154,41 @@ I suggest you provide `gamma_half` argument to avoid confusion.");
         indices.into_par_iter()
             .map(|(ispin, ikpoint, iband)| {
                 info!("Processing spin {}, k-point {:3}, band {:4} ...", ispin, ikpoint, iband);
+                let eig = eigs[[ispin as usize, ikpoint as usize, iband as usize]] - efermi;
+                let label = format!("s{} k{} b{} {:06.3}eV", ispin+1, ikpoint+1, iband+1, eig);
 
-                let eigs_suffix = if self.show_eigs_suffix {
-                    format!("_{:06.3}eV", eigs[[ispin as usize, ikpoint as usize, iband as usize]] - efermi)
-                } else {
-                    String::new()
-                };
+                let wavr = wav.get_wavefunction_realspace(ispin, ikpoint, iband)
+                    .expect(&format!("Failed to get wavefunction in realspace at s{} k{} b{}", ispin+1, ikpoint+1, iband+1))
+                    .normalize();
 
-                let wavr = wav.get_wavefunction_realspace(ispin, ikpoint, iband)?.normalize();
                 let chgd = match wavr.clone() {
-                    Wavefunction::Complex64Array3(w)  => w.mapv(|v| v.norm_sqr() * factor),
-                    Wavefunction::Float64Array3(w)    => w.mapv(|v| v * v * factor),
+                    Wavefunction::Complex64Array3(w)  => w.mapv(|v| v.norm_sqr()),
+                    Wavefunction::Float64Array3(w)    => w.mapv(|v| v * v),
                     Wavefunction::Ncl64Array4(w)      => {
-                        w.slice(s![0usize, .., .., ..]).mapv(|v| v.norm_sqr() * factor) +
-                            w.slice(s![1usize, .., .., ..]).mapv(|v| v.norm_sqr() * factor)
+                        w.slice(s![0usize, .., .., ..]).mapv(|v| v.norm_sqr()) +
+                            w.slice(s![1usize, .., .., ..]).mapv(|v| v.norm_sqr())
                     },
                     _ => unreachable!("Invalid Wavefunction type."),
                 };
 
-                if has_normsquared {
-                    let ofname = format!("{}_{}-{}-{}{}.vasp", &self.prefix, ispin+1, ikpoint+1, iband+1, eigs_suffix);
-                    save_to_vasp(&ofname, chgd, &pos)?;
-                }
-
                 let (d1, d2, d3, d4) = match wavr {
-                    Wavefunction::Complex64Array3(w) => ( Some(w.mapv(|x| x.re * factor)), Some(w.mapv(|x| x.im * factor)), None, None ),
+                    Wavefunction::Complex64Array3(w) => ( Some(w.mapv(|x| x.re)), Some(w.mapv(|x| x.im)), None, None ),
                     Wavefunction::Float64Array3(w)   => ( Some(w), None, None, None),
                     Wavefunction::Ncl64Array4(w)     => (
-                        Some(w.slice(s![0usize, .. ,.. ,..]).mapv(|v| v.re * factor)),
-                        Some(w.slice(s![0usize, .. ,.. ,..]).mapv(|v| v.im * factor)),
-                        Some(w.slice(s![1usize, .. ,.. ,..]).mapv(|v| v.re * factor)),
-                        Some(w.slice(s![1usize, .. ,.. ,..]).mapv(|v| v.im * factor)),
+                        Some(w.slice(s![0usize, .. ,.. ,..]).mapv(|v| v.re)),
+                        Some(w.slice(s![0usize, .. ,.. ,..]).mapv(|v| v.im)),
+                        Some(w.slice(s![1usize, .. ,.. ,..]).mapv(|v| v.re)),
+                        Some(w.slice(s![1usize, .. ,.. ,..]).mapv(|v| v.im)),
                         ),
                     _ => unreachable!("Invalid Wavefunction type."),
                 };
 
-                if has_real {
-                    match wavecar_type {
-                        WavecarType::NonCollinear => {
-                            let ofname = format!("{}_{}-{}-{}{}_ure.vasp", &self.prefix, ispin+1, ikpoint+1, iband+1, eigs_suffix);
-                            save_to_vasp(&ofname, d1.unwrap(), &pos)?;
-                            let ofname = format!("{}_{}-{}-{}{}_dre.vasp", &self.prefix, ispin+1, ikpoint+1, iband+1, eigs_suffix);
-                            save_to_vasp(&ofname, d3.unwrap(), &pos)?;
-                        },
-                        _ => {
-                            let ofname = format!("{}_{}-{}-{}{}_re.vasp", &self.prefix, ispin+1, ikpoint+1, iband+1, eigs_suffix);
-                            save_to_vasp(&ofname, d1.unwrap(), &pos)?;
-                        },
-                    }
-                }
 
-                if has_imag {
-                    match wavecar_type {
-                        WavecarType::Standard => {
-                            let ofname = format!("{}_{}-{}-{}{}_im.vasp", &self.prefix, ispin+1, ikpoint+1, iband+1, eigs_suffix);
-                            save_to_vasp(&ofname, d2.unwrap(), &pos)?;
-                        },
-                        WavecarType::GamaHalf(_) => {
-                            bail!("Gamma-halved wavefunction doesn't have imaginary part, please check your input.");
-                        },
-                        WavecarType::NonCollinear => {
-                            let ofname = format!("{}_{}-{}-{}{}_uim.vasp", &self.prefix, ispin+1, ikpoint+1, iband+1, eigs_suffix);
-                            save_to_vasp(&ofname, d2.unwrap(), &pos)?;
-                            let ofname = format!("{}_{}-{}-{}{}_dim.vasp", &self.prefix, ispin+1, ikpoint+1, iband+1, eigs_suffix);
-                            save_to_vasp(&ofname, d4.unwrap(), &pos)?;
-                        },
-                    }
-                }
-
-                Ok(())
+                todo!()
             })
-            .collect::<Result<()>>()
+            .collect::<Vec<(f64, String, Array1<f64>)>>();
+
+
+        Ok(())
     }
 }
