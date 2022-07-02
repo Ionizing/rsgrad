@@ -24,6 +24,7 @@ jobs:
         yum install -y gcc g++ which
         curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y --target x86_64-unknown-linux-musl x86_64-unknown-linux-gnu
         echo $HOME/.cargo/bin >> $GITHUB_PATH
+        source $HOME/.cargo/env
         which rustup
         which cargo
     - name: Build
