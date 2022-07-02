@@ -22,7 +22,8 @@ jobs:
     - name: Install Rust
       run: | 
         curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y
-        echo 'source $HOME/.cargo/env' >> $HOME/.bashrc
+        echo 'source $HOME/.cargo/env' >> $HOME/.bashrc\
+        source $HOME/.cargo/env
         export PATH="$HOME/.cargo/bin:${PATH}"
         rustup target add x86_64-unknown-linux-musl
     - name: Build
