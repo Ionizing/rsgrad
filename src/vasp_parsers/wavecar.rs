@@ -562,9 +562,6 @@ impl Wavecar {
                                          ikpoint: u64,
                                          iband: u64) -> Result<Array1<Complex<T>>> {
         let seek_pos = self.calc_record_location(ispin, ikpoint, iband)?;
-        let mut file = self.file.lock().unwrap();
-
-        file.seek(seek_pos)?;
 
         let nplw = self.nplws[ikpoint as usize] as usize;
         let size = nplw * mem::size_of::<Complex<T>>();
@@ -573,7 +570,10 @@ impl Wavecar {
         unsafe {
             let ptr = ret.as_mut_ptr();
             let ret_slice = slice::from_raw_parts_mut(ptr as *mut u8, size);
-            file.read_exact(ret_slice).unwrap();
+
+            let mut file = self.file.lock().unwrap();
+            file.seek(seek_pos)?;
+            file.read_exact(ret_slice)?;
         }
 
         Ok(ret)
