@@ -94,7 +94,7 @@ pub struct Wav1D {
     /// Open the browser and show the plot immediately.
     show: bool,
 
-    #[structopt(long, default_value="1.0e4")]
+    #[structopt(long, default_value="10")]
     /// Scale the wavefunction.
     scale: f64,
 }
@@ -161,7 +161,7 @@ I suggest you provide `gamma_half` argument to avoid confusion.");
                     .expect(&format!("Failed to get wavefunction in realspace at s{} k{} b{}", ispin+1, ikpoint+1, iband+1))
                     .normalize();
 
-                let chgd = match wavr.clone() {
+                let chgd = match wavr {
                     Wavefunction::Complex64Array3(w)  => w.mapv(|v| v.norm_sqr()),
                     Wavefunction::Float64Array3(w)    => w.mapv(|v| v * v),
                     Wavefunction::Ncl64Array4(w)      => {
@@ -173,16 +173,16 @@ I suggest you provide `gamma_half` argument to avoid confusion.");
 
                 let chg1d = match self.axis {
                     Axis::X => {
-                        chgd.mean_axis(ndarray::Axis(2)).unwrap()
-                            .mean_axis(ndarray::Axis(1)).unwrap()
+                        chgd.sum_axis(ndarray::Axis(2))
+                            .sum_axis(ndarray::Axis(1))
                     },
                     Axis::Y => {
-                        chgd.mean_axis(ndarray::Axis(2)).unwrap()
-                            .mean_axis(ndarray::Axis(0)).unwrap()
+                        chgd.sum_axis(ndarray::Axis(2))
+                            .sum_axis(ndarray::Axis(0))
                     },
                     Axis::Z => {
-                        chgd.mean_axis(ndarray::Axis(1)).unwrap()
-                            .mean_axis(ndarray::Axis(0)).unwrap()
+                        chgd.sum_axis(ndarray::Axis(1))
+                            .sum_axis(ndarray::Axis(0))
                     },
                 } * self.scale;
 

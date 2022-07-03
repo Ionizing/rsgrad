@@ -30,7 +30,6 @@ use ndarray::{
     arr2,
     s,
 };
-use ndarray_npy::write_npy;
 use anyhow::bail;
 use ndrustfft::{
     FftNum,
@@ -563,7 +562,9 @@ impl Wavecar {
                                          ikpoint: u64,
                                          iband: u64) -> Result<Array1<Complex<T>>> {
         let seek_pos = self.calc_record_location(ispin, ikpoint, iband)?;
-        self.file.lock().unwrap().seek(seek_pos)?;
+        let mut file = self.file.lock().unwrap();
+
+        file.seek(seek_pos)?;
 
         let nplw = self.nplws[ikpoint as usize] as usize;
         let size = nplw * mem::size_of::<Complex<T>>();
@@ -572,7 +573,7 @@ impl Wavecar {
         unsafe {
             let ptr = ret.as_mut_ptr();
             let ret_slice = slice::from_raw_parts_mut(ptr as *mut u8, size);
-            self.file.lock().unwrap().read_exact(ret_slice).unwrap();
+            file.read_exact(ret_slice).unwrap();
         }
 
         Ok(ret)
