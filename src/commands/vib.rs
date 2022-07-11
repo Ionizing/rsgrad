@@ -48,7 +48,7 @@ pub struct Vib {
     /// Saves each selected modes to XSF file
     save_as_xsfs: bool,
 
-    #[clap(short = 'i', long)]
+    #[clap(short = 'i', long, multiple_values = true)]
     /// Selects the mode indices to operate.
     ///
     /// Step indices start from '1', if '0' is given, all the structures will be selected.

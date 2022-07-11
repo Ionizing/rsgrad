@@ -32,23 +32,23 @@ use crate::{
 
 #[derive(Debug, Parser)]
 #[clap(setting = AppSettings::ColoredHelp,
-            setting = AppSettings::ColorAuto,
-            setting = AppSettings::AllowNegativeNumbers)]
+       setting = AppSettings::ColorAuto,
+       setting = AppSettings::AllowNegativeNumbers)]
 /// Plot wavefunction in realspace, then integrate over some plane, and save it as '.txt' file.
 pub struct Wav1D {
     #[clap(long, short = 'w', default_value = "./WAVECAR")]
     /// WAVECAR file name.
     wavecar: PathBuf,
 
-    #[clap(long, short = 's', default_value = "1")]
+    #[clap(long, short = 's', default_value = "1", multiple_values = true)]
     /// Select spin index, starting from 1.
     ispins: Vec<i32>,
 
-    #[clap(long, short = 'k', default_value = "1")]
+    #[clap(long, short = 'k', default_value = "1", multiple_values = true)]
     /// Select kpoint index, starting from 1.
     ikpoints: Vec<i32>,
 
-    #[clap(long, short = 'b')]
+    #[clap(long, short = 'b', multiple_values = true)]
     /// Select band index, starting from 1.
     ibands: Vec<i32>,
 

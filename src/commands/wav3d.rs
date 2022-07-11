@@ -44,15 +44,15 @@ pub struct Wav3D {
     /// POSCAR filename, POSCAR is needed to get the real-space wavefunction.
     poscar: PathBuf,
 
-    #[clap(long, short = 's', default_value = "1")]
+    #[clap(long, short = 's', default_value = "1", multiple_values = true)]
     /// Select spin index, starting from 1.
     ispins: Vec<i32>,
 
-    #[clap(long, short = 'k', default_value = "1")]
+    #[clap(long, short = 'k', default_value = "1", multiple_values = true)]
     /// Select kpoint index, starting from 1.
     ikpoints: Vec<i32>,
 
-    #[clap(long, short = 'b')]
+    #[clap(long, short = 'b', multiple_values = true)]
     /// Select band index, starting from 1.
     ibands: Vec<i32>,
 
@@ -65,7 +65,8 @@ pub struct Wav3D {
     /// processing WAVECAR produced by `vasp_gam`.
     gamma_half: Option<String>,
 
-    #[clap(long, short = 'o', possible_values = &["normsquared", "ns", "real", "re", "imag", "im", "reim"])]
+    #[clap(long, short = 'o', possible_values = &["normsquared", "ns", "real", "re", "imag", "im", "reim"],
+           multiple_values = true)]
     /// Specify output part of the wavefunction.
     ///
     /// Detailed message:{n}

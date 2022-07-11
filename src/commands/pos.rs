@@ -27,7 +27,7 @@ pub struct Pos {
     /// Specify the input POSCAR file
     poscar: PathBuf,
 
-    #[clap(short = 'i', long)]
+    #[clap(short = 'i', long, multiple_values = true)]
     /// Selects the indices to operate.
     ///
     /// Step indices start from '1', if '0' is given, all the structures will be selected.

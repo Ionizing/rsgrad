@@ -7,5 +7,13 @@ title = "RSGRAD'S BOOK"
 
 [output.html]
 mathjax-support = true
+#additional-css = ["ferris.css"]
+#additional-js = ["ferris.js", "plotly-2.8.3.min.js"]
 
-[output.pdf]
+[output.html.fold]
+enable = true
+level = 1
+
+[output.markdown]
+
+# [output.pdf]

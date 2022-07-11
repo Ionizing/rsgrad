@@ -128,6 +128,9 @@ struct Configuration {
     xlim: (f64, f64),
 
     //ylim: Option<(f64, f64)>,
+    
+    #[serde(default = "Configuration::sample_density_default")]
+    sample_density: usize,
 
     pdos: Option<IndexMap<String, RawSelection>>,
 }
@@ -142,6 +145,7 @@ impl Configuration {
     pub fn fill_default() -> bool { true }
     pub fn totdos_default()  -> bool { true }
     pub fn xlim_default() -> (f64, f64) { (-1.0, 6.0) }
+    pub fn sample_density_default() -> usize { 200 }
 }
 
 
@@ -204,6 +208,10 @@ pub struct Dos {
     #[clap(long)]
     /// Render the plot and print the rendered code to stdout.
     to_inline_html: bool,
+
+    #[clap(long, default_value = "200")]
+    /// Sample density of DOS. Defined by number of points in 1 eV.
+    sample_density: usize,
 }
 
 
@@ -394,6 +402,7 @@ impl OptProcess for Dos {
         let to_fill    = config.as_ref().map(|cfg| cfg.fill).unwrap_or(true);
         let xlim       = config.as_ref().map(|cfg| vec![cfg.xlim.0, cfg.xlim.1]).unwrap_or(self.xlim.clone());
         //let ylim       = config.as_ref().map(|cfg| cfg.ylim.map(|lim| vec![lim.0, lim.1])).flatten().or(self.ylim.clone());
+        let sample_density = config.as_ref().map(|cfg| cfg.sample_density).unwrap_or(self.sample_density);
 
         if sigma < 0.0 {
             bail!("[DOS]: sigma cannot be negative.");
@@ -449,7 +458,7 @@ impl OptProcess for Dos {
 
         let mut plot = plotly::Plot::new();
 
-        let nedos = (emax - emin).ceil() as usize * 400;  // 400 points per eV
+        let nedos = (emax - emin).ceil() as usize * sample_density;  // 400 points per eV
         let xvals = Vector::<f64>::linspace(emin-2.0, emax+2.0, nedos);
         let xvals_plot = if nspin == 1 {
             xvals.clone()
