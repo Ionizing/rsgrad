@@ -141,8 +141,8 @@ struct Configuration {
 
     efermi: Option<f64>,
 
-    //#[serde(default = "Configuration::ylim_default")]
-    //ylim: (f64, f64),
+    #[serde(default = "Configuration::ylim_default")]
+    ylim: (f64, f64),
 
     pband: Option<IndexMap<String, RawSelection>>,
 }
@@ -165,7 +165,7 @@ impl Configuration {
             Ok(ColorScalePalette::Jet)
         }
     }
-    //pub fn ylim_default()            -> (f64, f64) { (-1.0, 6.0) }
+    pub fn ylim_default()            -> (f64, f64) { (-1.0, 6.0) }
 }
 
 
@@ -238,9 +238,9 @@ pub struct Band {
     /// Render the plot and print the rendered code to stdout.
     to_inline_html: bool,
 
-    //#[clap(long, default_value = "-1 6", number_of_values = 2)]
-    // /// Set the y-range of the plot.
-    //ylim: Option<Vec<f64>>,
+    #[clap(long, default_value = "-1 6", number_of_values = 2)]
+    /// Set the y-range of the plot.
+    ylim: Vec<f64>,
 }
 
 
@@ -725,7 +725,7 @@ impl OptProcess for Band {
         let colormap        = config.as_ref().map(|cfg| &cfg.colormap).unwrap_or(&self.colormap);
         let kpoint_labels   = config.as_ref().map(|cfg| &cfg.kpoint_labels).unwrap_or(&self.kpoint_labels);
         let segment_ranges  = config.as_ref().map(|cfg| &cfg.segment_ranges).unwrap_or(&None);
-        //let ylim            = config.as_ref().map(|cfg| vec![cfg.ylim.0, cfg.ylim.1]).unwrap_or(self.ylim.clone().unwrap());
+        let ylim            = config.as_ref().map(|cfg| vec![cfg.ylim.0, cfg.ylim.1]).unwrap_or(self.ylim.clone());
 
 
         let mut procar: Result<Procar> = Err(anyhow!(""));
@@ -787,9 +787,8 @@ impl OptProcess for Band {
             .title(plotly::common::Title::new("Bandstructure"))
             .y_axis(plotly::layout::Axis::new()
                     .title(plotly::common::Title::new("E-Ef (eV)"))
-                    .range(vec![-1.0, 6.0])
                     .zero_line(true)
-                    //.range(ylim)
+                    .range(ylim)
                     )
             .x_axis(plotly::layout::Axis::new()
                     .title(plotly::common::Title::new("Wavevector"))
@@ -992,6 +991,7 @@ mod test {
         assert_eq!(v[0].label, "plot1");
         assert_eq!(v[0].iatoms, &[0, 2, 3, 4, 5, 6, 7]);
         assert_eq!(v[0].iorbits, &[0, 3, 4]);
+        assert_eq!(c.ylim, (-2.0, 5.0));
 
         let s = toml::to_string(&c).unwrap();
         println!("{}", s);

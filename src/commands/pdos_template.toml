@@ -8,6 +8,7 @@ txtout      = "dos_raw.txt"     # save the raw data as "dos_raw.txt"
 htmlout     = "dos.html"        # save the pdos plot as "dos.html"
 totdos      = true              # plot the total dos
 fill        = true              # fill the plot to x axis or not
+xlim        = [-1, 6]           # x-range of plot
 
 [pdos.plot1]                  # One label produces one plot, the labels CANNOT be repetitive.
                               # each the label is 'plot1', to add more pdos, write '[pdos.plot2]' and so on.

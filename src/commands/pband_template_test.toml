@@ -10,6 +10,7 @@ segment-ranges  = [[1, 40], [41, 80], [81, 120]]
 ncl-spinor      = "Z"
 colormap        = "blues"
 efermi          = 0.0
+ylim            = [-2, 5]
 
 [pband.plot1]
 spins   = "up down"  # "u d"

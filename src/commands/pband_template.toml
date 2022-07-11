@@ -10,6 +10,7 @@ htmlout         = "band.html"
 # ncl-spinor      = "Z"     # for vasp_ncl calculation
 # colormap        = "jet"     # the colormap specified to plot ncl-band
 # efermi          = 0.0       # if commented, rsgrad will read the efermi from OUTCAR, but if may be slightly different from scf's
+# ylim            = [-1, 6]
 
 # [pband.plot1]
 # spins   = "up down"     # "u d" are also ok, for ncl system, "tot x y z" are available
