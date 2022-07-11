@@ -6,7 +6,10 @@ use std::{
         BufReader, 
         BufRead,
     },
-    fmt,
+    fmt::{
+        self,
+        Write as _,
+    },
 };
 use anyhow::{anyhow, Context};
 use crate::{
@@ -401,7 +404,7 @@ impl<'a> PoscarFormatter<'a> {
 }
 
 
-impl<'a> fmt::Display for PoscarFormatter<'_> {
+impl fmt::Display for PoscarFormatter<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let poscar = &self.poscar;
 
@@ -417,8 +420,8 @@ impl<'a> fmt::Display for PoscarFormatter<'_> {
             let mut count_line = String::with_capacity(8);
 
             for (t, c) in poscar.ion_types.iter().zip(poscar.ions_per_type.iter()) {
-                symbol_line += &format!(" {:>6}", t);
-                count_line += &format!(" {:>6}", c);
+                write!(symbol_line, " {:>6}", t)?;
+                write!(count_line, " {:>6}", c)?;
             }
 
             write!(f, "{}\n{}\n", symbol_line, count_line)?;

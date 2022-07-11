@@ -8,7 +8,10 @@ use std::{
         Seek,
         SeekFrom,
     },
-    fmt,
+    fmt::{
+        self,
+        Write as _,
+    },
     fs::File,
     path::Path,
     sync::{
@@ -303,6 +306,7 @@ impl Wavecar {
     }
 
 
+    #[allow(clippy::type_complexity)]
     fn _read_band_info(file:   &mut File,
                        nspin:       u64,
                        nkpoints:    u64,
@@ -618,9 +622,9 @@ impl Wavecar {
         for ispin in 0 .. self.nspin as usize {
             for ikpoint in 0 .. self.nkpoints as usize {
                 for iband in 0 .. self.nbands as usize {
-                    ret += &format!("ISPIN: {:2}  IKPOINT: {:4}  IBAND: {:5} E-Efermi: {:10.3} Occupation: {:5.3}\n",
+                    writeln!(ret, "ISPIN: {:2}  IKPOINT: {:4}  IBAND: {:5} E-Efermi: {:10.3} Occupation: {:5.3}",
                                     ispin + 1, ikpoint + 1, iband + 1,
-                                    eigs[[ispin, ikpoint, iband]], occs[[ispin, ikpoint, iband]]);
+                                    eigs[[ispin, ikpoint, iband]], occs[[ispin, ikpoint, iband]]).unwrap();
                 }
             }
         }
@@ -704,7 +708,7 @@ impl Wavecar {
         let ngyk = ngyr;
         let ngzk = ngzr;
 
-        let gvecs: MatX3<usize> = self.generate_fft_grid(ikpoint)
+        let gvecs = self.generate_fft_grid(ikpoint)
             .into_iter()
             .map(|[x, y, z]| {
                 let gx = x.rem_euclid(ngxk) as usize;
@@ -712,8 +716,7 @@ impl Wavecar {
                 let gz = z.rem_euclid(ngzk) as usize;
 
                 [gx, gy, gz]
-            })
-            .collect();
+            });
 
         let ngxr = ngxr as usize;
         let ngyr = ngyr as usize;
@@ -731,7 +734,7 @@ impl Wavecar {
         let mut wavk = Array3::<Complex<f64>>::zeros((ngxk, ngyk, ngzk));
         let mut wavr = Array3::<f64>::zeros((ngxr, ngyr, ngzr));
 
-        gvecs.into_iter().zip(coeffs.into_iter())
+        gvecs.zip(coeffs.into_iter())
             .for_each(|(idx, v)| wavk[idx] = v);
 
         {
@@ -772,7 +775,7 @@ impl Wavecar {
         let ngyk = ngyr;
         let ngzk = ngzr / 2 + 1;
 
-        let gvecs: MatX3<usize> = self.generate_fft_grid(ikpoint)
+        let gvecs = self.generate_fft_grid(ikpoint)
             .into_iter()
             .map(|[x, y, z]| {
                 let gx = x.rem_euclid(ngxk) as usize;
@@ -780,8 +783,7 @@ impl Wavecar {
                 let gz = z.rem_euclid(ngzk) as usize;
 
                 [gx, gy, gz]
-            })
-            .collect();
+            });
 
         let ngxr = ngxr as usize;
         let ngyr = ngyr as usize;
@@ -800,7 +802,7 @@ impl Wavecar {
         let mut wavk = Array3::<Complex<f64>>::zeros((ngxk, ngyk, ngzk));
         let mut wavr = Array3::<f64>::zeros((ngxr, ngyr, ngzr));
 
-        gvecs.into_iter().zip(coeffs.into_iter())
+        gvecs.zip(coeffs.into_iter())
             .for_each(|(idx, v)| wavk[idx] = v);
 
         {
@@ -891,7 +893,7 @@ impl fmt::Display for Wavecar {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "{:<10} = {:>20}",      "LENGTH",   self.file_len)?;
         writeln!(f, "{:<10} = {:>20}",      "RECLEN",   self.rec_len)?;
-        writeln!(f, "{:<10} = {:>20}",      "TYPE",     self.wavecar_type.to_string())?;
+        writeln!(f, "{:<10} = {:>20}",      "TYPE",     self.wavecar_type)?;
         writeln!(f, "{:<10} = {:>20}",      "NSPIN",    self.nspin)?;
         writeln!(f, "{:<10} = {:>20}",      "NKPTS",    self.nkpoints)?;
         writeln!(f, "{:<10} = {:>20}",      "NBANDS",   self.nbands)?;

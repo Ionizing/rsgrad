@@ -118,12 +118,10 @@ please remove the argument `gamma_half`.")
             };
             
             wav.set_wavecar_type(gammahalf)?;
-        } else {
-            if wav.wavecar_type != WavecarType::Standard &&
+        } else if wav.wavecar_type != WavecarType::Standard &&
                wav.wavecar_type != WavecarType::NonCollinear {
                 warn!("Current WAVECAR is gamma-halved, sometimes the gamma-x and gamma-z verions have same plane wave numbers.
 I suggest you provide `gamma_half` argument to avoid confusion.");
-            }
         }
 
         if self.list {
@@ -158,7 +156,7 @@ I suggest you provide `gamma_half` argument to avoid confusion.");
                 let label = format!("s{}_k{}_b{}_{:06.3}eV", ispin+1, ikpoint+1, iband+1, eig);
 
                 let wavr = wav.get_wavefunction_realspace(ispin, ikpoint, iband)
-                    .expect(&format!("Failed to get wavefunction in realspace at s{} k{} b{}", ispin+1, ikpoint+1, iband+1))
+                    .unwrap_or_else(|_| panic!("Failed to get wavefunction in realspace at s{} k{} b{}", ispin+1, ikpoint+1, iband+1))
                     .normalize();
 
                 let chgd = match wavr {

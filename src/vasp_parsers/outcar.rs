@@ -5,7 +5,10 @@ use std::{
     path::{Path, PathBuf},
     io::Write,
     fs,
-    fmt,
+    fmt::{
+        self,
+        Write as _,
+    },
 };
 use colored::Colorize;
 //use vasp_poscar::{self, Poscar};
@@ -783,9 +786,9 @@ impl fmt::Display for IonicIterationsFormat {
 
             let de = self._data[i].toten_z - ce;
             ce = self._data[i].toten_z;
-            if self.print_energy  { line += &format!(" {:11.5}", it.toten); }
-            if self.print_energyz { line += &format!(" {:11.5}", it.toten_z).bright_green().to_string(); }
-            if self.print_log10de { line += &format!(" {:4.1}", de.abs().log10()); }
+            if self.print_energy    { write!(line, " {:11.5}", it.toten)?; }
+            if self.print_energyz   { line += &format!(" {:11.5}", it.toten_z).bright_green().to_string(); }
+            if self.print_log10de   { write!(line, " {:4.1}", de.abs().log10())?; }
 
             let fsize = it.forces.iter()
                                  .zip(dynamics.iter())
@@ -793,7 +796,7 @@ impl fmt::Display for IonicIterationsFormat {
                                  .collect::<Vec<_>>();
 
             if self.print_favg {
-                line += &format!(" {:6.3}", fsize.iter().sum::<f64>() / it.forces.len() as f64);
+                write!(line, " {:6.3}", fsize.iter().sum::<f64>() / it.forces.len() as f64)?;
             }
 
             let (fmax_ind, fmax) = fsize.into_iter()
@@ -822,10 +825,10 @@ impl fmt::Display for IonicIterationsFormat {
                 };
 
             if self.print_fmax       { line += &format!(" {:6.3}", fmax).bright_green().to_string(); }
-            if self.print_fmax_index { line += &format!(" {:3}", fmax_ind+1); }
-            if self.print_fmax_axis  { line += &format!(" {:1}", fmaxis); }
+            if self.print_fmax_index { write!(line, " {:3}", fmax_ind+1)?; }
+            if self.print_fmax_axis  { write!(line, " {:1}", fmaxis)?; }
             if self.print_nscf       { line += &format!(" {:4}", it.nscf).bright_yellow().to_string(); }
-            if self.print_time_usage { line += &format!(" {:6.2}", it.cputime/60.0); }
+            if self.print_time_usage { write!(line, " {:6.2}", it.cputime/60.0)?; }
 
             if self.print_volume {
                 let volume = {
@@ -839,7 +842,7 @@ impl fmt::Display for IonicIterationsFormat {
                         - c[0][1] * (c[1][0] * c[2][2] - c[1][2] * c[2][0])
                         + c[0][2] * (c[1][0] * c[2][1] - c[1][1] * c[2][0])
                 };
-                line += &format!(" {:8.1}", volume);
+                write!(line, " {:8.1}", volume)?;
             }
 
             if self.print_magmom {
@@ -848,7 +851,7 @@ impl fmt::Display for IonicIterationsFormat {
                                 .map(|n| format!(" {:7.3}", n))
                                 .collect::<Vec<_>>()
                                 .join("");
-                } else { line += "   NoMag"; }
+                } else { write!(line, "   NoMag")?; }
             }
 
             writeln!(f, "{}", line)?;

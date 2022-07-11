@@ -3,6 +3,7 @@ use std::{
     fs,
     path::Path,
     panic::catch_unwind,
+    fmt::Write as _,
 };
 
 use serde::{
@@ -123,7 +124,7 @@ pub fn write_array_to_txt(file_name: &(impl AsRef<Path> + ?Sized), ys: Vec<&Arra
     for irow in 0 .. nrow {
         let mut s = String::with_capacity(8);
         for col in ys.iter() {  //  for icol in 0 .. ncol
-            s.push_str(&format!("  {:15.6}", col[irow]));
+            write!(s, "  {:15.6}", col[irow])?;
         }
         s.push('\n');
 

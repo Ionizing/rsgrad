@@ -122,12 +122,10 @@ please remove the argument `gamma_half`.")
             };
             
             wav.set_wavecar_type(gammahalf)?;
-        } else {
-            if wav.wavecar_type != WavecarType::Standard &&
-               wav.wavecar_type != WavecarType::NonCollinear {
+        } else if wav.wavecar_type != WavecarType::Standard &&
+            wav.wavecar_type != WavecarType::NonCollinear {
                 warn!("Current WAVECAR is gamma-halved, sometimes the gamma-x and gamma-z verions have same plane wave numbers.
 I suggest you provide `gamma_half` argument to avoid confusion.");
-            }
         }
 
         if self.list {
@@ -168,7 +166,7 @@ I suggest you provide `gamma_half` argument to avoid confusion.");
         let indices = iproduct!(ispins, ikpoints, ibands)
             .collect::<Vec<(u64, u64, u64)>>();
 
-        let wavecar_type = wav.wavecar_type.clone();
+        let wavecar_type = wav.wavecar_type;
         let wav = wav;  // Cancel the mutability
 
         indices.into_par_iter()
