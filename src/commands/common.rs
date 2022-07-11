@@ -146,11 +146,11 @@ pub struct RawSelection {
 
 
 impl RawSelection {
-    /// Parse the spin options from configuration, the result is sorted and deduplicated.
-    ///
-    /// For ispin = 1 system, whatever in, vec![0] out;
-    /// For ispin = 2 system, it accepts 'u' 'd' 'up' 'down' 'dn' and uppercased strings;
-    /// For NCL system, it accepts 'x' 'y' 'z' 'tot' and uppercased strings.
+    // Parse the spin options from configuration, the result is sorted and deduplicated.
+    //
+    // For ispin = 1 system, whatever in, vec![0] out;
+    // For ispin = 2 system, it accepts 'u' 'd' 'up' 'down' 'dn' and uppercased strings;
+    // For NCL system, it accepts 'x' 'y' 'z' 'tot' and uppercased strings.
     pub fn parse_ispins(input: Option<&str>, nspin: usize, is_ncl: bool) -> Result<Vec<usize>> {
         let mut ret = if let Some(spins) = input {
             if spins.trim().is_empty() {
@@ -195,10 +195,10 @@ bail!("[DOS]: Invalid spin component selected: `{}`, available components are `u
     }
 
     
-    /// Parse the atom index.
-    ///
-    /// Negative indices are allowed to index from tail. All the indices are sorted and
-    /// deduplicated.
+    // Parse the atom index.
+    //
+    // Negative indices are allowed to index from tail. All the indices are sorted and
+    // deduplicated.
     pub fn parse_iatoms(input: Option<&str>, nions: usize) -> Result<Vec<usize>> {
         if let Some(atoms) = input {
             let mut ret = atoms.split_whitespace()
@@ -221,10 +221,10 @@ bail!("[DOS]: Invalid spin component selected: `{}`, available components are `u
         }
     }
 
-    /// Parse the kpoint index.
-    ///
-    /// Negative indices are allowed to index from tail. All the indices are sorted and
-    /// deduplicated.
+    // Parse the kpoint index.
+    //
+    // Negative indices are allowed to index from tail. All the indices are sorted and
+    // deduplicated.
     pub fn parse_ikpoints(input: Option<&str>, nkpoints: usize) -> Result<Vec<usize>> {
         if let Some(kpoints) = input {
             let mut ret = kpoints.split_whitespace()
@@ -247,9 +247,9 @@ bail!("[DOS]: Invalid spin component selected: `{}`, available components are `u
         }
     }
 
-    /// Parse the orbits' name and convert to orbit index. PROCAR is loaded in advance.
-    ///
-    /// Indices are sorted and deduplicated.
+    // Parse the orbits' name and convert to orbit index. PROCAR is loaded in advance.
+    //
+    // Indices are sorted and deduplicated.
     pub fn parse_iorbits(input: Option<&str>, nlm: &[String]) -> Result<Vec<usize>> {
         if let Some(orbits) = input {
             if orbits.trim().is_empty() {
@@ -272,7 +272,7 @@ bail!("[DOS]: Invalid spin component selected: `{}`, available components are `u
         }
     }
 
-    /// Parse the color to this curve.
+    // Parse the color to this curve.
     pub fn parse_color(input: &str) -> Result<CustomColor> {
         if NAMED_COLORS.contains(&input.to_ascii_lowercase().as_ref()) {
             Ok(CustomColor(ColorWrapper::S(input.to_owned())))

@@ -210,7 +210,7 @@ I suggest you provide `gamma_half` argument to avoid confusion.");
             .for_each(|(e, l, w)| {
                 let trace = plotly::Scatter::from_array(xdat.clone(), w.mapv(|x| x+e))
                     .mode(plotly::common::Mode::Lines)
-                    .name(&l);
+                    .name(l);
                 plot.add_trace(trace);
             });
 

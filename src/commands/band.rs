@@ -141,6 +141,9 @@ struct Configuration {
 
     efermi: Option<f64>,
 
+    //#[serde(default = "Configuration::ylim_default")]
+    //ylim: (f64, f64),
+
     pband: Option<IndexMap<String, RawSelection>>,
 }
 
@@ -162,6 +165,7 @@ impl Configuration {
             Ok(ColorScalePalette::Jet)
         }
     }
+    //pub fn ylim_default()            -> (f64, f64) { (-1.0, 6.0) }
 }
 
 
@@ -233,6 +237,10 @@ pub struct Band {
     #[structopt(long)]
     /// Render the plot and print the rendered code to stdout.
     to_inline_html: bool,
+
+    //#[structopt(long, default_value = "-1 6", number_of_values = 2)]
+    // /// Set the y-range of the plot.
+    //ylim: Option<Vec<f64>>,
 }
 
 
@@ -679,25 +687,7 @@ impl Band {
 }
 
 
-const TEMPLATE: &str = r#"# rsgrad Band plot configuration in toml format.
-# multiple tokens inside string are seperated by whitespace, if you 
-
-# kpoint-labels   = ["G", "K", "M", "G"]   # should be consistant with the boundaries in KPOINTS
-procar          = "PROCAR"
-outcar          = "OUTCAR"
-txtout-prefix   = "band_raw"
-htmlout         = "band.html"
-# segment-ranges  = [[1, 40], [41, 80], [81, 120]]  # if commented, rsgrad will find the boundaries by judging if k[i] == k[i+1]
-# ncl-spinor      = "Z"     # for vasp_ncl calculation
-# colormap        = "jet"     # the colormap specified to plot ncl-band
-# efermi          = 0.0       # if commented, rsgrad will read the efermi from OUTCAR, but if may be slightly different from scf's
-
-# [pband.plot1]
-# spins   = "up down"     # "u d" are also ok, for ncl system, "tot x y z" are available
-# atoms   = "1 3..7 -1"   # which atoms to project on, if commented, all atoms are selected
-# orbits  = "x px dxy"    # which orbits to project on, if commented, all orbits are selected
-# color   = "red"         # the color of marker
-"#;
+const TEMPLATE: &str = include_str!("./pband_template.toml");
 
 
 impl OptProcess for Band {
@@ -726,15 +716,17 @@ impl OptProcess for Band {
             None
         };
 
-        let procar_fname    = if let Some(cfg) = config.as_ref() { &cfg.procar } else { &self.procar };
-        let outcar_fname    = if let Some(cfg) = config.as_ref() { &cfg.outcar } else { &self.outcar };
-        let txtout_prefix   = if let Some(cfg) = config.as_ref() { &cfg.txtout_prefix } else { &self.txtout_prefix };
-        let htmlout         = if let Some(cfg) = config.as_ref() { &cfg.htmlout } else { &self.htmlout };
-        let efermi          = if let Some(cfg) = config.as_ref() { &cfg.efermi } else { &self.efermi };
-        let ncl_spinor      = if let Some(cfg) = config.as_ref() { &cfg.ncl_spinor } else { &self.ncl_spinor };
-        let colormap        = if let Some(cfg) = config.as_ref() { &cfg.colormap } else { &self.colormap };
-        let kpoint_labels   = if let Some(cfg) = config.as_ref() { &cfg.kpoint_labels } else { &self.kpoint_labels };
-        let segment_ranges  = if let Some(cfg) = config.as_ref() { &cfg.segment_ranges } else { &None };
+        let procar_fname    = config.as_ref().map(|cfg| &cfg.procar).unwrap_or(&self.procar);
+        let outcar_fname    = config.as_ref().map(|cfg| &cfg.outcar).unwrap_or(&self.outcar);
+        let txtout_prefix   = config.as_ref().map(|cfg| &cfg.txtout_prefix).unwrap_or(&self.txtout_prefix);
+        let htmlout         = config.as_ref().map(|cfg| &cfg.htmlout).unwrap_or(&self.htmlout);
+        let efermi          = config.as_ref().map(|cfg| &cfg.efermi).unwrap_or(&self.efermi);
+        let ncl_spinor      = config.as_ref().map(|cfg| &cfg.ncl_spinor).unwrap_or(&self.ncl_spinor);
+        let colormap        = config.as_ref().map(|cfg| &cfg.colormap).unwrap_or(&self.colormap);
+        let kpoint_labels   = config.as_ref().map(|cfg| &cfg.kpoint_labels).unwrap_or(&self.kpoint_labels);
+        let segment_ranges  = config.as_ref().map(|cfg| &cfg.segment_ranges).unwrap_or(&None);
+        //let ylim            = config.as_ref().map(|cfg| vec![cfg.ylim.0, cfg.ylim.1]).unwrap_or(self.ylim.clone().unwrap());
+
 
         let mut procar: Result<Procar> = Err(anyhow!(""));
         let mut outcar: Result<Outcar> = Err(anyhow!(""));
@@ -797,6 +789,7 @@ impl OptProcess for Band {
                     .title(plotly::common::Title::new("E-Ef (eV)"))
                     .range(vec![-1.0, 6.0])
                     .zero_line(true)
+                    //.range(ylim)
                     )
             .x_axis(plotly::layout::Axis::new()
                     .title(plotly::common::Title::new("Wavevector"))
@@ -930,25 +923,7 @@ mod test {
         arr2,
     };
 
-    const TEMPLATE_TEST: &'static str = r#"# rsgrad Band plot configuration in toml format.
-# multiple tokens inside string are seperated by whitespace, if you 
-
-kpoint-labels   = ["G", "K", "M", "G"]   # should be consistant with the boundaries in KPOINTS
-procar          = "PROCAR"
-outcar          = "OUTCAR"
-txtout-prefix   = "band_raw"
-htmlout         = "band.html"
-segment-ranges  = [[1, 40], [41, 80], [81, 120]]
-ncl-spinor      = "Z"
-colormap        = "blues"
-efermi          = 0.0
-
-[pband.plot1]
-spins   = "up down"  # "u d"
-atoms   = "1 3..7 -1"
-orbits  = "s px dxy"
-color   = "red"
-"#;
+    const TEMPLATE_TEST: &'static str = include_str!("./pband_template_test.toml");
 
     #[test]
     fn test_gen_kpath() {

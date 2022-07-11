@@ -1,0 +1,18 @@
+# rsgrad Band plot configuration in toml format.
+# multiple tokens inside string are seperated by whitespace, if you 
+
+kpoint-labels   = ["G", "K", "M", "G"]   # should be consistant with the boundaries in KPOINTS
+procar          = "PROCAR"
+outcar          = "OUTCAR"
+txtout-prefix   = "band_raw"
+htmlout         = "band.html"
+segment-ranges  = [[1, 40], [41, 80], [81, 120]]
+ncl-spinor      = "Z"
+colormap        = "blues"
+efermi          = 0.0
+
+[pband.plot1]
+spins   = "up down"  # "u d"
+atoms   = "1 3..7 -1"
+orbits  = "s px dxy"
+color   = "red"
