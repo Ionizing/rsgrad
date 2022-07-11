@@ -1,8 +1,8 @@
 use std::path::PathBuf;
 
-use structopt::{
-    StructOpt,
-    clap::AppSettings,
+use clap::{
+    Parser,
+    AppSettings,
 };
 use log::{
     info,
@@ -30,38 +30,38 @@ use crate::{
 };
 
 
-#[derive(Debug, StructOpt)]
-#[structopt(setting = AppSettings::ColoredHelp,
+#[derive(Debug, Parser)]
+#[clap(setting = AppSettings::ColoredHelp,
             setting = AppSettings::ColorAuto,
             setting = AppSettings::AllowNegativeNumbers)]
 /// Plot wavefunction in realspace, then integrate over some plane, and save it as '.txt' file.
 pub struct Wav1D {
-    #[structopt(long, short="w", default_value="./WAVECAR")]
+    #[clap(long, short = 'w', default_value = "./WAVECAR")]
     /// WAVECAR file name.
     wavecar: PathBuf,
 
-    #[structopt(long, short="s", default_value="1")]
+    #[clap(long, short = 's', default_value = "1")]
     /// Select spin index, starting from 1.
     ispins: Vec<i32>,
 
-    #[structopt(long, short="k", default_value="1")]
+    #[clap(long, short = 'k', default_value = "1")]
     /// Select kpoint index, starting from 1.
     ikpoints: Vec<i32>,
 
-    #[structopt(long, short="b")]
+    #[clap(long, short = 'b')]
     /// Select band index, starting from 1.
     ibands: Vec<i32>,
 
-    #[structopt(long, short="l")]
+    #[clap(long, short = 'l')]
     /// List the brief info of current WAVECAR.
     list: bool,
 
-    #[structopt(long, possible_values=&["x", "z"])]
+    #[clap(long, possible_values = &["x", "z"])]
     /// Gamma Half direction of WAVECAR. You need to set this to 'x' or 'z' when
     /// processing WAVECAR produced by `vasp_gam`.
     gamma_half: Option<String>,
 
-//  #[structopt(long, short="o", default_value="ns",
+//  #[clap(long, short = 'o', default_value = "ns",
 //              possible_values=&["normsquared", "ns", "real", "re", "imag", "im"])]
 //  /// Specify output part of the wavefunction.
 //  ///
@@ -72,29 +72,29 @@ pub struct Wav1D {
 //  /// - reim: Output both real part and imaginary parts of the wavefunction.
 //  output_part: String,
 
-    #[structopt(long, default_value="wav1d.txt")]
+    #[clap(long, default_value = "wav1d.txt")]
     /// Specify the file name to be written with raw wav1d data.
     txtout: PathBuf,
 
-    #[structopt(long, default_value="wav1d.html")]
+    #[clap(long, default_value = "wav1d.html")]
     /// Specify the file name to be written with html wav1d data.
     htmlout: PathBuf,
 
-    #[structopt(long, default_value="z",
-                possible_values = &Axis::variants(),
+    #[clap(long, default_value = "z",
+                possible_values = Axis::variants(),
                 case_insensitive = true)]
     /// Integration direction. e.g. if 'z' is provided, the XoY plane is integrated.
     axis: Axis,
 
-    #[structopt(long)]
+    #[clap(long)]
     /// Render the plot and print thw rendered code to stdout.
     to_inline_html: bool,
 
-    #[structopt(long)]
+    #[clap(long)]
     /// Open the browser and show the plot immediately.
     show: bool,
 
-    #[structopt(long, default_value="10")]
+    #[clap(long, default_value = "10")]
     /// Scale the wavefunction.
     scale: f64,
 }

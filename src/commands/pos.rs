@@ -1,7 +1,7 @@
 use std::path::PathBuf;
-use structopt::{
-    StructOpt,
-    clap::AppSettings,
+use clap::{
+    Parser,
+    AppSettings,
 };
 use log::{
     warn, 
@@ -17,17 +17,17 @@ use crate::{
 };
 
 
-#[derive(Debug, StructOpt)]
-#[structopt(setting = AppSettings::ColoredHelp,
-            setting = AppSettings::ColorAuto,
-            setting = AppSettings::AllowNegativeNumbers)]
+#[derive(Debug, Parser)]
+#[clap(setting = AppSettings::ColoredHelp,
+       setting = AppSettings::ColorAuto,
+       setting = AppSettings::AllowNegativeNumbers)]
 /// Operation(s) about POSCAR, including split it into two POSCARs.
 pub struct Pos {
-    #[structopt(default_value = "./POSCAR")]
+    #[clap(default_value = "./POSCAR")]
     /// Specify the input POSCAR file
     poscar: PathBuf,
 
-    #[structopt(short = "i", long)]
+    #[clap(short = 'i', long)]
     /// Selects the indices to operate.
     ///
     /// Step indices start from '1', if '0' is given, all the structures will be selected.
@@ -35,35 +35,35 @@ pub struct Pos {
     /// E.g. "-i -2 -1 1 2 3" means selecting the last two and the first three atom.
     select_indices: Option<Vec<i32>>,
 
-    #[structopt(short = "a", long, default_value = "POSCAR_A")]
+    #[clap(short = 'a', long, default_value = "POSCAR_A")]
     /// Splitted POSCAR path with selected atoms
     a_name: PathBuf,
 
-    #[structopt(short = "b", long, default_value = "POSCAR_B")]
+    #[clap(short = 'b', long, default_value = "POSCAR_B")]
     /// Splitted POSCAR path with complement of `a_name`
     b_name: PathBuf,
 
-    #[structopt(long)]
+    #[clap(long)]
     /// The symbols of each atom will not be written as comment in POSCAR
     no_add_symbols_tags: bool,
 
-    #[structopt(long)]
+    #[clap(long)]
     /// Atom constraints will be dropped when writting POSCAR
     no_preserve_constraints: bool,
 
-    #[structopt(short = "c", long)]
+    #[clap(short = 'c', long)]
     /// Cartesian coordinates is used in writting POSCAR
     cartesian: bool,
 
-    #[structopt(short = "s", long)]
+    #[clap(short = 's', long)]
     /// Split POSCAR according to selected_indices
     split: bool,
 
-    #[structopt(long)]
+    #[clap(long)]
     /// Convert POSCAR to cartesian coordinates or fractional coordinates
     convert: bool,
 
-    #[structopt(long, default_value = "POSCAR_new")]
+    #[clap(long, default_value = "POSCAR_new")]
     /// The target path of converted POSCAR
     converted: PathBuf,
 }

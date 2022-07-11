@@ -8,9 +8,9 @@ use log::{
     debug,
 };
 use rayon::prelude::*;
-use structopt::{
-    StructOpt,
-    clap::AppSettings,
+use clap::{
+    Parser,
+    AppSettings,
 };
 use crate::{
     Result,
@@ -22,35 +22,35 @@ use crate::{
 };
 
 
-#[derive(Debug, StructOpt)]
-#[structopt(setting = AppSettings::ColoredHelp,
-            setting = AppSettings::ColorAuto,
-            setting = AppSettings::AllowNegativeNumbers)]
+#[derive(Debug, Parser)]
+#[clap(setting = AppSettings::ColoredHelp,
+       setting = AppSettings::ColorAuto,
+       setting = AppSettings::AllowNegativeNumbers)]
 /// Operations about relaxation/MD trajectory.
 ///
 /// POSCAR is needed if you want to preserve the constraints when saving frames to POSCAR.
 pub struct Traj {
-    #[structopt(default_value = "./OUTCAR")]
+    #[clap(default_value = "./OUTCAR")]
     /// Specify the input OUTCAR file
     outcar: PathBuf,
 
-    #[structopt(short = "p", long, default_value = "./POSCAR")]
+    #[clap(short = 'p', long, default_value = "./POSCAR")]
     /// Specify the input POSCAR file
     poscar: PathBuf,
 
-    #[structopt(short = "x", long)]
+    #[clap(short = 'x', long)]
     /// Saves each selected modes to XSF file, this file includes each atom's force information
     save_as_xsfs: bool,
 
-    #[structopt(short = "s", long)]
+    #[clap(short = 's', long)]
     /// Save selected steps as POSCARs
     save_as_poscar: bool,
 
-    #[structopt(short = "d", long)]
+    #[clap(short = 'd', long)]
     /// Save whole trajectory in XDATCAR format
     save_as_xdatcar: bool,
 
-    #[structopt(short = "i", long)]
+    #[clap(short = 'i', long)]
     /// Selects the indices to operate.
     ///
     /// Step indices start from '1', if '0' is given, all the structures will be selected.
@@ -59,19 +59,19 @@ pub struct Traj {
     /// steps.
     select_indices: Option<Vec<i32>>,
 
-    #[structopt(long, default_value = ".")]
+    #[clap(long, default_value = ".")]
     /// Define where the files would be saved
     save_in: PathBuf,
 
-    #[structopt(long = "no-add-symbol-tags")]
+    #[clap(long = "no-add-symbol-tags")]
     /// Don't add chemical symbol to each line of coordinates
     no_add_symbol_tags: bool,
 
-    #[structopt(long = "no-preserve-constraints")]
+    #[clap(long = "no-preserve-constraints")]
     /// Don't preverse constraints when saving trajectory to POSCAR
     no_preserve_constraints: bool,
 
-    #[structopt(long = "cartesian")]
+    #[clap(long = "cartesian")]
     /// Save to POSCAR in cartesian coordinates, the coordinates written is direct/fractional by
     /// default
     cartesian: bool,

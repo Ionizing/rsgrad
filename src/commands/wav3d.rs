@@ -1,8 +1,8 @@
 use std::path::PathBuf;
 
-use structopt::{
-    StructOpt,
-    clap::AppSettings,
+use clap::{
+    Parser,
+    AppSettings,
 };
 use log::{
     info,
@@ -30,42 +30,42 @@ use crate::{
     Poscar,
 };
 
-#[derive(Debug, StructOpt)]
-#[structopt(setting = AppSettings::ColoredHelp,
-            setting = AppSettings::ColorAuto,
-            setting = AppSettings::AllowNegativeNumbers)]
+#[derive(Debug, Parser)]
+#[clap(setting = AppSettings::ColoredHelp,
+       setting = AppSettings::ColorAuto,
+       setting = AppSettings::AllowNegativeNumbers)]
 /// Plot wavefunction in realspace, and save it as '.vasp' file.
 pub struct Wav3D {
-    #[structopt(long, short="w", default_value="./WAVECAR")]
+    #[clap(long, short = 'w', default_value = "./WAVECAR")]
     /// WAVECAR file name.
     wavecar: PathBuf,
 
-    #[structopt(long, short="p", default_value="./POSCAR")]
+    #[clap(long, short = 'p', default_value = "./POSCAR")]
     /// POSCAR filename, POSCAR is needed to get the real-space wavefunction.
     poscar: PathBuf,
 
-    #[structopt(long, short="s", default_value="1")]
+    #[clap(long, short = 's', default_value = "1")]
     /// Select spin index, starting from 1.
     ispins: Vec<i32>,
 
-    #[structopt(long, short="k", default_value="1")]
+    #[clap(long, short = 'k', default_value = "1")]
     /// Select kpoint index, starting from 1.
     ikpoints: Vec<i32>,
 
-    #[structopt(long, short="b")]
+    #[clap(long, short = 'b')]
     /// Select band index, starting from 1.
     ibands: Vec<i32>,
 
-    #[structopt(long, short="l")]
+    #[clap(long, short = 'l')]
     /// List the brief info of current WAVECAR.
     list: bool,
 
-    #[structopt(long, possible_values=&["x", "z"])]
+    #[clap(long, possible_values = &["x", "z"])]
     /// Gamma Half direction of WAVECAR. You need to set this to 'x' or 'z' when
     /// processing WAVECAR produced by `vasp_gam`.
     gamma_half: Option<String>,
 
-    #[structopt(long, short="o", possible_values=&["normsquared", "ns", "real", "re", "imag", "im", "reim"])]
+    #[clap(long, short = 'o', possible_values = &["normsquared", "ns", "real", "re", "imag", "im", "reim"])]
     /// Specify output part of the wavefunction.
     ///
     /// Detailed message:{n}
@@ -75,11 +75,11 @@ pub struct Wav3D {
     /// - reim: Output both real part and imaginary parts of the wavefunction.
     output_parts: Vec<String>,
 
-    #[structopt(long, default_value="wav")]
+    #[clap(long, default_value = "wav")]
     /// Prefix of output filename.
     prefix: String,
 
-    #[structopt(long, short="e")]
+    #[clap(long, short = 'e')]
     /// Add eigen value suffix to the filename
     show_eigs_suffix: bool,
 }

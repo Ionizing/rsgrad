@@ -1,7 +1,7 @@
 use std::path::PathBuf;
-use structopt::{
-    StructOpt,
-    clap::AppSettings,
+use clap::{
+    Parser,
+    AppSettings,
 };
 use rayon;
 use anyhow::{
@@ -24,41 +24,41 @@ use crate::{
     commands::common::write_array_to_txt,
 };
 
-#[derive(Debug, StructOpt)]
-#[structopt(setting = AppSettings::ColoredHelp,
-            setting = AppSettings::ColorAuto)]
+#[derive(Debug, Parser)]
+#[clap(setting = AppSettings::ColoredHelp,
+       setting = AppSettings::ColorAuto)]
 /// Calculate work-function from LOCPOT file, OUTCAR is also needed to get the Fermi level.
 ///
 /// The work function is calculated by plannar integration of the data cube in LOCPOT. The
 /// selected axis should be perpendicular to the other two axises.
 pub struct Workfunc {
-    #[structopt(default_value="./LOCPOT")]
+    #[clap(default_value="./LOCPOT")]
     /// LOCPOT file path. Turn on 'LVHAR' in INCAR to get the electro-static potential saved it.
     locpot: PathBuf,
 
-    #[structopt(long, short = "o", default_value="./workfunction.html")]
+    #[clap(long, short = 'o', default_value="./workfunction.html")]
     /// Write the plot to html and view it in the web browser.
     htmlout: PathBuf,
 
-    #[structopt(long, default_value="locpot.txt")]
+    #[clap(long, default_value="locpot.txt")]
     /// Write the raw plot data as txt file in order to replot it with more advanced tools.
     txtout: PathBuf,
 
-    #[structopt(long, default_value="./OUTCAR")]
+    #[clap(long, default_value="./OUTCAR")]
     /// OUTCAR file path. This file is needed to get the E-fermi level and lattice properties.
     outcar: PathBuf,
 
-    #[structopt(long, default_value="z",
-                possible_values = &Axis::variants(),
+    #[clap(long, default_value="z",
+                possible_values = Axis::variants(),
                 case_insensitive = true)]
     /// Integration direction. e.g. if 'z' is provided, the XoY plane is integrated.
     axis: Axis,
 
-    #[structopt(long)]
+    #[clap(long)]
     /// Open default browser to see the plot immediately.
     show: bool,
 
-    #[structopt(long)]
+    #[clap(long)]
     /// Render the plot and print the rendered code to stdout.
     to_inline_html: bool,
 }

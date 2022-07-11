@@ -1,8 +1,8 @@
 use std::path::PathBuf;
 
-use structopt::{
-    StructOpt,
-    clap::AppSettings,
+use clap::{
+    Parser,
+    AppSettings,
 };
 use log::{
     info,
@@ -20,17 +20,17 @@ use crate::{
 };
 
 
-#[derive(Debug, StructOpt)]
-#[structopt(setting = AppSettings::ColoredHelp,
-            setting = AppSettings::ColorAuto)]
+#[derive(Debug, Parser)]
+#[clap(setting = AppSettings::ColoredHelp,
+       setting = AppSettings::ColorAuto)]
 /// Generate the POTCAR according to POSCAR
 pub struct Pot {
-    #[structopt(long, short)]
+    #[clap(long, short)]
     /// Specify the configuration file, if left blank, rsgrad will read `.rsgrad.toml` at
     /// your home dir.
     config: Option<PathBuf>,
 
-    #[structopt(long, short, default_value = "./POSCAR")]
+    #[clap(long, short, default_value = "./POSCAR")]
     /// Specify the POSCAR file
     ///
     /// Note: the elements symbols' line should involve the specified valence configuration
@@ -38,11 +38,11 @@ pub struct Pot {
     /// the POSCAR
     poscar: PathBuf,
 
-    #[structopt(default_value = "PAW_PBE")]
+    #[clap(default_value = "PAW_PBE")]
     /// Specify the functional type, now only "PAW_PBE"(or "paw_pbe") and "PAW_LDA"(or "paw_lda") are available.
     functional: FunctionalType,
 
-    #[structopt(long, short, default_value = "./")]
+    #[clap(long, short, default_value = "./")]
     /// Specify where the `POTCAR` would be written
     save_in: PathBuf,
 }

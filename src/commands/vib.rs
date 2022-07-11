@@ -8,9 +8,9 @@ use log::{
     warn,
     debug,
 };
-use structopt::{
-    StructOpt,
-    clap::AppSettings,
+use clap::{
+    Parser,
+    AppSettings,
 };
 use crate::{
     Result,
@@ -23,32 +23,32 @@ use crate::{
 };
 
 
-#[derive(Debug, StructOpt)]
-#[structopt(setting = AppSettings::ColoredHelp,
-            setting = AppSettings::ColorAuto,
-            setting = AppSettings::AllowNegativeNumbers)]
+#[derive(Debug, Parser)]
+#[clap(setting = AppSettings::ColoredHelp,
+       setting = AppSettings::ColorAuto,
+       setting = AppSettings::AllowNegativeNumbers)]
 /// Tracking vibration information.
 ///
 /// For systems enabled vibration mode calculation, this command can extract
 /// phonon eigenvalues and phonon eigenvectors at Gamma point.
 pub struct Vib {
-    #[structopt(short = "l", long)]
+    #[clap(short = 'l', long)]
     /// Shows vibration modes in brief
     list: bool,
 
-    #[structopt(default_value = "./OUTCAR")]
+    #[clap(default_value = "./OUTCAR")]
     /// Specify the input OUTCAR file
     outcar: PathBuf,
 
-    #[structopt(short = "p", long, default_value = "./POSCAR")]
+    #[clap(short = 'p', long, default_value = "./POSCAR")]
     /// Specify the input POSCAR file, the consntraints info is needed
     poscar: PathBuf,
 
-    #[structopt(short = "x", long)]
+    #[clap(short = 'x', long)]
     /// Saves each selected modes to XSF file
     save_as_xsfs: bool,
 
-    #[structopt(short = "i", long)]
+    #[clap(short = 'i', long)]
     /// Selects the mode indices to operate.
     ///
     /// Step indices start from '1', if '0' is given, all the structures will be selected.
@@ -57,20 +57,20 @@ pub struct Vib {
     /// steps.
     select_indices: Option<Vec<i32>>,
 
-    #[structopt(long, default_value = ".")]
+    #[clap(long, default_value = ".")]
     /// Define where the files would be saved
     save_in: PathBuf,
 
-    #[structopt(short = "m", long)]
+    #[clap(short = 'm', long)]
     /// Modulate the ground-state POSCAR with respect to a certern vibration frequencies.
     modulate: bool,
 
-    #[structopt(short = "a", long, default_value = "0.01")]
+    #[clap(short = 'a', long, default_value = "0.01")]
     /// Modulation amplitude coefficient, to avoid precision issue, abs(amplitude) >= 0.001 should
     /// be satisfied.
     amplitude: f64,
 
-    #[structopt(short = "c", long)]
+    #[clap(short = 'c', long)]
     /// Catesian coordinate is used when writting POSCAR. Fractional coordinate is used by default.
     cartesian: bool,
 }

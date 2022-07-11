@@ -8,9 +8,9 @@ use ndarray::{
     Array3,
 };
 use regex::Regex;
-use structopt::{
-    StructOpt,
-    clap::arg_enum
+use clap::{
+    Parser,
+    arg_enum,
 };
 use serde::{
     Serialize,
@@ -19,7 +19,7 @@ use serde::{
 
 pub type Result<T> = anyhow::Result<T>;
 
-pub trait OptProcess : StructOpt {
+pub trait OptProcess : Parser {
     fn process(&self) -> Result<()>;
 }
 

@@ -7,9 +7,9 @@ use log::{
     warn,
     debug,
 };
-use structopt::{
-    StructOpt,
-    clap::AppSettings,
+use clap::{
+    Parser,
+    AppSettings,
 };
 use crate::{
     Result,
@@ -20,9 +20,9 @@ use crate::{
 };
 
 
-#[derive(Debug, StructOpt)]
-#[structopt(setting = AppSettings::ColoredHelp,
-            setting = AppSettings::ColorAuto)]
+#[derive(Debug, Parser)]
+#[clap(setting = AppSettings::ColoredHelp,
+       setting = AppSettings::ColorAuto)]
 /// Tracking relaxation or MD progress.
 ///
 /// Contains the evolution of energy, maximum of Hellmann-Feynman forces, 
@@ -30,55 +30,55 @@ use crate::{
 ///
 /// Hint: This command may require POSCAR for atom constraints information.
 pub struct Rlx {
-    #[structopt(default_value = "./OUTCAR")]
+    #[clap(default_value = "./OUTCAR")]
     /// Specify the input OUTCAR file
     outcar: PathBuf,
 
-    #[structopt(short = "p", long, default_value = "./POSCAR")]
+    #[clap(short = 'p', long, default_value = "./POSCAR")]
     /// Specify the input POSCAR file
     poscar: PathBuf,
 
-    #[structopt(short = "e", long = "toten")]
+    #[clap(short = 'e', long = "toten")]
     /// Prints TOTEN in eV
     print_energy: bool,
 
-    #[structopt(short = "a", long = "favg")]
+    #[clap(short = 'a', long = "favg")]
     /// Prints averaged total force in eV/A
     print_favg: bool,
 
-    #[structopt(short = "x", long = "fmaxis")]
+    #[clap(short = 'x', long = "fmaxis")]
     /// Prints the axis where the strongest total force component lies on. [XYZ]
     print_fmax_axis: bool,
 
-    #[structopt(short = "i" ,long = "fmidx")]
+    #[clap(short = 'i' ,long = "fmidx")]
     /// Prints the index of ion with maximum total force load. Starts from 1
     print_fmax_index: bool,
 
-    #[structopt(short = "v", long = "volume")]
+    #[clap(short = 'v', long = "volume")]
     /// Prints lattice volume in A^3
     print_volume: bool,
 
-    #[structopt(long = "no-fmax")]
+    #[clap(long = "no-fmax")]
     /// Don't print maximum total force in A^3
     no_print_fmax: bool,
 
-    #[structopt(long = "no-totenz")]
+    #[clap(long = "no-totenz")]
     /// Don't print TOTEN without entropy in eV
     no_print_energyz: bool,
 
-    #[structopt(long = "no-lgde")]
+    #[clap(long = "no-lgde")]
     /// Don't print Log10(delta(TOTEN without entropy))
     no_print_lgde: bool,
 
-    #[structopt(long = "no-magmom")]
+    #[clap(long = "no-magmom")]
     /// Don't print total magnetic moment in muB
     no_print_magmom: bool,
 
-    #[structopt(long = "no-nscf")]
+    #[clap(long = "no-nscf")]
     /// Don't print number of SCF iteration for each ionic step
     no_print_nscf: bool,
 
-    #[structopt(long = "no-time")]
+    #[clap(long = "no-time")]
     /// Don't print time elapsed for each ionic step in minutes
     no_print_time: bool,
 }

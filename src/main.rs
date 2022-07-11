@@ -7,71 +7,71 @@ use rsgrad::{
     OptProcess,
     commands,
 };
-use structopt::{
-    clap::AppSettings,
-    StructOpt,
+use clap::{
+    Parser,
+    AppSettings,
 };
 
-#[derive(Debug, StructOpt)]
-#[structopt(name = "rsgrad",
+#[derive(Debug, Parser)]
+#[clap(name = "rsgrad",
             about = "A tool used to track the VASP calculation result",
             author = "@Ionizing github.com/Ionizing/rsgrad",
             setting = AppSettings::ColoredHelp,
             setting = AppSettings::ColorAuto,
             )]
 enum Opt {
-    #[structopt(setting = AppSettings::ColoredHelp,
+    #[clap(setting = AppSettings::ColoredHelp,
                 setting = AppSettings::ColorAuto)]
     Rlx(commands::rlx::Rlx),
 
 
-    #[structopt(setting = AppSettings::ColoredHelp,
+    #[clap(setting = AppSettings::ColoredHelp,
                 setting = AppSettings::ColorAuto)]
     Vib(commands::vib::Vib),
 
 
-    #[structopt(setting = AppSettings::ColoredHelp,
+    #[clap(setting = AppSettings::ColoredHelp,
                 setting = AppSettings::ColorAuto)]
     Traj(commands::traj::Traj),
 
 
-    #[structopt(setting = AppSettings::ColoredHelp,
+    #[clap(setting = AppSettings::ColoredHelp,
                 setting = AppSettings::ColorAuto)]
     Pos(commands::pos::Pos),
 
 
-    #[structopt(setting = AppSettings::ColoredHelp,
+    #[clap(setting = AppSettings::ColoredHelp,
                 setting = AppSettings::ColorAuto)]
     Pot(commands::pot::Pot),
 
 
-    #[structopt(setting = AppSettings::ColoredHelp,
+    #[clap(setting = AppSettings::ColoredHelp,
                 setting = AppSettings::ColorAuto)]
     Chgdiff(commands::chgdiff::Chgdiff),
 
 
-    #[structopt(setting = AppSettings::ColoredHelp,
+    #[clap(setting = AppSettings::ColoredHelp,
                 setting = AppSettings::ColorAuto)]
     Workfunc(commands::workfunc::Workfunc),
 
 
-    #[structopt(setting = AppSettings::ColoredHelp,
+    #[clap(setting = AppSettings::ColoredHelp,
                 setting = AppSettings::ColorAuto)]
     Dos(commands::dos::Dos),
 
 
-    #[structopt(setting = AppSettings::ColoredHelp,
+    #[clap(setting = AppSettings::ColoredHelp,
                 setting = AppSettings::ColorAuto)]
     Band(commands::band::Band),
 
 
-    #[structopt(setting = AppSettings::ColoredHelp,
+    #[clap(setting = AppSettings::ColoredHelp,
                 setting = AppSettings::ColorAuto,
                 name = "wav3d")]
     Wav3D(commands::wav3d::Wav3D),
 
 
-    #[structopt(setting = AppSettings::ColoredHelp,
+    #[clap(setting = AppSettings::ColoredHelp,
                 setting = AppSettings::ColorAuto,
                 name = "wav1d")]
     Wav1D(commands::wav1d::Wav1D),
