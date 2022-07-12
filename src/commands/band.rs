@@ -171,7 +171,8 @@ impl Configuration {
 
 #[derive(Debug, Parser, Clone)]
 #[clap(setting = AppSettings::ColoredHelp,
-       setting = AppSettings::ColorAuto)]
+       setting = AppSettings::ColorAuto,
+       setting = AppSettings::AllowNegativeNumbers)]
 /// Plot bandstructure and projected bandstructure
 /// 
 /// You may need to generate a template and then use the `--config` option to plot the projected
@@ -195,7 +196,7 @@ pub struct Band {
     /// i.e. bandstructure calculation, which may be a little different from scf's.
     efermi: Option<f64>,
 
-    #[clap(short, long)]
+    #[clap(short, long, multiple_values = true)]
     /// Symbols for high symmetry points on the kpoint path.
     kpoint_labels: Option<Vec<String>>,
 
@@ -238,7 +239,7 @@ pub struct Band {
     /// Render the plot and print the rendered code to stdout.
     to_inline_html: bool,
 
-    #[clap(long, default_value = "-1 6", number_of_values = 2)]
+    #[clap(long, default_values = &["-1", "6"], number_of_values = 2, multiple_values = true)]
     /// Set the y-range of the plot.
     ylim: Vec<f64>,
 }
