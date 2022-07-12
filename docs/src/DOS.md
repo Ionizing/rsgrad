@@ -60,9 +60,7 @@ is written to `pband.toml` by default:
 {{#include ../../src/commands/pdos_template.toml}}
 ```
 
-<script>
-{{#include ../plotly-2.8.3.min.js}}
-</script>
+<script src="https://cdn.plot.ly/plotly-2.12.1.min.js"></script>
 
 ## Example (without configuration)
 
@@ -89,7 +87,6 @@ htmlout     = "dos.html"
 totdos      = true
 fill        = true
 xlim        = [-1, 6]
-sample_density = 50
 
 [pdos.Benzene]
 atoms   = "37..48"
@@ -101,6 +98,6 @@ then `rsgrad dos -c pdos.toml`
 
 ![](./DOS-PDOS-example.png)
 
-you will get the html in the following
+you will get something in the following
 
 {{#include ./dos-example-pdos-inline.html}}

@@ -5,10 +5,13 @@ multilingual = false
 src = "src"
 title = "RSGRAD'S BOOK"
 
+[build]
+build-dir = "book"                # the directory where the output is placed
+create-missing = true             # whether or not to create missing pages
+use-default-preprocessors = true  # use the default preprocessors
+
 [output.html]
 mathjax-support = true
-#additional-css = ["ferris.css"]
-#additional-js = ["ferris.js", "plotly-2.8.3.min.js"]
 
 [output.html.fold]
 enable = true
