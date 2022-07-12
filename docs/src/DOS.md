@@ -101,3 +101,21 @@ then `rsgrad dos -c pdos.toml`
 you will get something in the following
 
 {{#include ./dos-example-pdos-inline.html}}
+
+
+## Usage of _txtout_
+
+`rsgrad` can write the raw data of plot by setting _txtout_ (`dos_raw.txt` by default). The organization of it
+shows the energy, total DOS and projected dos respectively:
+
+```
+{{#include ./dos-example-raw.txt:1}}
+...
+{{#include ./dos-example-raw.txt:527:547}}
+...
+```
+
+The first line shows the labels of each series and have a hastag `#` in the beginning in order to let `numpy.loadtxt`
+can read it directly.
+
+Then you can throw it into other plotters like Excel, Matplotlib, OriginPro GnuPlot etc. and do whatever fancy things you like.
