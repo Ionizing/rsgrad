@@ -1,6 +1,3 @@
-// TODO: switch to homemade Poscar parser
-
-
 use std::{
     path::{Path, PathBuf},
     io::Write,
@@ -11,11 +8,9 @@ use std::{
     },
 };
 use colored::Colorize;
-//use vasp_poscar::{self, Poscar};
 use log::{
+    warn,
     info,
-    //warn,
-    //debug,
 };
 use rayon;
 use regex::Regex;
@@ -135,11 +130,11 @@ impl Outcar {
         let (mut nkpts, mut nbands) = (0i32, 0i32);
         let mut efermi          = 0.0f64;
         let mut cell            = [[0.0f64; 3]; 3];
-        let mut ext_pressure    = vec![0.0f64; 0];
         let mut ions_per_type   = vec![0i32; 0];
         let mut ion_types       = vec![String::new();0];
         let mut ion_masses      = vec![0.0f64; 0];
 
+        let mut ext_pressure   = vec![0.0f64; 0];
         let mut nscfv          = vec![0i32; 0];
         let mut totenv         = vec![0.0f64; 0];
         let mut toten_zv       = vec![0.0f64; 0];
@@ -187,6 +182,11 @@ impl Outcar {
         assert_eq!(posv.len()     , len, "Init failed due to incomplete OUTCAR");
         assert_eq!(forcev.len()   , len, "Init failed due to incomplete OUTCAR");
         assert_eq!(cellv.len()    , len, "Init failed due to incomplete OUTCAR");
+
+        if ext_pressure.len() == 0 {
+            warn!("No external pressure data found.");
+            ext_pressure = vec![0.0f64; totenv.len()];
+        }
 
         let ion_iters = multizip((nscfv, totenv, toten_zv, magmomv, cputimev, ext_pressure, posv, forcev, cellv))
             .map(|(iscf, e, ez, mag, cpu, stress, pos, f, cell)| {

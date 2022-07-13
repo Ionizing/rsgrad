@@ -796,7 +796,8 @@ impl OptProcess for Band {
                     .tick_values(kxs.clone())
                     .tick_text(klabels)
                     .zero_line(true)
-                    );
+                    )
+            .legend(plotly::layout::Legend::new().item_sizing("constant"));
 
         Self::plot_boundaries(&mut layout, &kxs);
         plot.set_layout(layout);
