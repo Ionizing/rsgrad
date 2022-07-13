@@ -2,6 +2,8 @@
 
 The `rsgrad dos` command calculates the Density of States (DOS) of current system.
 
+{{#include ./dos-example-pdos-inline.html}}
+
 `rsgrad` __DOES NOT__ read the _DOSCAR_, but calculates the DOS from _PROCAR_ instead by
 
 $$
@@ -60,9 +62,9 @@ is written to `pband.toml` by default:
 {{#include ../../src/commands/pdos_template.toml}}
 ```
 
-<script src="https://cdn.plot.ly/plotly-2.12.1.min.js"></script>
+<!--<script src="https://cdn.plot.ly/plotly-2.12.1.min.js"></script>-->
 
-## Example (without configuration)
+## Example (without configuration file)
 
 This command can calculate total DOS only. To calculate projected DOS,
 use configuration instead (see next section).
@@ -73,7 +75,9 @@ The output html should be like something in the following
 
 {{#include ./dos-example-inline.html}}
 
-## Example (with configuration)
+## Example (with configuration file)
+
+To plot multiple PDOS, using configuration file is suggested.
 
 With the configuration (`pdos.toml`) in the following
 
@@ -100,7 +104,7 @@ then `rsgrad dos -c pdos.toml`
 
 you will get something in the following
 
-{{#include ./dos-example-pdos-inline.html}}
+{{#include ./dos-example-pdos-inline2.html}}
 
 
 ## Usage of _txtout_
@@ -118,4 +122,4 @@ shows the energy, total DOS and projected dos respectively:
 The first line shows the labels of each series and have a hastag `#` in the beginning in order to let `numpy.loadtxt`
 can read it directly.
 
-Then you can throw it into other plotters like Excel, Matplotlib, OriginPro GnuPlot etc. and do whatever fancy things you like.
+Then you can throw it into other plotters like Excel, Matplotlib, OriginPro GnuPlot etc. and do whatever fancy things you prefer.

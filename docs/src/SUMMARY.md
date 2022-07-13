@@ -2,7 +2,7 @@
 
 - [Relaxation](./Relaxation.md)
 - [Density of States](./DOS.md)
-- [Bandstructure](./Band.md)
+- [Band Structure](./Band.md)
 - [Trajectory](./Trajectory.md)
 - [Charge Density Difference](./ChgDiff.md)
 - [Vibration](Vibration.md)

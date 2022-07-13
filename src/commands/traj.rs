@@ -55,7 +55,7 @@ pub struct Traj {
     ///
     /// Step indices start from '1', if '0' is given, all the structures will be selected.
     /// Step indices can be negative, where negative index means counting reversely.
-    /// E.g. "--save-as-poscars -2 -1 1 2 3" means saving the last two and first three
+    /// E.g. "-i -2 -1 1 2 3" means selecting the last two and first three
     /// steps.
     select_indices: Option<Vec<i32>>,
 
