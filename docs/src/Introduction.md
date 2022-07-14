@@ -18,4 +18,4 @@ Now `rsgrad` provides several features:
     Format _POSCAR_;
 11. Generate _POTCAR_ according to _POSCAR_.
 
-Wish you have a good time with `rsgrad` ^\_^
+Wish you have a good time with `rsgrad` ^_^
