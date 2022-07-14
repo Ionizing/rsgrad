@@ -21,7 +21,7 @@ $$
 where \\(\mu\\) is \\(E(\mathbf{k}_i)\\) and \\(\sigma\\) is `sigma` of configuration in the implementation.
 
 This method makes it easier to calculate projected DOS with projection of specific atoms, angular moments and k-points.
-However, this method sometimes differs from _DOSCAR_ with `ISMEAR = 5`. For detailed explaination, see the 
+However, this method sometimes differs from _DOSCAR_ with `ISMEAR = -5`. For detailed explaination, see the 
 [document here](https://docs.quantumatk.com/manual/technicalnotes/occupation_methods/occupation_methods.html).
 
 
