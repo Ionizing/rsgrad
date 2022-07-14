@@ -22,6 +22,7 @@ jobs:
         # Just add a `cd` here if you need to change to another directory.
         cd docs
         mdbook build
+        mkdir gh-pages
         git worktree add gh-pages gh-pages
         git config user.name "Deploy from CI"
         git config user.email ""
