@@ -24,4 +24,4 @@ Wish you have a good time with `rsgrad` ^\_^
 
 # Documents
 
-Please read the [rsgrad's book]() for detailed usage.
+Please read the [rsgrad's book](https://ionizing.github.io/rsgrad/) for documentation.
