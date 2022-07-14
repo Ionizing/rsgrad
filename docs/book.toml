@@ -11,6 +11,7 @@ create-missing = true             # whether or not to create missing pages
 use-default-preprocessors = true  # use the default preprocessors
 
 [output.html]
+default-theme = "rust"
 mathjax-support = true
 
 [output.html.fold]
@@ -19,4 +20,4 @@ level = 1
 
 [output.markdown]
 
-# [output.pdf]
+#[output.pdf]

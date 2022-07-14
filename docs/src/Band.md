@@ -134,7 +134,9 @@ then it produces
 For the results produced by `vasp_ncl`, `rsgrad` supports plotting the \\(z\\) (\\(x\\) and \\(y\\) are also OK) projection to
 analyze the spin angular moments.
 
+```
 {{#include ./Band-example-ncl.toml}}
+```
 
 then it produces
 
