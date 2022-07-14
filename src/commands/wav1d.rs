@@ -56,6 +56,12 @@ pub struct Wav1D {
     /// List the brief info of current WAVECAR.
     list: bool,
 
+    #[clap(long, short = 'd')]
+    /// Show the eigen values and band occupations of current WAVECAR.
+    ///
+    /// This flag should be used with `--list`
+    detail: bool,
+
     #[clap(long, possible_values = &["x", "z"])]
     /// Gamma Half direction of WAVECAR. You need to set this to 'x' or 'z' when
     /// processing WAVECAR produced by `vasp_gam`.
@@ -125,7 +131,12 @@ I suggest you provide `gamma_half` argument to avoid confusion.");
         }
 
         if self.list {
-            println!("{}", wav);
+            if self.detail {
+                println!("{:#}", wav);
+            } else {
+                println!("{}", wav);
+            }
+            return Ok(())
         }
 
         let efermi = wav.efermi;
