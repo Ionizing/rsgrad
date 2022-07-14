@@ -53,8 +53,7 @@ pub struct Vib {
     ///
     /// Step indices start from '1', if '0' is given, all the structures will be selected.
     /// Step indices can be negative, where negative index means counting reversely.
-    /// E.g. "--save-as-poscars -2 -1 1 2 3" means saving the last two and first three
-    /// steps.
+    /// E.g. "-i -2 -1 1 2 3" means selecting the last two and first three steps.
     select_indices: Option<Vec<i32>>,
 
     #[clap(long, default_value = ".")]
@@ -65,8 +64,8 @@ pub struct Vib {
     /// Modulate the ground-state POSCAR with respect to a certern vibration frequencies.
     modulate: bool,
 
-    #[clap(short = 'a', long, default_value = "0.01")]
-    /// Modulation amplitude coefficient, to avoid precision issue, abs(amplitude) >= 0.001 should
+    #[clap(short = 'a', long, default_value = "0.1")]
+    /// Modulation amplitude coefficient, to avoid precision issue, abs(amplitude) >= 0.01 should
     /// be satisfied.
     amplitude: f64,
 
