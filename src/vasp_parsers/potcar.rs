@@ -159,7 +159,7 @@ mod tests {
         let specific_type = "_sv";
         let prefix = &Settings::from_default().unwrap().functional_path;
 
-        let potcar = AtomicPotcar::from_config(symbol, &functional, specific_type, &prefix)
+        let potcar = AtomicPotcar::from_config(symbol, &functional, specific_type, prefix)
             .unwrap()
             .content;
         print!("{}", potcar);
@@ -173,7 +173,7 @@ mod tests {
         let specific_types = vec!["".to_owned(), "_sv".to_owned(), "".to_owned()];
         let prefix = &Settings::from_default().unwrap().functional_path;
 
-        let potcar = Potcar::from_config(&symbols, &functional, &specific_types, &prefix).unwrap().to_txt();
+        let potcar = Potcar::from_config(&symbols, &functional, &specific_types, prefix).unwrap().to_txt();
         print!("{}", potcar);
     }
 }

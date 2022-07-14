@@ -463,7 +463,7 @@ impl Sub for ChargeDensity {
 mod test {
     use super::*;
 
-    const SAMPLE_CHGCAR: &'static str = "\
+    const SAMPLE_CHGCAR: &str = "\
 unknown system
    1.00000000000000
      2.969072   -0.000523   -0.000907
@@ -505,7 +505,7 @@ augmentation occupancies 2 15
 ";
     
 
-    const SAMPLE_CHG: &'static str = "\
+    const SAMPLE_CHG: &str = "\
 unknown system
    1.00000000000000
      2.969072   -0.000523   -0.000907

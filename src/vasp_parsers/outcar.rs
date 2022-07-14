@@ -1161,7 +1161,7 @@ mod tests{
    ICHARG =      2    charge: 1-file 2-atom 10-const
    ISPIN  =      1    spin polarized calculation?
    LNONCOLLINEAR =      F non collinear calculations"#;
-        assert_eq!(Outcar::parse_ispin(&input), 1i32);
+        assert_eq!(Outcar::parse_ispin(input), 1i32);
     }
 
     #[test]
@@ -1171,7 +1171,7 @@ mod tests{
    ICHARG =      2    charge: 1-file 2-atom 10-const
    ISPIN  =           spin polarized calculation?
    LNONCOLLINEAR =      F non collinear calculations"#;
-        Outcar::parse_ispin(&input);
+        Outcar::parse_ispin(input);
     }
 
     #[test]
@@ -1180,7 +1180,7 @@ mod tests{
    k-points           NKPTS =      1   k-points in BZ     NKDIM =      1   number of bands    NBANDS=      8
    number of dos      NEDOS =    301   number of ions     NIONS =      4
    non local maximal  LDIM  =      4   non local SUM 2l+1 LMDIM =      8 "#;
-        assert_eq!(Outcar::parse_nions(&input), 4i32);
+        assert_eq!(Outcar::parse_nions(input), 4i32);
     }
 
     #[test]
@@ -1190,7 +1190,7 @@ mod tests{
    k-points           NKPTS =      1   k-points in BZ     NKDIM =      1   number of bands    NBANDS=      8
    number of dos      NEDOS =    301   number of ions     NIONS =      d
    non local maximal  LDIM  =      4   non local SUM 2l+1 LMDIM =      8 "#;
-        Outcar::parse_nions(&input);
+        Outcar::parse_nions(input);
     }
 
     #[test]
@@ -1204,7 +1204,7 @@ mod tests{
   free  energy   TOTEN  =       -19.26817124 eV
 "#;
         let output = vec![-19.26550806f64, -19.25519593, -19.26817124];
-        assert_eq!(Outcar::parse_toten(&input), output);
+        assert_eq!(Outcar::parse_toten(input), output);
     }
 
     #[test]
@@ -1218,7 +1218,7 @@ mod tests{
   free  energy   TOTEN  =       -19.25519593 eV
   free  energy   TOTEN  =       -19.26817124 eV
 "#;
-        Outcar::parse_toten(&input);
+        Outcar::parse_toten(input);
     }
 
     #[test]
@@ -1231,7 +1231,7 @@ mod tests{
   energy  without entropy=      -19.26679174  energy(sigma->0) =      -19.25906120
   energy  without entropy=      -19.27976705  energy(sigma->0) =      -19.27203651"#;
         let output = vec![-19.26937333f64, -19.25906120, -19.27203651];
-        assert_eq!(Outcar::parse_toten_z(&input), output);
+        assert_eq!(Outcar::parse_toten_z(input), output);
     }
 
     #[test]
@@ -1244,7 +1244,7 @@ mod tests{
   energy  without entropy=      -19.27710387  energy(sigma->0) =      ************
   energy  without entropy=      -19.26679174  energy(sigma->0) =      -19.25906120
   energy  without entropy=      -19.27976705  energy(sigma->0) =      -19.27203651"#;
-        Outcar::parse_toten_z(&input);
+        Outcar::parse_toten_z(input);
     }
 
     #[test]
@@ -1259,7 +1259,7 @@ mod tests{
      LOOP+:  cpu time11866.4177: real time11898.1576
      LOOP+:  cpu time    1.2788: real time    1.2670"#;
         let output = vec![2.0863, 1.1865, 1544.6603, 11898.1576, 1.2670];
-        assert_eq!(Outcar::parse_cputime(&input), output);
+        assert_eq!(Outcar::parse_cputime(input), output);
     }
 
     #[test]
@@ -1273,7 +1273,7 @@ mod tests{
      LOOP+:  cpu time    1.2021: real time    1.1865
      LOOP+:  cpu time 1543.2679: real time 1544.6603
      LOOP+:  cpu time    1.2788: real time    1.2670"#;
-        Outcar::parse_cputime(&input);
+        Outcar::parse_cputime(input);
     }
 
     #[test]
@@ -1298,7 +1298,7 @@ mod tests{
                  [ 0.000000,  0.120085, 0.000000]]
         );
 
-        assert_eq!(Outcar::_parse_posforce_single_iteration(&input), output);
+        assert_eq!(Outcar::_parse_posforce_single_iteration(input), output);
     }
 
     #[test]
@@ -1369,7 +1369,7 @@ mod tests{
                       [-0.514057, -0.128362, 0.000000]]
             ]
         );
-        assert_eq!(Outcar::parse_posforce(&input), output);
+        assert_eq!(Outcar::parse_posforce(input), output);
     }
 
     #[test]
@@ -1381,7 +1381,7 @@ mod tests{
  E-fermi :-200.7865     XC(G=0):  -2.0223     alpha+bet : -0.5051
 "#;
         let output = -200.7865f64;
-        assert_eq!(Outcar::parse_efermi(&input), output);
+        assert_eq!(Outcar::parse_efermi(input), output);
     }
 
     #[test]
@@ -1391,7 +1391,7 @@ mod tests{
    k-points           NKPTS =      1   k-points in BZ     NKDIM =      1   number of bands    NBANDS=      8
    number of dos      NEDOS =    301   number of ions     NIONS =      4"#;
         let output = (1i32, 8i32);
-        assert_eq!(Outcar::parse_nkpts_nbands(&input), output);
+        assert_eq!(Outcar::parse_nkpts_nbands(input), output);
     }
 
     #[test]
@@ -1406,7 +1406,7 @@ mod tests{
         let output = [[6.0, 0.0, 0.0],
                       [0.0, 7.0, 0.0],
                       [0.0, 0.0, 8.0]];
-        assert_eq!(Outcar::parse_cell(&input), output);
+        assert_eq!(Outcar::parse_cell(input), output);
 
         let input = r#"
   energy-cutoff  :      194.45
@@ -1418,7 +1418,7 @@ mod tests{
         let output = [[32.525610787, -18.778670143,         0.0],
                       [         0.0,  37.557340287,         0.0],
                       [         0.0,   0.0        , 24.71775999]];
-        assert_eq!(Outcar::parse_cell(&input), output);
+        assert_eq!(Outcar::parse_cell(input), output);
     }
 
     #[test]
@@ -1461,7 +1461,7 @@ mod tests{
         let output = vec![ [[6.0, 0.0, 0.0],
                             [0.0, 7.0, 0.0],
                             [0.0, 0.0, 8.0]]; 2];
-        assert_eq!(Outcar::parse_opt_cells(&input), output);
+        assert_eq!(Outcar::parse_opt_cells(input), output);
     }
 
     #[test]
@@ -1471,7 +1471,7 @@ mod tests{
    ions per type =               3   1
  NGX,Y,Z   is equivalent  to a cutoff of   8.31,  8.55,  8.31 a.u. "#;
         let output = vec![3i32, 1];
-        assert_eq!(Outcar::parse_ions_per_type(&input), output);
+        assert_eq!(Outcar::parse_ions_per_type(input), output);
     }
 
 
@@ -1494,7 +1494,7 @@ mod tests{
    LEXCH  = PE
    EATOM  =   264.5486 eV,   19.4438 Ry"#;
         let output = vec!["H", "N"];
-        assert_eq!(Outcar::parse_ion_types(&input), output);
+        assert_eq!(Outcar::parse_ion_types(input), output);
     }
 
 
@@ -1510,7 +1510,7 @@ mod tests{
   free  energy   TOTEN  =       -19.26550806 eV
   energy  without entropy=      -19.27710387  energy(sigma->0) =      -19.26937333 "#;
         let output = 23i32;
-        assert_eq!(Outcar::_parse_nscf(&input), output);
+        assert_eq!(Outcar::_parse_nscf(input), output);
     }
 
     #[test]
@@ -1546,7 +1546,7 @@ mod tests{
   energy  without entropy=      -19.27976705  energy(sigma->0) =      -19.27203651
 "#;
         let output = vec![23, 13, 13];
-        assert_eq!(Outcar::parse_nscfs(&input), output);
+        assert_eq!(Outcar::parse_nscfs(input), output);
     }
 
     #[test]
@@ -1561,7 +1561,7 @@ mod tests{
   in kB      -4.56989    -7.18734    -4.04843     1.18589     0.00000     0.00000
   external pressure =       -5.27 kB  Pullay stress =        0.00 kB"#;
         let output = vec![-6.17, -7.03, -5.27];
-        assert_eq!(Outcar::parse_stress(&input), output);
+        assert_eq!(Outcar::parse_stress(input), output);
     }
 
     #[test]
@@ -1574,7 +1574,7 @@ mod tests{
    ISIF   =      2    stress and relaxation
 "#;
         let output = 5i32;
-        assert_eq!(Outcar::parse_ibrion(&input), output);
+        assert_eq!(Outcar::parse_ibrion(input), output);
     }
 
     #[test]
@@ -1584,7 +1584,7 @@ mod tests{
    LSORBIT =      F    spin-orbit coupling
    INIWAV =      1    electr: 0-lowe 1-rand  2-diag "#;
         let output = false;
-        assert_eq!(Outcar::parse_lsorbit(&input), output);
+        assert_eq!(Outcar::parse_lsorbit(input), output);
     }
 
 
@@ -1599,7 +1599,7 @@ mod tests{
   energy  without entropy=     -391.77828290  energy(sigma->0) =     -391.78611850
 "#;
         let output = vec![Some(vec![42.0005098f64])];
-        assert_eq!(Outcar::parse_magmoms(&input), output);
+        assert_eq!(Outcar::parse_magmoms(input), output);
 
 
         let input = r#"
@@ -1611,7 +1611,7 @@ mod tests{
   energy  without entropy=     -391.77828290  energy(sigma->0) =     -391.78611850
 "#;
         let output = vec![Some(vec![42.0005098f64; 3])];
-        assert_eq!(Outcar::parse_magmoms(&input), output);
+        assert_eq!(Outcar::parse_magmoms(input), output);
 
 
         let input = r#"
@@ -1623,7 +1623,7 @@ mod tests{
   energy  without entropy=     -391.77828290  energy(sigma->0) =     -391.78611850
 "#;
         let output = vec![None];
-        assert_eq!(Outcar::parse_magmoms(&input), output);
+        assert_eq!(Outcar::parse_magmoms(input), output);
 
 
         let input = r#"
@@ -1649,7 +1649,7 @@ mod tests{
   energy  without entropy=     -391.77828290  energy(sigma->0) =     -391.78611850
 "#;
         let output = vec![Some(vec![42.0005098f64; 3]); 3];
-        assert_eq!(Outcar::parse_magmoms(&input), output);
+        assert_eq!(Outcar::parse_magmoms(input), output);
     }
 
     #[test]
@@ -1663,7 +1663,7 @@ mod tests{
   free  energy   TOTEN  =      -391.79003630 eV
   energy  without entropy=     -391.77828290  energy(sigma->0) =     -391.78611850
 "#;
-        Outcar::parse_magmoms(&input);
+        Outcar::parse_magmoms(input);
     }
 
     #[test]
@@ -1699,7 +1699,7 @@ mod tests{
             .chain(vec![22.990].into_iter())
             .collect::<Vec<_>>();
 
-        assert_eq!(Outcar::parse_ion_masses(&input), output);
+        assert_eq!(Outcar::parse_ion_masses(input), output);
     }
 
     #[test]
@@ -1710,7 +1710,7 @@ mod tests{
    3 f  =  102.881683 THz   646.424679 2PiTHz 3431.763448 cm-1   425.484593 meV
         "#;
         let output = Some(3i32);
-        assert_eq!(Outcar::_parse_dof(&input), output);
+        assert_eq!(Outcar::_parse_dof(input), output);
     }
 
     #[test]
@@ -1728,7 +1728,7 @@ mod tests{
                                           [ 0.577337,  -0.346802,  -0.000001],
                                           [-0.304117,  -0.000127,  -0.000000]], false);
 
-        assert_eq!(Outcar::_parse_single_vibmode(&input), output);
+        assert_eq!(Outcar::_parse_single_vibmode(input), output);
 
         let input = r#"
   10 f/i=    0.022552 THz     0.141700 2PiTHz    0.752260 cm-1     0.093268 meV
@@ -1743,7 +1743,7 @@ mod tests{
                                           [-0.000118,   0.242678,  -0.002057],
                                           [-0.000027,   0.242662,  -0.002062],
                                           [-0.000445,   0.907339,  -0.007730]], true);
-        assert_eq!(Outcar::_parse_single_vibmode(&input), output);
+        assert_eq!(Outcar::_parse_single_vibmode(input), output);
     }
 
     #[test]
@@ -1852,7 +1852,7 @@ mod tests{
                  .collect::<Vec<_>>()
         );
 
-        assert_eq!(Outcar::parse_vibrations(&input), output);
+        assert_eq!(Outcar::parse_vibrations(input), output);
 
 
         let input = r#"
@@ -1877,7 +1877,7 @@ mod tests{
   LATTYP: Found a simple orthorhombic cell.
 "#;
         let output = None;
-        assert_eq!(Outcar::parse_vibrations(&input), output);
+        assert_eq!(Outcar::parse_vibrations(input), output);
     }
 
     #[test]
@@ -1917,10 +1917,10 @@ Direct
                 [3.00000000, 3.50000000, 4.00000000],
             ],
             frac_pos: vec![
-                [0.64620000000000000, 0.57360000000000000, 0.50000000],
-                [0.50000000000000000, 0.35469999999999996, 0.50000000],
-                [0.35379999999999995, 0.57360000000000000, 0.50000000],
-                [0.50000000000000000, 0.50000000000000000, 0.50000000],
+                [0.646_2, 0.573_6, 0.50000000],
+                [0.5, 0.35469999999999996, 0.50000000],
+                [0.35379999999999995, 0.573_6, 0.50000000],
+                [0.5, 0.5, 0.50000000],
             ],
             constr: None,
         }
