@@ -1,5 +1,10 @@
 # Summary
 
+[Introduction](./prefix.md)
+[Installation](./install.md)
+
+---
+
 - [Relaxation](./Relaxation.md)
 - [Density of States](./DOS.md)
 - [Band Structure](./Band.md)

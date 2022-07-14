@@ -8,7 +8,8 @@
 
 ## Help Message
 
-```
+```shell
+$ rsgrad traj --help
 rsgrad-traj
 Operations about relaxation/MD trajectory.
 
