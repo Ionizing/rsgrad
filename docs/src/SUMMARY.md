@@ -1,7 +1,7 @@
 # Summary
 
-[Introduction](./prefix.md)
-[Installation](./install.md)
+[Introduction](./Introduction.md)
+[Installation](./Installation.md)
 
 ---
 
@@ -16,3 +16,8 @@
 - [Workfunction](./Workfunction.md)
 - [POSCAR](./POSCAR.md)
 - [POTCAR](./POTCAR.md)
+
+---
+
+[Feedback](./Feedback.md)
+[Acknowledgements](./Acknowledgements.md)

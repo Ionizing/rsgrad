@@ -69,7 +69,17 @@ is written to `pband.toml` by default:
 This command can calculate total DOS only. To calculate projected DOS,
 use configuration instead (see next section).
 
-![](./DOS-example.png)
+```shell
+$ rsgrad dos
+[2022-07-14T18:42:55Z INFO  rsgrad::commands::dos] Parsing PROCAR file "./PROCAR"
+[2022-07-14T18:42:55Z INFO  rsgrad::commands::dos] Parsing OUTCAR file "./OUTCAR" for Fermi level
+[2022-07-14T18:42:55Z INFO  rsgrad::commands::dos] Found Fermi level = -1.9018, eigenvalues will be shifted.
+[2022-07-14T18:42:55Z INFO  rsgrad::commands::dos] Plotting Total DOS ...
+[2022-07-14T18:42:55Z INFO  rsgrad::commands::dos] Total DOS plot time usage: 29.055µs
+[2022-07-14T18:42:55Z INFO  rsgrad::commands::dos] Writing DOS plot to "dos.html"
+[2022-07-14T18:42:55Z INFO  rsgrad::commands::dos] Writing raw DOS data to "dos_raw.txt"
+[2022-07-14T18:42:55Z INFO  rsgrad] Time used: 124.426652ms
+```
 
 The output html should be like something in the following
 
@@ -100,7 +110,20 @@ atoms   = "3 6 10 14 21 23 25 33 36"
 ```
 then `rsgrad dos -c pdos.toml`
 
-![](./DOS-PDOS-example.png)
+```shell
+$ rsgrad dos -c pdos.toml
+[2022-07-14T18:43:34Z INFO  rsgrad::commands::dos] Reading PDOS configuration from Some("pdos.toml")
+[2022-07-14T18:43:34Z INFO  rsgrad::commands::dos] Parsing PROCAR file "PROCAR"
+[2022-07-14T18:43:34Z INFO  rsgrad::commands::dos] Parsing OUTCAR file "OUTCAR" for Fermi level
+[2022-07-14T18:43:34Z INFO  rsgrad::commands::dos] Found Fermi level = -1.9018, eigenvalues will be shifted.
+[2022-07-14T18:43:34Z INFO  rsgrad::commands::dos] Plotting Total DOS ...
+[2022-07-14T18:43:34Z INFO  rsgrad::commands::dos] Total DOS plot time usage: 42.878µs
+[2022-07-14T18:43:34Z INFO  rsgrad::commands::dos] Plotting PDOS ...
+[2022-07-14T18:43:34Z INFO  rsgrad::commands::dos] PDOS plot time usage: 6.223076ms
+[2022-07-14T18:43:34Z INFO  rsgrad::commands::dos] Writing DOS plot to "dos.html"
+[2022-07-14T18:43:34Z INFO  rsgrad::commands::dos] Writing raw DOS data to "dos_raw.txt"
+[2022-07-14T18:43:34Z INFO  rsgrad] Time used: 61.982958ms
+```
 
 you will get something in the following
 

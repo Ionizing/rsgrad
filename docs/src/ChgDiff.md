@@ -49,7 +49,15 @@ OPTIONS:
 You need to calculate the electronic structure of the three structures (A+B, A and B) first,
 then `rsgrad chgdiff CHGCAR_A+B CHGCAR_A CHGCAR_B` like
 
-![](./ChgDiff-example.png)
+```shell
+$ rsgrad chgdiff ../scf/CHGCAR Ag/CHGCAR noAg/CHGCAR
+[2022-07-14T18:34:59Z INFO  rsgrad::commands::chgdiff] Reading charge density from "Ag/CHGCAR"
+[2022-07-14T18:34:59Z INFO  rsgrad::commands::chgdiff] Reading charge density from "noAg/CHGCAR"
+[2022-07-14T18:34:59Z INFO  rsgrad::commands::chgdiff] Reading charge density from "../scf/CHGCAR"
+[2022-07-14T18:35:06Z INFO  rsgrad::commands::chgdiff] Calculating charge density difference by `CHGDIFF = "../scf/CHGCAR" - ("Ag/CHGCAR" + "noAg/CHGCAR")`
+[2022-07-14T18:35:06Z INFO  rsgrad::commands::chgdiff] Writing charge difference to "CHGDIFF.vasp"
+[2022-07-14T18:35:10Z INFO  rsgrad] Time used: 11.189259653s
+```
 
 finally use _VESTA_ to visualize the data
 

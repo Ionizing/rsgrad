@@ -67,7 +67,17 @@ OPTIONS:
 
 Simply run `rsgrad band` can plot the band structure. 
 
-![](./Band-example.png)
+```shell
+$ rsgrad band
+[2022-07-14T18:40:18Z INFO  rsgrad::commands::band] Reading fermi level and lattice data from "./OUTCAR"
+[2022-07-14T18:40:18Z INFO  rsgrad::commands::band] Reading band data from "./PROCAR"
+[2022-07-14T18:40:18Z INFO  rsgrad::commands::band] Found Fermi level: 12.7626, shifting eigenvalues ...
+[2022-07-14T18:40:18Z WARN  rsgrad::commands::band] No k-point labels found, use empty labels instead
+[2022-07-14T18:40:18Z INFO  rsgrad::commands::band] Plotting raw bands ...
+[2022-07-14T18:40:18Z INFO  rsgrad::commands::band] Writing Bandstructure to "band.html"
+[2022-07-14T18:40:18Z INFO  rsgrad::commands::band] Writing raw band data to "band_raw.txt"
+[2022-07-14T18:40:18Z INFO  rsgrad] Time used: 79.644034ms
+```
 
 There may be a warning reminds you provide the labels of each high-symmetry point.  
 `rsgrad` identifies high-symmetry points by calculate the difference of consecutive k-points.
@@ -123,7 +133,20 @@ With the configuration in the following
 
 and run `rsgrad -c pband.toml`
 
-![](./Band-example-configuration.png)
+```shell
+$ rsgrad band -c pband.toml
+[2022-07-14T18:41:02Z INFO  rsgrad::commands::band] Reading porjected band configuration fomr Some("pband.toml")
+[2022-07-14T18:41:02Z INFO  rsgrad::commands::band] Reading fermi level and lattice data from "OUTCAR"
+[2022-07-14T18:41:02Z INFO  rsgrad::commands::band] Reading band data from "PROCAR"
+[2022-07-14T18:41:02Z INFO  rsgrad::commands::band] Found Fermi level: 12.7626, shifting eigenvalues ...
+[2022-07-14T18:41:02Z INFO  rsgrad::commands::band] Plotting raw bands ...
+[2022-07-14T18:41:02Z INFO  rsgrad::commands::band] Plotting projected bands ...
+[2022-07-14T18:41:02Z INFO  rsgrad::commands::band] Writting projected band Si-p-orbit to "pband_raw_Si-p-orbit.txt" ...
+[2022-07-14T18:41:02Z INFO  rsgrad::commands::band] Projected band plot time usage: 1.220401ms
+[2022-07-14T18:41:02Z INFO  rsgrad::commands::band] Writing Bandstructure to "band.html"
+[2022-07-14T18:41:02Z INFO  rsgrad::commands::band] Writing raw band data to "pband_raw.txt"
+[2022-07-14T18:41:02Z INFO  rsgrad] Time used: 77.804627ms
+```
 
 then it produces
 

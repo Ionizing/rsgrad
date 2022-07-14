@@ -69,9 +69,20 @@ OPTIONS:
 
 - Take the last step and save as _XSF_ file  
 `rsgrad traj -i -1 -x`
-![](./Trajectory-example-xsf0.png)
+
+```shell
+$ rsgrad traj -i -1 -x
+[2022-07-14T18:37:35Z INFO  rsgrad::commands::traj] Parsing file "./OUTCAR" and "./POSCAR"
+[2022-07-14T18:37:35Z INFO  rsgrad::vasp_parsers::outcar] Saving ionic step to "./step_0003.xsf" ...
+[2022-07-14T18:37:35Z INFO  rsgrad] Time used: 11.223561ms
+```
 ![](./Trajectory-example-xsf1.png)
 
 - Take the first step and save as _POSCAR_ file  
-`rsgrad traj -i 0 -p`
-![](./Trajectory-example-poscar0.png)
+`rsgrad traj -i 1 -s`
+```shell
+$ rsgrad traj -i 1 -s
+[2022-07-14T18:38:51Z INFO  rsgrad::commands::traj] Parsing file "./OUTCAR" and "./POSCAR"
+[2022-07-14T18:38:51Z INFO  rsgrad::vasp_parsers::outcar] Saving trajectory step #    1 to "./POSCAR_00001.vasp" ...
+[2022-07-14T18:38:51Z INFO  rsgrad] Time used: 8.64197ms
+```
