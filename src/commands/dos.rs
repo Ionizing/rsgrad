@@ -400,7 +400,7 @@ impl OptProcess for Dos {
         let method     = config.as_ref().map(|cfg| cfg.method).unwrap_or( SmearingMethod::Gaussian );
         let is_totdos  = config.as_ref().map(|cfg| cfg.totdos).unwrap_or(true);
         let to_fill    = config.as_ref().map(|cfg| cfg.fill).unwrap_or(true);
-        let xlim       = config.as_ref().map(|cfg| vec![cfg.xlim.0, cfg.xlim.1]).unwrap_or(self.xlim.clone());
+        let xlim       = config.as_ref().map(|cfg| vec![cfg.xlim.0, cfg.xlim.1]).unwrap_or_else(|| self.xlim.clone());
         //let ylim       = config.as_ref().map(|cfg| cfg.ylim.map(|lim| vec![lim.0, lim.1])).flatten().or(self.ylim.clone());
         let sample_density = config.as_ref().map(|cfg| cfg.sample_density).unwrap_or(self.sample_density);
 

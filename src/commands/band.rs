@@ -726,7 +726,7 @@ impl OptProcess for Band {
         let colormap        = config.as_ref().map(|cfg| &cfg.colormap).unwrap_or(&self.colormap);
         let kpoint_labels   = config.as_ref().map(|cfg| &cfg.kpoint_labels).unwrap_or(&self.kpoint_labels);
         let segment_ranges  = config.as_ref().map(|cfg| &cfg.segment_ranges).unwrap_or(&None);
-        let ylim            = config.as_ref().map(|cfg| vec![cfg.ylim.0, cfg.ylim.1]).unwrap_or(self.ylim.clone());
+        let ylim            = config.as_ref().map(|cfg| vec![cfg.ylim.0, cfg.ylim.1]).unwrap_or_else(|| self.ylim.clone());
 
 
         let mut procar: Result<Procar> = Err(anyhow!(""));
