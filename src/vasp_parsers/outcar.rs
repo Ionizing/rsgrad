@@ -183,7 +183,7 @@ impl Outcar {
         assert_eq!(forcev.len()   , len, "Init failed due to incomplete OUTCAR");
         assert_eq!(cellv.len()    , len, "Init failed due to incomplete OUTCAR");
 
-        if ext_pressure.len() == 0 {
+        if ext_pressure.is_empty() {
             warn!("No external pressure data found.");
             ext_pressure = vec![0.0f64; totenv.len()];
         }

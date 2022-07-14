@@ -893,7 +893,8 @@ impl fmt::Display for Wavecar {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "{:<10} = {:>20}",      "LENGTH",   self.file_len)?;
         writeln!(f, "{:<10} = {:>20}",      "RECLEN",   self.rec_len)?;
-        writeln!(f, "{:<10} = {:>20}",      "TYPE",     self.wavecar_type)?;
+        #[allow(clippy::to_string_in_format_args)]
+        writeln!(f, "{:<10} = {:>20}",      "TYPE",     self.wavecar_type.to_string())?;
         writeln!(f, "{:<10} = {:>20}",      "NSPIN",    self.nspin)?;
         writeln!(f, "{:<10} = {:>20}",      "NKPTS",    self.nkpoints)?;
         writeln!(f, "{:<10} = {:>20}",      "NBANDS",   self.nbands)?;

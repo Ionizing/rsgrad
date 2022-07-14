@@ -131,6 +131,7 @@ I suggest you provide `gamma_half` argument to avoid confusion.");
 
         if self.list {
             println!("{}", wav);
+            return Ok(())
         }
 
         info!("Reading POSCAR: {:?}", &self.poscar);
