@@ -20,6 +20,7 @@ jobs:
       run: |
         # This assumes your book is in the root of your repository.
         # Just add a `cd` here if you need to change to another directory.
+        cd docs
         mdbook build
         mkdir gh-pages
         git worktree add gh-pages gh-pages
