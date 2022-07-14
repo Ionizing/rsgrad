@@ -14,7 +14,9 @@ use clap::{
 
 #[derive(Debug, Parser)]
 #[clap(name = "rsgrad",
-            about = "A tool used to track the VASP calculation result",
+            about = r"A command-line tool to help VASP players play better with VASP.
+If you want more detailed documentation, just visit https://ionizing.github.io/rsgrad", 
+            version,
             author = "@Ionizing github.com/Ionizing/rsgrad",
             setting = AppSettings::ColoredHelp,
             setting = AppSettings::ColorAuto,
