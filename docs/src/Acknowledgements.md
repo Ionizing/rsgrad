@@ -5,4 +5,3 @@
 - [RustFFT](https://github.com/ejmahler/RustFFT) and [ndrustfft](https://github.com/preiter93/ndrustfft):
 These two crates make `wav3d` and `wav1d` become possible.
 - [plotly.rs](https://github.com/igiagkiozis/plotly): This crate makes the visualization possible.
-- ~~Supervisor: Provides loose research atmosphere in the lab and allows me to loaf on the job to create this project~~.
