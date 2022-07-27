@@ -584,6 +584,7 @@ impl Wavecar {
     }
 
 
+    /// Indices starts from 0
     pub fn read_wavefunction(&self,
                              ispin: u64,
                              ikpoint: u64,
@@ -886,6 +887,28 @@ impl Wavecar {
     }
 
 
+    // Read wavefunction coefficients and convert to Array1<Complex64>
+    fn _wav_kspace(&self, ispin: u64, ikpoint: u64, iband: u64) -> Array2<Complex<f64>> {
+        let wav = self.read_wavefunction(ispin, ikpoint, iband).unwrap();
+        match wav {
+            _ => todo!()
+        }
+        todo!()
+    }
+
+
+    pub fn transition_dipole_moment(&self, ispin: u64, ikpoint: u64, iniband: u64, finband: u64) -> MatX3<Complex<f64>> {
+        self.check_indices(ispin, ikpoint, iniband).unwrap();
+        self.check_indices(ispin, ikpoint, finband).unwrap();
+        assert!(iniband != finband);
+
+        let gvecs = self.generate_fft_grid(ikpoint);
+
+        let phi_i = self.read_wavefunction(ispin, ikpoint, iniband);
+        let phi_j = self.read_wavefunction(ispin, ikpoint, finband);
+
+        todo!()
+    }
 }
 
 
