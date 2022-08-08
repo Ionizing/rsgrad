@@ -25,6 +25,7 @@ use byteorder::{
     LittleEndian,
 };
 use ndarray::{
+    self,
     Array1,
     Array2,
     Array3,
@@ -61,6 +62,7 @@ const PIx2:         f64 = PI * 2.0;
 //const HBAR:         f64 = H_PLANCK / PIx2;
 const RY_TO_EV:     f64 = 13.605693009;
 const AU_TO_A:      f64 = 0.529177249;
+const AU_TO_DEBYE:  f64 = 2.541746;
 const HBAR2D2ME:    f64 = RY_TO_EV * AU_TO_A * AU_TO_A;
 
 
@@ -888,26 +890,81 @@ impl Wavecar {
 
 
     // Read wavefunction coefficients and convert to Array1<Complex64>
-    fn _wav_kspace(&self, ispin: u64, ikpoint: u64, iband: u64) -> Array2<Complex<f64>> {
+    fn _wav_kspace(&self, ispin: u64, ikpoint: u64, iband: u64, nplw: usize) -> Array2<Complex<f64>> {
         let wav = self.read_wavefunction(ispin, ikpoint, iband).unwrap();
         match wav {
-            _ => todo!()
+            Wavefunction::Complex32Array1(wf) => {
+                wf.mapv(|x| Complex::<f64>::new(x.re as f64, x.im as f64))
+                    .into_shape((1, nplw))
+            },
+            Wavefunction::Complex64Array1(wf) => {
+                wf.into_shape((1, nplw))
+            },
+            Wavefunction::Float64Array3(wf) => {
+                wf.mapv(|x| Complex::<f64>::new(x, 0.0))
+                    .into_shape((1, nplw))
+            },
+            Wavefunction::Ncl32Array2(wf) => {
+                wf.mapv(|x| Complex::<f64>::new(x.re as f64, x.im as f64))
+                    .into_shape((2, nplw))
+            }
+            Wavefunction::Ncl64Array2(wf) => {
+                wf.into_shape((2, nplw))
+            }
+            _ => panic!("Unexpected wavefunction type passed to '_wav_kspace'.")
         }
-        todo!()
+        .unwrap()
     }
 
 
-    pub fn transition_dipole_moment(&self, ispin: u64, ikpoint: u64, iniband: u64, finband: u64) -> MatX3<Complex<f64>> {
+    // All indices starts from 0
+    pub fn transition_dipole_moment(&self, ispin: u64, ikpoint: u64, iniband: u64, finband: u64) -> [Complex<f64>; 3] {
         self.check_indices(ispin, ikpoint, iniband).unwrap();
         self.check_indices(ispin, ikpoint, finband).unwrap();
         assert!(iniband != finband);
 
-        let gvecs = self.generate_fft_grid(ikpoint);
+        #[allow(non_snake_case)]
+        let dE = self.band_eigs[(ispin as usize, ikpoint as usize, finband as usize)] - 
+                 self.band_eigs[(ispin as usize, ikpoint as usize, iniband as usize)];
 
-        let phi_i = self.read_wavefunction(ispin, ikpoint, iniband);
-        let phi_j = self.read_wavefunction(ispin, ikpoint, finband);
+        let kvec = self.kvecs.row(ikpoint as usize);
+        let gvecs = self.generate_fft_grid(ikpoint)
+            .into_iter()
+            .map(|[gx, gy, gz]| [gx as f64 + kvec[0], gy as f64 + kvec[1], gz as f64 + kvec[1]])
+            .collect::<Vec<_>>();
+        let gvecs = arr2(&gvecs)
+            .dot(&(arr2(&self.bcell) * PIx2))
+            .mapv(|v| Complex::<f64>::new(v, 0.0));
 
-        todo!()
+        let nplw = gvecs.shape()[0];
+        let nspinor = if WavecarType::NonCollinear == self.wavecar_type {
+            2
+        } else {
+            1
+        };
+        assert_eq!(nplw * nspinor, self.nplws[ikpoint as usize] as usize);
+
+        let phi_i = self._wav_kspace(ispin, ikpoint, iniband, nplw);
+        let phi_j = self._wav_kspace(ispin, ikpoint, finband, nplw);
+
+        let olap = match self.wavecar_type {
+            WavecarType::Standard | WavecarType::NonCollinear => {
+                phi_j.mapv_into(|v| v.conj()) * phi_i  // phi_j.conj() .* phi_i
+            },
+            _ => {
+                phi_j.mapv(|v| v.conj()) * &phi_i - phi_i.mapv(|v| v.conj()) * phi_j  // phi_j.conj() .* phi_i .- phi_i.conj() .* phi_j
+            }
+        };
+
+        
+        let tdm = (
+                olap.dot(&gvecs)    // <phi_j | k | phi_i>
+                .sum_axis(ndarray::Axis(0))
+                * Complex::<f64>::i()
+            )
+            .mapv_into(|v| v.scale(AU_TO_A * AU_TO_DEBYE * 2.0 * RY_TO_EV / dE));
+
+        [tdm[0], tdm[1], tdm[2]]
     }
 }
 

@@ -10,3 +10,4 @@ pub mod wav3d;
 pub mod wav1d;
 pub mod chgdiff;
 pub mod common;
+pub mod tdm;

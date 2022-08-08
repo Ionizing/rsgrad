@@ -23,60 +23,64 @@ If you want more detailed documentation, just visit https://ionizing.github.io/r
             )]
 enum Opt {
     #[clap(setting = AppSettings::ColoredHelp,
-                setting = AppSettings::ColorAuto)]
+           setting = AppSettings::ColorAuto)]
     Rlx(commands::rlx::Rlx),
 
 
     #[clap(setting = AppSettings::ColoredHelp,
-                setting = AppSettings::ColorAuto)]
+           setting = AppSettings::ColorAuto)]
     Vib(commands::vib::Vib),
 
 
     #[clap(setting = AppSettings::ColoredHelp,
-                setting = AppSettings::ColorAuto)]
+           setting = AppSettings::ColorAuto)]
     Traj(commands::traj::Traj),
 
 
     #[clap(setting = AppSettings::ColoredHelp,
-                setting = AppSettings::ColorAuto)]
+           setting = AppSettings::ColorAuto)]
     Pos(commands::pos::Pos),
 
 
     #[clap(setting = AppSettings::ColoredHelp,
-                setting = AppSettings::ColorAuto)]
+           setting = AppSettings::ColorAuto)]
     Pot(commands::pot::Pot),
 
 
     #[clap(setting = AppSettings::ColoredHelp,
-                setting = AppSettings::ColorAuto)]
+           setting = AppSettings::ColorAuto)]
     Chgdiff(commands::chgdiff::Chgdiff),
 
 
     #[clap(setting = AppSettings::ColoredHelp,
-                setting = AppSettings::ColorAuto)]
+           setting = AppSettings::ColorAuto)]
     Workfunc(commands::workfunc::Workfunc),
 
 
     #[clap(setting = AppSettings::ColoredHelp,
-                setting = AppSettings::ColorAuto)]
+           setting = AppSettings::ColorAuto)]
     Dos(commands::dos::Dos),
 
 
     #[clap(setting = AppSettings::ColoredHelp,
-                setting = AppSettings::ColorAuto)]
+           setting = AppSettings::ColorAuto)]
     Band(commands::band::Band),
 
 
     #[clap(setting = AppSettings::ColoredHelp,
-                setting = AppSettings::ColorAuto,
-                name = "wav3d")]
+           setting = AppSettings::ColorAuto,
+           name = "wav3d")]
     Wav3D(commands::wav3d::Wav3D),
 
 
     #[clap(setting = AppSettings::ColoredHelp,
-                setting = AppSettings::ColorAuto,
-                name = "wav1d")]
+           setting = AppSettings::ColorAuto,
+           name = "wav1d")]
     Wav1D(commands::wav1d::Wav1D),
+
+    #[clap(setting = AppSettings::ColoredHelp,
+           setting = AppSettings::ColorAuto)]
+    Tdm(commands::tdm::Tdm),
 }
 
 
@@ -98,6 +102,7 @@ fn main() -> Result<()> {
         Opt::Band(cmd)      => cmd.process()?,
         Opt::Wav3D(cmd)     => cmd.process()?,
         Opt::Wav1D(cmd)     => cmd.process()?,
+        Opt::Tdm(cmd)       => cmd.process()?,
     }
 
     info!("Time used: {:?}", now.elapsed());
