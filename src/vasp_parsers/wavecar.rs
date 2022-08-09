@@ -930,7 +930,7 @@ impl Wavecar {
         let kvec = self.kvecs.row(ikpoint as usize);
         let gvecs = self.generate_fft_grid(ikpoint)
             .into_iter()
-            .map(|[gx, gy, gz]| [gx as f64 + kvec[0], gy as f64 + kvec[1], gz as f64 + kvec[1]])
+            .map(|[gx, gy, gz]| [gx as f64 + kvec[0], gy as f64 + kvec[1], gz as f64 + kvec[2]])
             .collect::<Vec<_>>();
         let gvecs = arr2(&gvecs)
             .dot(&(arr2(&self.bcell) * PIx2))
@@ -952,7 +952,8 @@ impl Wavecar {
                 phi_j.mapv_into(|v| v.conj()) * phi_i  // phi_j.conj() .* phi_i
             },
             _ => {
-                phi_j.mapv(|v| v.conj()) * &phi_i - phi_i.mapv(|v| v.conj()) * phi_j  // phi_j.conj() .* phi_i .- phi_i.conj() .* phi_j
+                (phi_j.mapv(|v| v.conj()) * &phi_i -
+                 phi_i.mapv(|v| v.conj()) * &phi_j) / 2.0 // phi_j.conj() .* phi_i .- phi_i.conj() .* phi_j
             }
         };
 

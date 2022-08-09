@@ -25,7 +25,7 @@ flate2 = "1.0"
 config = { git = "https://github.com/mehcode/config-rs", rev = "68e00251318cc17b1ccfa227f1b108ccab22d5de" }
 directories = "4.0"
 serde = "1.0"
-plotly = { version = "0.7", features = ["plotly_ndarray"] }
+plotly = { git = "https://github.com/Ionizing/plotly", rev = "0b239a224d2b1b28f0b2cdcbec84ff86c79ee03b", features = ["plotly_ndarray"] }
 toml = "0.5"
 indexmap = { version = "1.8", features = ["serde"] }
 rand = "0.8"

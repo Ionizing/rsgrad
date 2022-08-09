@@ -36,7 +36,7 @@ use ndarray::{
 };
 use plotly::{
     self,
-    NamedColor,
+    common::color::NamedColor,
     Plot,
     Scatter,
     common::ColorScalePalette,

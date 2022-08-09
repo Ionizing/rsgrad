@@ -493,7 +493,7 @@ impl OptProcess for Dos {
             let tr = plotly::Scatter::from_array(xvals_plot.clone(), totdos)
                 .mode(plotly::common::Mode::Lines)
                 .marker(plotly::common::Marker::new()
-                        .color(plotly::NamedColor::Gray))
+                        .color(plotly::common::color::NamedColor::Gray))
                 .fill(fill_type.clone())
                 .name("Total DOS");
             plot.add_trace(tr);
