@@ -51,16 +51,6 @@ pub struct Tdm {
     /// processing WAVECAR produced by `vasp_gam`.
     gamma_half: Option<String>,
 
-    #[clap(short, long)]
-    /// Print the brief info of current WAVECAR.
-    list: bool,
-
-    #[clap(short, long)]
-    /// Show the eigen values and band occupations of current WAVECAR.
-    ///
-    /// This flag should be used with `--list`
-    detail: bool,
-
     #[clap(short = 's', long, default_value = "1", possible_values = &["1", "2"])]
     /// Spin index, 1 for up, 2 for down.
     ispin: usize,
@@ -98,8 +88,16 @@ pub struct Tdm {
     htmlout: PathBuf,
 
     #[clap(long)]
+    /// Print the inline HTML to stdout.
+    to_inline_html: bool,
+
+    #[clap(long)]
     /// Open the default browser to show the plot.
     show: bool,
+
+    #[clap(long, default_value = "0.1")]
+    /// Specify the width of bars in the center of peaks. (eV)
+    barwidth: f64,
 }
 
 
@@ -203,15 +201,6 @@ please remove the argument `gamma_half`.")
 I suggest you provide `gamma_half` argument to avoid confusion.");
         }
 
-        if self.list {
-            if self.detail {
-                println!("{:#}", wav);
-            } else {
-                println!("{}", wav);
-            }
-            return Ok(())
-        }
-
 
         let ispin = if self.ispin > 0 && self.ispin <= wav.nspin as usize {
             self.ispin - 1
@@ -257,7 +246,7 @@ I suggest you provide `gamma_half` argument to avoid confusion.");
             tdms.iter()
                 .map(|(iband, jband, eig_i, eig_j, d_e, tx, ty, tz)| {
                     writeln!(&mut txt, "  {:5} {:5} {:7.3} {:7.3} {:7.3}  {:8.3} {:8.3} {:8.3}",
-                             iband, jband, eig_i, eig_j, d_e, tx, ty, tz)?;
+                             iband+1, jband+1, eig_i, eig_j, d_e, tx, ty, tz)?;
                     Ok(())
                 })
                 .collect::<Result<()>>()?;
@@ -279,10 +268,18 @@ I suggest you provide `gamma_half` argument to avoid confusion.");
         let tys = tdms.iter().map(|t| t.6).collect::<Vec<f64>>();
         let tzs = tdms.iter().map(|t| t.7).collect::<Vec<f64>>();
 
-        for (label, t) in [("Tx", txs), ("Ty", tys), ("Tz", tzs)] {
+        let hover_template_array = tdms.iter()
+            .map(|(iband, jband, _, _, de, _, _, _)| {
+                format!("{}->{},dE={:.3}eV<br>%{{y:.4f}}Debye", iband+1, jband+1, de)
+            })
+            .collect::<Vec<String>>();
+
+        for (label, t, color) in [("Tx", txs, "#1f77b4"), ("Ty", tys, "#ff7f0e"), ("Tz", tzs, "#2ca02c")] {
             let tr = plotly::Bar::new(des.clone(), t)
-                .width(0.1)
+                .marker(plotly::common::Marker::new().color(color))
+                .width(self.barwidth)
                 .name(label)
+                .hover_template_array(hover_template_array.clone())
                 .legend_group(label);
             plot.add_trace(tr);
         }
@@ -301,16 +298,13 @@ I suggest you provide `gamma_half` argument to avoid confusion.");
             write_array_to_txt(&self.txtout, dat, "E(eV)    Tx(Debye)   Ty(Debye)   Tz(Debye)")?;
         }
 
-        for (label, i) in [("T", 3), ("Tx", 0), ("Ty", 1), ("Tz", 2)] {
+        for (label, i, color) in [("Tx", 0, "#1f77b4"), ("Ty", 1, "#ff7f0e"), ("Tz", 2, "#2ca02c"), ("T", 3, "000000")] {
             let tr = plotly::Scatter::from_array(x.clone(), smeared_tdms[i].clone())
                 .mode(plotly::common::Mode::Lines)
                 .hover_info(plotly::common::HoverInfo::None)
                 .name(label)
-                .legend_group(label);
-            let tr = if 3 == i {
-                tr.marker(plotly::common::Marker::new()
-                          .color(plotly::common::color::NamedColor::Black))
-            } else { tr };
+                .legend_group(label)
+                .marker(plotly::common::Marker::new().color(color));
 
             plot.add_trace(tr);
         }
@@ -323,13 +317,19 @@ I suggest you provide `gamma_half` argument to avoid confusion.");
                     .fixed_range(false))
             .x_axis(plotly::layout::Axis::new()
                     .title(plotly::common::Title::new("Energy (eV)"))
-                    .fixed_range(false));
+                    .fixed_range(false))
+            .hover_mode(plotly::layout::HoverMode::X);
 
         plot.set_layout(layout);
 
         // Write html
         info!("Writing plot to {:?}", &self.htmlout);
         plot.to_html(&self.htmlout);
+
+        if self.to_inline_html {
+            info!("Printing inline HTML to stdout ...");
+            println!("{}", plot.to_inline_html(None));
+        }
 
         if self.show {
             plot.show();
