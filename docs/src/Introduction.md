@@ -17,5 +17,6 @@ Now `rsgrad` provides several features:
     Convert between fractional coordinates and Cartesian coordinates;  
     Format _POSCAR_;
 11. Generate _POTCAR_ according to _POSCAR_.
+12. Calculate Transition Dipole Moment from _WAVECAR_.
 
 Wish you have a good time with `rsgrad` ^\_^
