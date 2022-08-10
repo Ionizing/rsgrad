@@ -16,6 +16,7 @@
 - [Workfunction](./Workfunction.md)
 - [POSCAR](./POSCAR.md)
 - [POTCAR](./POTCAR.md)
+- [Transition Dipole Moment](./TransitionDipoleMoment.md)
 
 ---
 
