@@ -56,11 +56,11 @@ use crate::{
 
 
 // Constants
-const PI:           f64 = std::f64::consts::PI;
+const PI:           f64 = 3.141592653589793238;
 const PIx2:         f64 = PI * 2.0;
 //const H_PLANCK:     f64 = 6.6260755E-34;
 //const HBAR:         f64 = H_PLANCK / PIx2;
-const RY_TO_EV:     f64 = 13.605693009;
+const RY_TO_EV:     f64 = 13.605826;
 const AU_TO_A:      f64 = 0.529177249;
 const AU_TO_DEBYE:  f64 = 2.541746;
 const HBAR2D2ME:    f64 = RY_TO_EV * AU_TO_A * AU_TO_A;
