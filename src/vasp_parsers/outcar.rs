@@ -176,12 +176,12 @@ impl Outcar {
         // Do some check
         let len = totenv.len();
         assert!(len > 0, "At least one complete ionic step is needed.");
-        assert_eq!(nscfv.len()    , len, "Init failed due to incomplete OUTCAR");
-        assert_eq!(toten_zv.len() , len, "Init failed due to incomplete OUTCAR");
-        assert_eq!(cputimev.len() , len, "Init failed due to incomplete OUTCAR");
-        assert_eq!(posv.len()     , len, "Init failed due to incomplete OUTCAR");
-        assert_eq!(forcev.len()   , len, "Init failed due to incomplete OUTCAR");
-        assert_eq!(cellv.len()    , len, "Init failed due to incomplete OUTCAR");
+        assert_eq!(nscfv.len()    , len, "Init failed due to incomplete OUTCAR: nscfv.len()    = {} != {}", nscfv.len(),    len);
+        assert_eq!(toten_zv.len() , len, "Init failed due to incomplete OUTCAR: toten_zv.len() = {} != {}", toten_zv.len(), len);
+        assert_eq!(cputimev.len() , len, "Init failed due to incomplete OUTCAR: cputimev.len() = {} != {}", cputimev.len(), len);
+        assert_eq!(posv.len()     , len, "Init failed due to incomplete OUTCAR: posv.len()     = {} != {}", posv.len(),     len);
+        assert_eq!(forcev.len()   , len, "Init failed due to incomplete OUTCAR: forcev.len()   = {} != {}", forcev.len(),   len);
+        assert_eq!(cellv.len()    , len, "Init failed due to incomplete OUTCAR: cellv.len()    = {} != {}", cellv.len(),    len);
 
         if ext_pressure.is_empty() {
             warn!("No external pressure data found.");
