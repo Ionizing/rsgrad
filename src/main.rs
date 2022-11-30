@@ -78,9 +78,15 @@ enum Opt {
            name = "wav1d")]
     Wav1D(commands::wav1d::Wav1D),
 
+
     #[clap(setting = AppSettings::ColoredHelp,
            setting = AppSettings::ColorAuto)]
     Tdm(commands::tdm::Tdm),
+
+
+    #[clap(setting = AppSettings::ColoredHelp,
+           setting = AppSettings::ColorAuto)]
+    Gap(commands::gap::Gap)
 }
 
 
@@ -103,6 +109,7 @@ fn main() -> Result<()> {
         Opt::Wav3D(cmd)     => cmd.process()?,
         Opt::Wav1D(cmd)     => cmd.process()?,
         Opt::Tdm(cmd)       => cmd.process()?,
+        Opt::Gap(cmd)       => cmd.process()?,
     }
 
     info!("Time used: {:?}", now.elapsed());
