@@ -37,7 +37,7 @@ use crate::{
 /// Find band gap and print positions of VBM and CBM
 pub struct Gap {
     #[clap(long, short = 'w', default_value = "WAVECAR")]
-    /// WAVECAR file name
+    /// WAVECAR file name, no more files needed.
     wavecar: PathBuf,
 
     #[clap(long, short = 'p', default_value = "PROCAR")]
