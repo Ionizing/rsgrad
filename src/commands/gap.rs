@@ -1,13 +1,13 @@
-use std::path::PathBuf;
+use std::{
+    fs,
+    path::PathBuf
+};
 
 use clap::{
     Parser,
     AppSettings,
 };
-use log::{
-    info,
-    warn,
-};
+use log::info;
 use ndarray::{
     Array1,
     Array2,
@@ -22,6 +22,7 @@ use crate::{
     vasp_parsers::{
         wavecar::Wavecar,
         procar::Procar,
+        outcar::GetEFermi,
     },
     types::{
         Result,
@@ -40,38 +41,50 @@ pub struct Gap {
     wavecar: PathBuf,
 
     #[clap(long, short = 'p', default_value = "PROCAR")]
-    /// PROCAR file name
+    /// PROCAR file name, OUTCAR is also needed to get Fermi level
     procar: PathBuf,
+
+    #[clap(long, short = 'o', default_value = "OUTCAR")]
+    /// OUTCAR file name, this file is parsed to get Fermi level only
+    outcar: PathBuf,
+
+    #[clap(long, short = 'e')]
+    /// Specify Fermi level, if left empty, this value would be read from WAVECAR or OUTCAR
+    efermi: Option<f64>,
 }
 
 
 impl Gap {
-    fn bands_from_procar(procar: &Procar) -> (Array3<f64>, Array3<f64>, Array2<f64>) {
-        let eigs = procar.pdos.eigvals.clone();
-        let occs = procar.pdos.occupations.clone();
-        let kvec = procar.kpoints.kpointlist.clone();
+    fn bands_from_procar(procar: Procar, outcar: &PathBuf, efermi: Option<f64>) -> Result<(Array3<f64>, Array3<f64>, Array2<f64>)> {
+        let efermi = efermi.unwrap_or(fs::read_to_string(outcar)?.get_efermi()?);
 
-        (eigs, occs, kvec)
+        let eigs = procar.pdos.eigvals - efermi;
+        let occs = procar.pdos.occupations;
+        let kvec = procar.kpoints.kpointlist;
+
+        Ok((eigs, occs, kvec))
     }
 
-    fn bands_from_wavecar(wavecar: &Wavecar) -> (Array3<f64>, Array3<f64>, Array2<f64>) {
-        let eigs = wavecar.band_eigs.clone();
-        let occs = wavecar.band_fweights.clone();
-        let kvec = wavecar.kvecs.clone();
+    fn bands_from_wavecar(wavecar: Wavecar, efermi: Option<f64>) -> Result<(Array3<f64>, Array3<f64>, Array2<f64>)> {
+        let efermi = efermi.unwrap_or(wavecar.efermi);
 
-        (eigs, occs, kvec)
+        let eigs = wavecar.band_eigs - efermi;
+        let occs = wavecar.band_fweights;
+        let kvec = wavecar.kvecs;
+
+        Ok((eigs, occs, kvec))
     }
 
     //                                       eigs         occs         kvec
     fn get_bands_kpoints(&self) -> Result<(Array3<f64>, Array3<f64>, Array2<f64>)> {
         Wavecar::from_file(&self.wavecar).and_then(|v| {
             info!("Trying to parse {:?} ...", self.wavecar);
-            Ok(Self::bands_from_wavecar(&v))
+            Self::bands_from_wavecar(v, self.efermi)
         })
             .or_else(|_| {
                 Procar::from_file(&self.procar).and_then(|v| {
                     info!("Trying to parse {:?} ...", self.procar);
-                    Ok(Self::bands_from_procar(&v))
+                    Self::bands_from_procar(v, &self.outcar, self.efermi)
                 })
             })
             .with_context(|| format!("Neither WAVECAR nor PROCAR is accessible, please specify a valid WAVECAR or PROCAR"))
@@ -147,11 +160,11 @@ impl OptProcess for Gap {
                                      is_direct.bright_yellow(), format!("{:5.3}", gap).bright_cyan()
                                      ));
             output.push_str(&format!("  CBM @ k-point {:5} of ({:6.3},{:6.3},{:6.3}) , band {:5} of {:8} eV\n",
-                                     cbmik[0], kcbm[0], kcbm[1], kcbm[2], cbidx[(0,0)],
+                                     cbmik[0]+1, kcbm[0], kcbm[1], kcbm[2], cbidx[(0,0)]+1,
                                      format!("{:8.3}", cbeigs[(0, cbmik[0])]).bright_blue()
                                      ));
             output.push_str(&format!("  VBM @ k-point {:5} of ({:6.3},{:6.3},{:6.3}) , band {:5} of {:8} eV\n",
-                                     vbmik[0], kvbm[0], kvbm[1], kvbm[2], cbidx[(0,0)],
+                                     vbmik[0]+1, kvbm[0], kvbm[1], kvbm[2], cbidx[(0,0)]+1,
                                      format!("{:8.3}", vbeigs[(0, vbmik[0])]).bright_blue()
                                      ));
         } else {
@@ -168,11 +181,11 @@ impl OptProcess for Gap {
                                          is_direct.bright_yellow(), format!("{:5.3}", gap).bright_cyan()
                                          ));
                 output.push_str(&format!("  CBM @ k-point {:5} of ({:6.3},{:6.3},{:6.3}) , band {:5} of {:8} eV\n",
-                                         cbmik[ispin], kcbm[0], kcbm[1], kcbm[2], cbidx[(ispin,0)],
+                                         cbmik[ispin]+1, kcbm[0], kcbm[1], kcbm[2], cbidx[(ispin,0)]+1,
                                          format!("{:8.3}", cbeigs[(ispin, cbmik[ispin])]).bright_blue()
                                          ));
                 output.push_str(&format!("  VBM @ k-point {:5} of ({:6.3},{:6.3},{:6.3}) , band {:5} of {:8} eV\n",
-                                         vbmik[ispin], kvbm[0], kvbm[1], kvbm[2], cbidx[(ispin,0)],
+                                         vbmik[ispin]+1, kvbm[0], kvbm[1], kvbm[2], cbidx[(ispin,0)]+1,
                                          format!("{:8.3}", vbeigs[(ispin, vbmik[ispin])]).bright_blue()
                                          ));
             }
