@@ -17,6 +17,7 @@
 - [POSCAR](./POSCAR.md)
 - [POTCAR](./POTCAR.md)
 - [Transition Dipole Moment](./TransitionDipoleMoment.md)
+- [Gap](./Gap.md)
 
 ---
 

@@ -135,7 +135,7 @@ impl OptProcess for Gap {
 
 
         // find vbm
-        let vbeigs = multizip((vbidx, eigs.lanes(Axis(2))))
+        let vbeigs = multizip((vbidx.clone(), eigs.lanes(Axis(2))))
             .map(|(i, v)| v[i])
             .collect::<Array1<f64>>()
             .into_shape((nspin, nkpts)).unwrap();
@@ -164,7 +164,7 @@ impl OptProcess for Gap {
                                      format!("{:8.3}", cbeigs[(0, cbmik[0])]).bright_blue()
                                      ));
             output.push_str(&format!("  VBM @ k-point {:5} of ({:6.3},{:6.3},{:6.3}) , band {:5} of {:8} eV\n",
-                                     vbmik[0]+1, kvbm[0], kvbm[1], kvbm[2], cbidx[(0,0)]+1,
+                                     vbmik[0]+1, kvbm[0], kvbm[1], kvbm[2], vbidx[(0,0)]+1,
                                      format!("{:8.3}", vbeigs[(0, vbmik[0])]).bright_blue()
                                      ));
         } else {
@@ -185,7 +185,7 @@ impl OptProcess for Gap {
                                          format!("{:8.3}", cbeigs[(ispin, cbmik[ispin])]).bright_blue()
                                          ));
                 output.push_str(&format!("  VBM @ k-point {:5} of ({:6.3},{:6.3},{:6.3}) , band {:5} of {:8} eV\n",
-                                         vbmik[ispin]+1, kvbm[0], kvbm[1], kvbm[2], cbidx[(ispin,0)]+1,
+                                         vbmik[ispin]+1, kvbm[0], kvbm[1], kvbm[2], vbidx[(ispin,0)]+1,
                                          format!("{:8.3}", vbeigs[(ispin, vbmik[ispin])]).bright_blue()
                                          ));
             }
