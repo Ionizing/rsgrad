@@ -18,7 +18,9 @@ Now `rsgrad` provides several features:
 10. Split _POSCAR_;  
     Convert between fractional coordinates and Cartesian coordinates;  
     Format _POSCAR_;
-11. Generate _POTCAR_ according to _POSCAR_.
+11. Generate _POTCAR_ according to _POSCAR_;
+12. Calculate Transition Dipole Moment;
+13. Calculate band gap and print locations of CBM and VBM.
 
 Wish you have a good time with `rsgrad` ^\_^
 
