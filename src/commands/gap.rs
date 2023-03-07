@@ -56,7 +56,12 @@ pub struct Gap {
 
 impl Gap {
     fn bands_from_procar(procar: Procar, outcar: &PathBuf, efermi: Option<f64>) -> Result<(Array3<f64>, Array3<f64>, Array2<f64>)> {
-        let efermi = efermi.unwrap_or(fs::read_to_string(outcar)?.get_efermi()?);
+        // make it lazy loading
+        let efermi = efermi.context("")
+            .or_else(|_| fs::read_to_string(outcar)
+                     .context("Reading OUTCAR failed.")
+                     .and_then(|x| x.get_efermi())
+                    )?;
 
         let eigs = procar.pdos.eigvals - efermi;
         let occs = procar.pdos.occupations;
