@@ -25,6 +25,7 @@ use crate::{
         Result,
         OptProcess,
         Axis,
+        range_parse,
     },
     commands::common::write_array_to_txt,
 };
@@ -46,11 +47,15 @@ pub struct Wav1D {
 
     #[clap(long, short = 'k', default_value = "1", multiple_values = true)]
     /// Select kpoint index, starting from 1.
-    ikpoints: Vec<i32>,
+    ///
+    /// You can input range directly: `-k 1..5 8..10`
+    ikpoints: Vec<String>,
 
     #[clap(long, short = 'b', multiple_values = true)]
     /// Select band index, starting from 1.
-    ibands: Vec<i32>,
+    ///
+    /// You can input range directly: `-b 5..10 14..19`
+    ibands: Vec<String>,
 
     #[clap(long, short = 'l')]
     /// List the brief info of current WAVECAR.
@@ -147,11 +152,11 @@ I suggest you provide `gamma_half` argument to avoid confusion.");
             .map(|v| v as u64 - 1)
             .collect::<Vec<_>>();
         let ikpoints = self.ikpoints.iter()
-            .cloned()
+            .flat_map(|x| range_parse(&x).unwrap().into_iter())
             .map(|v| v as u64 - 1)
             .collect::<Vec<_>>();
         let ibands = self.ibands.iter()
-            .cloned()
+            .flat_map(|x| range_parse(&x).unwrap().into_iter())
             .map(|v| v as u64 - 1)
             .collect::<Vec<_>>();
 
