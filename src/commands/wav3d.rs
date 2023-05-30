@@ -76,7 +76,7 @@ pub struct Wav3D {
     /// processing WAVECAR produced by `vasp_gam`.
     gamma_half: Option<String>,
 
-    #[clap(long, short = 'o', possible_values = &["normsquared", "ns", "real", "re", "imag", "im", "reim"],
+    #[clap(long, short = 'o', possible_values = &["normsquared", "ns", "uns", "dns", "real", "re", "imag", "im", "reim"],
            multiple_values = true)]
     /// Specify output part of the wavefunction.
     ///
@@ -84,7 +84,8 @@ pub struct Wav3D {
     /// - normsquared/ns: Perform `ρ(r) = |ѱ(r)|^2` action to get the spatial distribution of selected band.{n}
     /// - real/re: Real part of the wavefunction, suffix '_re.vasp' is added to the output filename.{n}
     /// - imag/im: Imaginary part of the wavefunction, suffix '_im.vasp' is added to the output filename.{n}
-    /// - reim: Output both real part and imaginary parts of the wavefunction.
+    /// - reim: Output both real part and imaginary parts of the wavefunction.{n}
+    /// - uns/dns: Perform `ρ(r) = |ѱ(r)|^2` for spinor up/down only. **Note: this option works for `ncl` WAVECAR only.**
     output_parts: Vec<String>,
 
     #[clap(long, default_value = "wav")]
@@ -97,7 +98,7 @@ pub struct Wav3D {
 }
 
 
-fn save_to_vasp(fname: &str, chgd: ndarray::Array3<f64>, pos: &Poscar) -> Result<()> {
+fn save_to_vasp(fname: &str, chgd: &ndarray::Array3<f64>, pos: &Poscar) -> Result<()> {
     let ngrid = [chgd.raw_dim()[0], chgd.raw_dim()[1], chgd.raw_dim()[2]];
 
     let fname = PathBuf::from(fname);
@@ -110,7 +111,7 @@ fn save_to_vasp(fname: &str, chgd: ndarray::Array3<f64>, pos: &Poscar) -> Result
         chgtype: chg::ChargeType::Locpot,
         pos: pos.clone(),
         ngrid,
-        chg: vec![chgd],
+        chg: vec![chgd.clone()],
         aug: vec![],
     }.to_file(&fname)
 }
@@ -160,8 +161,14 @@ I suggest you provide `gamma_half` argument to avoid confusion.");
         let has_normsquared = self.output_parts.iter().any(|s| s == "normsquared" || s == "ns");
         let has_real = self.output_parts.iter().any(|s| s == "real" || s == "re" || s == "reim");
         let has_imag = self.output_parts.iter().any(|s| s == "imag" || s == "im" || s == "reim");
+        let has_uns  = self.output_parts.iter().any(|s| s == "uns");
+        let has_dns  = self.output_parts.iter().any(|s| s == "dns");
 
-        if !(has_normsquared || has_real || has_imag) {
+        if (has_uns || has_dns) && wav.wavecar_type != WavecarType::NonCollinear {
+            bail!("`-o uns` or `-o dns` works for `ncl` WAVECAR only, please check.");
+        }
+
+        if !(has_normsquared || has_real || has_imag || has_uns || has_dns) {
             warn!("You have not specify the `output_parts` or `list`, rsgrad did nothing.");
             return Ok(())
         }
@@ -202,14 +209,14 @@ I suggest you provide `gamma_half` argument to avoid confusion.");
                     Wavefunction::Float64Array3(w)    => w.mapv(|v| v * v * factor),
                     Wavefunction::Ncl64Array4(w)      => {
                         w.slice(s![0usize, .., .., ..]).mapv(|v| v.norm_sqr() * factor) +
-                            w.slice(s![1usize, .., .., ..]).mapv(|v| v.norm_sqr() * factor)
+                        w.slice(s![1usize, .., .., ..]).mapv(|v| v.norm_sqr() * factor)
                     },
                     _ => unreachable!("Invalid Wavefunction type."),
                 };
 
                 if has_normsquared {
                     let ofname = format!("{}_{}-{}-{}{}.vasp", &self.prefix, ispin+1, ikpoint+1, iband+1, eigs_suffix);
-                    save_to_vasp(&ofname, chgd, &pos)?;
+                    save_to_vasp(&ofname, &chgd, &pos)?;
                 }
 
                 let (d1, d2, d3, d4) = match wavr {
@@ -228,13 +235,13 @@ I suggest you provide `gamma_half` argument to avoid confusion.");
                     match wavecar_type {
                         WavecarType::NonCollinear => {
                             let ofname = format!("{}_{}-{}-{}{}_ure.vasp", &self.prefix, ispin+1, ikpoint+1, iband+1, eigs_suffix);
-                            save_to_vasp(&ofname, d1.unwrap(), &pos)?;
+                            save_to_vasp(&ofname, d1.as_ref().unwrap(), &pos)?;
                             let ofname = format!("{}_{}-{}-{}{}_dre.vasp", &self.prefix, ispin+1, ikpoint+1, iband+1, eigs_suffix);
-                            save_to_vasp(&ofname, d3.unwrap(), &pos)?;
+                            save_to_vasp(&ofname, d3.as_ref().unwrap(), &pos)?;
                         },
                         _ => {
                             let ofname = format!("{}_{}-{}-{}{}_re.vasp", &self.prefix, ispin+1, ikpoint+1, iband+1, eigs_suffix);
-                            save_to_vasp(&ofname, d1.unwrap(), &pos)?;
+                            save_to_vasp(&ofname, d1.as_ref().unwrap(), &pos)?;
                         },
                     }
                 }
@@ -243,17 +250,39 @@ I suggest you provide `gamma_half` argument to avoid confusion.");
                     match wavecar_type {
                         WavecarType::Standard => {
                             let ofname = format!("{}_{}-{}-{}{}_im.vasp", &self.prefix, ispin+1, ikpoint+1, iband+1, eigs_suffix);
-                            save_to_vasp(&ofname, d2.unwrap(), &pos)?;
+                            save_to_vasp(&ofname, d2.as_ref().unwrap(), &pos)?;
                         },
                         WavecarType::GamaHalf(_) => {
                             bail!("Gamma-halved wavefunction doesn't have imaginary part, please check your input.");
                         },
                         WavecarType::NonCollinear => {
                             let ofname = format!("{}_{}-{}-{}{}_uim.vasp", &self.prefix, ispin+1, ikpoint+1, iband+1, eigs_suffix);
-                            save_to_vasp(&ofname, d2.unwrap(), &pos)?;
+                            save_to_vasp(&ofname, d2.as_ref().unwrap(), &pos)?;
                             let ofname = format!("{}_{}-{}-{}{}_dim.vasp", &self.prefix, ispin+1, ikpoint+1, iband+1, eigs_suffix);
-                            save_to_vasp(&ofname, d4.unwrap(), &pos)?;
+                            save_to_vasp(&ofname, d4.as_ref().unwrap(), &pos)?;
                         },
+                    }
+                }
+
+                if has_uns {
+                    match wavecar_type {
+                        WavecarType::NonCollinear => {
+                            let ofname = format!("{}_{}-{}-{}{}_u.vasp", &self.prefix, ispin+1, ikpoint+1, iband+1, eigs_suffix);
+                            let chgd   = d1.as_ref().unwrap().mapv(|v| v * v / factor) + d2.as_ref().unwrap().mapv(|v| v * v / factor);
+                            save_to_vasp(&ofname, &chgd, &pos)?;
+                        },
+                        _ => bail!("`-o uns` works for `ncl` WAVECAR only, please check.")
+                    }
+                }
+
+                if has_dns {
+                    match wavecar_type {
+                        WavecarType::NonCollinear => {
+                            let ofname = format!("{}_{}-{}-{}{}_d.vasp", &self.prefix, ispin+1, ikpoint+1, iband+1, eigs_suffix);
+                            let chgd   = d3.as_ref().unwrap().mapv(|v| v * v / factor) + d4.as_ref().unwrap().mapv(|v| v * v / factor);
+                            save_to_vasp(&ofname, &chgd, &pos)?;
+                        },
+                        _ => bail!("`-o dns` works for `ncl` WAVECAR only, please check.")
                     }
                 }
 
