@@ -38,7 +38,7 @@ tempdir = "0.3"
 
 
 [profile.release]
-debug = true
+# debug = true  # too large for linux
 incremental = true
 lto = true
 opt-level = 3
