@@ -637,27 +637,38 @@ impl Wavecar {
 
 
     // indices start from 0
-    pub fn get_wavefunction_realspace(&self, ispin: u64, ikpoint: u64, iband: u64) -> Result<Wavefunction> {
+    pub fn get_wavefunction_realspace(&self, ispin: u64, ikpoint: u64, iband: u64, ngrid: Option<[u64; 3]>) -> Result<Wavefunction> {
         assert!(ispin < self.nspin, "Invalid ispin: {}, nspin = {}", ispin + 1, self.nspin);
         assert!(ikpoint < self.nkpoints, "Invalid ikpoint: {}, nkpoints = {}", ikpoint + 1, self.nkpoints);
         assert!(iband < self.nbands, "Invalid iband: {}, nbands = {}", iband + 1, self.nbands);
 
+        let ngrid = if let Some(g) = ngrid {
+            if g[0] < self.ngrid[0] || g[1] < self.ngrid[1] || g[2] < self.ngrid[2] {
+                bail!("NGXF NGYF NGZF smaller than NGX NGY NGZ, pleas check.")
+            }
+            g
+        } else {
+            [ self.ngrid[0] * 2,
+              self.ngrid[1] * 2,
+              self.ngrid[2] * 2, ]
+        };
+
+        let ngxr = ngrid[0] as i64;
+        let ngyr = ngrid[1] as i64;
+        let ngzr = ngrid[2] as i64;
+
         match self.wavecar_type {
-            WavecarType::Standard           => self._get_wavefunction_realspace_std(ispin, ikpoint, iband),
-            WavecarType::NonCollinear       => self._get_wavefunction_realspace_ncl(ispin, ikpoint, iband),
-            WavecarType::GamaHalf(Axis::X)  => self._get_wavefunction_realspace_gamx(ispin, ikpoint, iband),
-            WavecarType::GamaHalf(Axis::Z)  => self._get_wavefunction_realspace_gamz(ispin, ikpoint, iband),
+            WavecarType::Standard           => self._get_wavefunction_realspace_std(ispin, ikpoint, iband, ngxr, ngyr, ngzr),
+            WavecarType::NonCollinear       => self._get_wavefunction_realspace_ncl(ispin, ikpoint, iband, ngxr, ngyr, ngzr),
+            WavecarType::GamaHalf(Axis::X)  => self._get_wavefunction_realspace_gamx(ispin, ikpoint, iband, ngxr, ngyr, ngzr),
+            WavecarType::GamaHalf(Axis::Z)  => self._get_wavefunction_realspace_gamz(ispin, ikpoint, iband, ngxr, ngyr, ngzr),
             _ => bail!("Unknown or unsupported WAVECAR: {}", self.wavecar_type),
         }
     }
 
 
-    fn _get_wavefunction_realspace_std(&self, ispin: u64, ikpoint :u64, iband: u64) -> Result<Wavefunction> {
+    fn _get_wavefunction_realspace_std(&self, ispin: u64, ikpoint :u64, iband: u64, ngxr: i64, ngyr: i64, ngzr: i64) -> Result<Wavefunction> {
         assert_eq!(self.wavecar_type, WavecarType::Standard);
-
-        let ngxr = self.ngrid[0] as i64 * 2;
-        let ngyr = self.ngrid[1] as i64 * 2;
-        let ngzr = self.ngrid[2] as i64 * 2;
 
         let gvecs: MatX3<usize> = self.generate_fft_grid(ikpoint)
             .into_iter()
@@ -700,12 +711,8 @@ impl Wavecar {
     }
 
 
-    fn _get_wavefunction_realspace_gamx(&self, ispin: u64, ikpoint: u64, iband: u64) -> Result<Wavefunction> {
+    fn _get_wavefunction_realspace_gamx(&self, ispin: u64, ikpoint: u64, iband: u64, ngxr: i64, ngyr: i64, ngzr: i64) -> Result<Wavefunction> {
         assert_eq!(self.wavecar_type, WavecarType::GamaHalf(Axis::X));
-
-        let ngxr = self.ngrid[0] as i64 * 2;
-        let ngyr = self.ngrid[1] as i64 * 2;
-        let ngzr = self.ngrid[2] as i64 * 2;
 
         let ngxk = ngxr / 2 + 1;
         let ngyk = ngyr;
@@ -767,12 +774,8 @@ impl Wavecar {
     }
 
 
-    fn _get_wavefunction_realspace_gamz(&self, ispin: u64, ikpoint: u64, iband: u64) -> Result<Wavefunction> {
+    fn _get_wavefunction_realspace_gamz(&self, ispin: u64, ikpoint: u64, iband: u64, ngxr: i64, ngyr: i64, ngzr: i64) -> Result<Wavefunction> {
         assert_eq!(self.wavecar_type, WavecarType::GamaHalf(Axis::Z));
-
-        let ngxr = self.ngrid[0] as i64 * 2;
-        let ngyr = self.ngrid[1] as i64 * 2;
-        let ngzr = self.ngrid[2] as i64 * 2;
 
         let ngxk = ngxr;
         let ngyk = ngyr;
@@ -835,12 +838,8 @@ impl Wavecar {
     }
 
 
-    fn _get_wavefunction_realspace_ncl(&self, ispin: u64, ikpoint: u64, iband: u64) -> Result<Wavefunction> {
+    fn _get_wavefunction_realspace_ncl(&self, ispin: u64, ikpoint: u64, iband: u64, ngxr: i64, ngyr: i64, ngzr: i64) -> Result<Wavefunction> {
         assert_eq!(self.wavecar_type, WavecarType::NonCollinear);
-
-        let ngxr = self.ngrid[0] as i64 * 2;
-        let ngyr = self.ngrid[1] as i64 * 2;
-        let ngzr = self.ngrid[2] as i64 * 2;
 
         let gvecs: MatX3<usize> = self.generate_fft_grid(ikpoint)
             .into_iter()
@@ -1071,9 +1070,12 @@ mod tests {
     #[ignore]
     fn test_wavefunction_realspace_std() {
         let wav = Wavecar::from_file("WAVECAR").unwrap();
+        let ngxr = wav.ngrid[0] as i64 * 2;
+        let ngyr = wav.ngrid[0] as i64 * 2;
+        let ngzr = wav.ngrid[0] as i64 * 2;
 
         for i in 0 .. 1 {
-            let wavr = wav._get_wavefunction_realspace_std(0, i, 0).unwrap(); // 1 (i+1) 1
+            let wavr = wav._get_wavefunction_realspace_std(0, i, 0, ngxr, ngyr, ngzr).unwrap(); // 1 (i+1) 1
             let mut wavr = match wavr {
                 Wavefunction::Complex64Array3(dump) => dump,
                 _ => panic!(),
@@ -1106,9 +1108,12 @@ mod tests {
     #[ignore]
     fn test_wavefunction_realspace_ncl() {
         let wav = Wavecar::from_file("WAVECAR").unwrap();
+        let ngxr = wav.ngrid[0] as i64 * 2;
+        let ngyr = wav.ngrid[0] as i64 * 2;
+        let ngzr = wav.ngrid[0] as i64 * 2;
 
         for i in 0 .. 64 {
-            let wavr = wav._get_wavefunction_realspace_ncl(0, 0, i).unwrap(); // 1 (i+1) 1
+            let wavr = wav._get_wavefunction_realspace_ncl(0, 0, i, ngxr, ngyr, ngzr).unwrap(); // 1 (i+1) 1
             let mut wavr = match wavr {
                 Wavefunction::Ncl64Array4(dump) => dump,
                 _ => panic!(),
@@ -1141,9 +1146,12 @@ mod tests {
     #[ignore]
     fn test_wavefunction_realspace_gamx() {
         let wav = Wavecar::from_file("WAVECAR").unwrap();
+        let ngxr = wav.ngrid[0] as i64 * 2;
+        let ngyr = wav.ngrid[0] as i64 * 2;
+        let ngzr = wav.ngrid[0] as i64 * 2;
 
         for i in 0 .. 1 {
-            let wavr = wav._get_wavefunction_realspace_gamx(0, i, 0).unwrap(); // 1 (i+1) 1
+            let wavr = wav._get_wavefunction_realspace_gamx(0, i, 0, ngxr, ngyr, ngzr).unwrap(); // 1 (i+1) 1
             let mut wavr = match wavr {
                 Wavefunction::Float64Array3(dump) => dump,
                 _ => panic!(),
@@ -1177,9 +1185,12 @@ mod tests {
     fn test_wavefunction_realspace_gamz() {
         let mut wav = Wavecar::from_file("WAVECAR").unwrap();
         wav.set_wavecar_type(WavecarType::GamaHalf(Axis::Z)).unwrap();
+        let ngxr = wav.ngrid[0] as i64 * 2;
+        let ngyr = wav.ngrid[0] as i64 * 2;
+        let ngzr = wav.ngrid[0] as i64 * 2;
 
         for i in 0 .. 1 {
-            let wavr = wav._get_wavefunction_realspace_gamz(0, i, 0).unwrap(); // 1 (i+1) 1
+            let wavr = wav._get_wavefunction_realspace_gamz(0, i, 0, ngxr, ngyr, ngzr).unwrap(); // 1 (i+1) 1
             let mut wavr = match wavr {
                 Wavefunction::Float64Array3(dump) => dump,
                 _ => panic!(),

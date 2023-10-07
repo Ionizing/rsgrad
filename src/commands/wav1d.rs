@@ -171,7 +171,7 @@ I suggest you provide `gamma_half` argument to avoid confusion.");
                 let eig = eigs[[ispin as usize, ikpoint as usize, iband as usize]] - efermi;
                 let label = format!("s{}_k{}_b{}_{:06.3}eV", ispin+1, ikpoint+1, iband+1, eig);
 
-                let wavr = wav.get_wavefunction_realspace(ispin, ikpoint, iband)
+                let wavr = wav.get_wavefunction_realspace(ispin, ikpoint, iband, None)
                     .unwrap_or_else(|_| panic!("Failed to get wavefunction in realspace at s{} k{} b{}", ispin+1, ikpoint+1, iband+1))
                     .normalize();
 

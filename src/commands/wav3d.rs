@@ -76,6 +76,14 @@ pub struct Wav3D {
     /// processing WAVECAR produced by `vasp_gam`.
     gamma_half: Option<String>,
 
+    #[clap(long, number_of_values = 3)]
+    /// Grid size for realspace wavefunction, 3 numbers are required, i.e. NGXF NGYF and NGZF.
+    ///
+    /// If this argument is left empty, NG_F will be set as NG_F=2*NG_.
+    ///
+    /// Be aware that NG_F must be greater than or at least equal to corresponding NG_.
+    ngrid: Option<Vec<u64>>,
+
     #[clap(long, short = 'o', possible_values = &["normsquared", "ns", "uns", "dns", "real", "re", "imag", "im", "reim"],
            multiple_values = true)]
     /// Specify output part of the wavefunction.
@@ -187,6 +195,8 @@ I suggest you provide `gamma_half` argument to avoid confusion.");
             .map(|v| v as u64 - 1)
             .collect::<Vec<_>>();
 
+        let ngrid = self.ngrid.as_ref().map(|g| { [g[0], g[1], g[2]] });
+
         let indices = iproduct!(ispins, ikpoints, ibands)
             .collect::<Vec<(u64, u64, u64)>>();
 
@@ -203,7 +213,7 @@ I suggest you provide `gamma_half` argument to avoid confusion.");
                     String::new()
                 };
 
-                let wavr = wav.get_wavefunction_realspace(ispin, ikpoint, iband)?.normalize();
+                let wavr = wav.get_wavefunction_realspace(ispin, ikpoint, iband, ngrid)?.normalize();
                 let chgd = match wavr.clone() {
                     Wavefunction::Complex64Array3(w)  => w.mapv(|v| v.norm_sqr() * factor),
                     Wavefunction::Float64Array3(w)    => w.mapv(|v| v * v * factor),
