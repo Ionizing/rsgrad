@@ -2,6 +2,7 @@ use std::path::{
     Path,
     PathBuf,
 };
+use std::collections::HashMap;
 use anyhow::{
     Result,
     Context,
@@ -37,6 +38,7 @@ pub struct FunctionalPath {
     #[serde(rename(serialize   = "PAW_LDA",
                    deserialize = "PAW_LDA"))]
     pub paw_lda: PathBuf,
+    pub aliases: Option<HashMap<String, String>>,
 }
 
 
@@ -143,7 +145,25 @@ mod tests {
             functional_path: FunctionalPath {
                 paw_pbe: PathBuf::from("~/apps/vasp/potpaw_PBE.54"),
                 paw_lda: PathBuf::from("~/apps/vasp/potpaw_LDA.54"),
-            }
+                aliases: Some(HashMap::from([("K".to_string(), "K_sv".to_string())])),
+            },
+        };
+
+        let txt = r#"[functional-path]
+PAW_PBE = "~/apps/vasp/potpaw_PBE.54"
+PAW_LDA = "~/apps/vasp/potpaw_LDA.54"
+
+[functional-path.aliases]
+K = "K_sv"
+"#;
+        assert_eq!(toml::to_string(&settings).unwrap(), txt);
+
+        let settings = Settings {
+            functional_path: FunctionalPath {
+                paw_pbe: PathBuf::from("~/apps/vasp/potpaw_PBE.54"),
+                paw_lda: PathBuf::from("~/apps/vasp/potpaw_LDA.54"),
+                aliases: None,
+            },
         };
 
         let txt = r#"[functional-path]
@@ -159,7 +179,26 @@ PAW_LDA = "~/apps/vasp/potpaw_LDA.54"
             functional_path: FunctionalPath {
                 paw_pbe: PathBuf::from("~/apps/vasp/potpaw_PBE.54"),
                 paw_lda: PathBuf::from("~/apps/vasp/potpaw_LDA.54"),
-            }
+                aliases: Some(HashMap::from([("K".to_string(), "K_sv".to_string())])),
+            },
+        };
+
+        let txt = r#"[functional-path]
+PAW_PBE = "~/apps/vasp/potpaw_PBE.54"
+PAW_LDA = "~/apps/vasp/potpaw_LDA.54"
+aliases = { K = "K_sv" }
+"#;
+
+        let parsed: Settings = toml::from_str(txt).unwrap();
+        assert_eq!(parsed, settings_expected);
+
+
+        let settings_expected = Settings {
+            functional_path: FunctionalPath {
+                paw_pbe: PathBuf::from("~/apps/vasp/potpaw_PBE.54"),
+                paw_lda: PathBuf::from("~/apps/vasp/potpaw_LDA.54"),
+                aliases: None,
+            },
         };
 
         let txt = r#"[functional-path]

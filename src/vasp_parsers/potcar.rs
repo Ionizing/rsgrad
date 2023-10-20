@@ -66,6 +66,17 @@ impl AtomicPotcar {
                        specific_type: &str,
                        prefix: &FunctionalPath) -> Result<Self> {
         let titel = symbol.to_string() + specific_type;
+
+        //let titel = prefix.aliases.as_ref()
+            //.and_then(|tok| { tok.get(&titel).cloned() })
+            //.unwrap_or(titel);
+        let titel = if let Some(alias) = prefix.aliases.as_ref().map(|tok| tok.get(&titel)).flatten() {
+            info!("Found functional alias: \"{}\" -> \"{}\".", titel, alias);
+            alias.clone()
+        } else {
+            titel
+        };
+
         let path = {
             let mut _ret = match functional {
                 FunctionalType::PAW_PBE => prefix.paw_pbe.to_path_buf(),
