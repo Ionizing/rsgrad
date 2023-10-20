@@ -18,6 +18,7 @@
 - [POTCAR](./POTCAR.md)
 - [Transition Dipole Moment](./TransitionDipoleMoment.md)
 - [Gap](./Gap.md)
+- [PseudoPotential](./PseudoPotential.md)
 
 ---
 
