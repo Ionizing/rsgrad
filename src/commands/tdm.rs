@@ -309,6 +309,7 @@ I suggest you provide `gamma_half` argument to avoid confusion.");
             plot.add_trace(tr);
         }
 
+        plot.use_local_plotly();
         let layout = plotly::Layout::new()
             .bar_mode(plotly::layout::BarMode::Stack)
             .title(plotly::common::Title::new("Transition Dipole Moments"))
