@@ -354,6 +354,16 @@ impl Poscar {
         let inv = Self::mat33_inv(mat)?;
         Some(Self::mat33_transpose(&inv))
     }
+
+
+    fn into_grouped_atoms(&self) {
+        todo!()
+    }
+
+
+    pub fn sort_by_height(&mut self) -> Self {
+        todo!()
+    }
 }
 
 
@@ -475,6 +485,70 @@ impl fmt::Display for PoscarFormatter<'_> {
 }
 
 
+pub enum AtomSortOrder {
+    X,        Y,        Z,
+    XY,  XZ,  YX,  YZ,  ZX,  ZY,
+    XYZ, XZY, YXZ, YZX, ZXY, ZYX,
+}
+
+
+pub struct GroupedAtoms {
+    pub ion_type: String,
+    pub ions_this_type: i32,
+    pub pos_cart: MatX3<f64>,
+    pub pos_frac: MatX3<f64>,
+    pub constraints: Option<MatX3<bool>>,
+}
+
+impl GroupedAtoms {
+    pub fn new(ion_type: String,
+           pos_cart: MatX3<f64>,
+           pos_frac: MatX3<f64>,
+           constraints: Option<MatX3<bool>>) -> Self {
+        
+        assert_ne!(pos_cart.len(), 0);
+        assert_eq!(pos_cart.len(), pos_frac.len());
+        assert_eq!(pos_cart.len(), constraints.as_ref().map(|x| x.len()).unwrap_or(pos_cart.len()));
+
+        Self {
+            ion_type,
+            ions_this_type: pos_cart.len() as _,
+            pos_cart,
+            pos_frac,
+            constraints,
+        }
+    }
+
+
+    /// Stably sort the atoms by the axis in ascending order
+    ///
+    /// Possible values for axis:
+    ///     "Z": sort by cartesian coordinates along z axis
+    ///     "Y": sort by cartesian coordinates along y axis
+    ///     "X": sort by cartesian coordinates along x axis
+    ///     "ZXY": sort priority Z > X > Y
+    ///     "ZYX" "XYZ" ... are similar
+    ///
+    ///     "A": sort by fraction coordinates along a axis
+    ///     "B": sort by fraction coordinates along b axis
+    ///     "C": sort by fraction coordinates along c axis
+    ///     "CAB": sort priority C > A > B
+    ///     "CBA" "ABC" ... are similar
+    ///
+    ///     Stable sort is used to preserve the order of the uncared axis
+    pub fn sort_by(&self, axis: &str) {
+        // Aux function for cmp
+        fn cmp(a: &[f64; 3], b: &[f64; 3], order: &str) -> bool {
+            todo!()
+        }
+
+        match axis.to_uppercase() {
+            _ => { panic!("Invalid axis: {}, expected: X, Y, Z", axis) }
+        }
+
+        todo!()
+    }
+}
 
 #[cfg(test)]
 mod tests {
