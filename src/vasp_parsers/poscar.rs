@@ -492,6 +492,31 @@ pub enum AtomSortOrder {
 }
 
 
+impl AtomSortOrder {
+    pub fn from_str(s: &str) -> Self {
+        use AtomSortOrder::*;
+        match s.to_uppercase().as_str() {
+            "X"   | "A"   => X,
+            "Y"   | "B"   => Y,
+            "Z"   | "C"   => Z,
+            "XY"  | "AB"  => XY,
+            "XZ"  | "AC"  => XZ,
+            "YX"  | "BA"  => YX,
+            "YZ"  | "BC"  => YZ,
+            "ZX"  | "CA"  => ZX,
+            "ZY"  | "CB"  => ZY,
+            "XYZ" | "ABC" => XYZ,
+            "XZY" | "ACB" => XZY,
+            "YXZ" | "BAC" => YXZ,
+            "YZX" | "BCA" => YZX,
+            "ZXY" | "CAB" => ZXY,
+            "ZYX" | "CBA" => ZYX,
+            _ => panic!("Invalid AtomSortOrder: {}", s)
+        }
+    }
+}
+
+
 pub struct GroupedAtoms {
     pub ion_type: String,
     pub ions_this_type: i32,
@@ -529,17 +554,52 @@ impl GroupedAtoms {
     ///     "ZXY": sort priority Z > X > Y
     ///     "ZYX" "XYZ" ... are similar
     ///
-    ///     "A": sort by fraction coordinates along a axis
-    ///     "B": sort by fraction coordinates along b axis
-    ///     "C": sort by fraction coordinates along c axis
+    ///     "A": sort by fractional coordinates along a axis
+    ///     "B": sort by fractional coordinates along b axis
+    ///     "C": sort by fractional coordinates along c axis
     ///     "CAB": sort priority C > A > B
     ///     "CBA" "ABC" ... are similar
     ///
     ///     Stable sort is used to preserve the order of the uncared axis
     pub fn sort_by(&self, axis: &str) {
         // Aux function for cmp
-        fn cmp(a: &[f64; 3], b: &[f64; 3], order: &str) -> bool {
-            todo!()
+        fn cmp(a: &[f64; 3], b: &[f64; 3], order: AtomSortOrder) -> Ordering {
+            use AtomSortOrder::*;
+            match order {
+                X => a[0].partial_cmp(&b[0]).unwrap(),
+                Y => a[1].partial_cmp(&b[1]).unwrap(),
+                Z => a[2].partial_cmp(&b[2]).unwrap(),
+                XY => a[0].partial_cmp(&b[0]).unwrap()
+                    .then(a[1].partial_cmp(&b[1]).unwrap()),
+                XZ => a[0].partial_cmp(&b[0]).unwrap()
+                    .then(a[2].partial_cmp(&b[2]).unwrap()),
+                YX => a[1].partial_cmp(&b[1]).unwrap()
+                    .then(a[0].partial_cmp(&b[0]).unwrap()),
+                YZ => a[1].partial_cmp(&b[1]).unwrap()
+                    .then(a[2].partial_cmp(&b[2]).unwrap()),
+                ZX => a[2].partial_cmp(&b[2]).unwrap()
+                    .then(a[0].partial_cmp(&b[0]).unwrap()),
+                ZY => a[2].partial_cmp(&b[2]).unwrap()
+                    .then(a[1].partial_cmp(&b[1]).unwrap()),
+                XYZ => a[0].partial_cmp(&b[0]).unwrap()
+                    .then(a[1].partial_cmp(&b[1]).unwrap())
+                    .then(a[2].partial_cmp(&b[2]).unwrap()),
+                XZY => a[0].partial_cmp(&b[0]).unwrap()
+                    .then(a[2].partial_cmp(&b[2]).unwrap())
+                    .then(a[1].partial_cmp(&b[1]).unwrap()),
+                YXZ => a[1].partial_cmp(&b[1]).unwrap()
+                    .then(a[1].partial_cmp(&b[1]).unwrap())
+                    .then(a[2].partial_cmp(&b[2]).unwrap()),
+                YZX => a[1].partial_cmp(&b[1]).unwrap()
+                    .then(a[2].partial_cmp(&b[2]).unwrap())
+                    .then(a[1].partial_cmp(&b[1]).unwrap()),
+                ZXY => a[2].partial_cmp(&b[2]).unwrap()
+                    .then(a[0].partial_cmp(&b[0]).unwrap())
+                    .then(a[1].partial_cmp(&b[1]).unwrap()),
+                ZYX => a[2].partial_cmp(&b[2]).unwrap()
+                    .then(a[1].partial_cmp(&b[1]).unwrap())
+                    .then(a[0].partial_cmp(&b[0]).unwrap()),
+            }
         }
 
         match axis.to_uppercase() {
