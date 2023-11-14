@@ -1,3 +1,5 @@
+use std::cmp::Ordering;
+
 use anyhow::{
     self,
     bail,
@@ -108,6 +110,17 @@ arg_enum! {
         Y,
         Z,
     }
+}
+
+
+pub fn argsort_by<T, F>(v: &[T], compare: F) -> Vec<usize>
+where
+    T: Sized,
+    F: Fn(&T, &T) -> Ordering,
+{
+    let mut idx = (0 .. v.len()).collect::<Vec<usize>>();
+    idx.sort_by(|&i, &j| compare(&v[i], &v[j]));
+    idx
 }
 
 

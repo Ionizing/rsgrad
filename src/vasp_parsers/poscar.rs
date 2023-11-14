@@ -18,6 +18,7 @@ use crate::{
     Structure,
     Mat33,
     MatX3,
+    types::argsort_by,
 };
 
 #[derive(Clone, Debug)]
@@ -351,26 +352,31 @@ impl Poscar {
         ret
     }
 
+    pub fn acell_to_bcell(mat: &Mat33<f64>) -> Option<Mat33<f64>> {
+        let inv = Self::mat33_inv(mat)?;
+        Some(Self::mat33_transpose(&inv))
+    }
+
     
-    /// Check the atom sort axis
-    ///
-    /// Possible values for axis:
-    ///     - "Z": sort by cartesian coordinates along z axis
-    ///     - "Y": sort by cartesian coordinates along y axis
-    ///     - "X": sort by cartesian coordinates along x axis
-    ///     - "ZXY": sort priority Z > X > Y
-    ///     - "ZYX" "XYZ" ... are similar
-    ///
-    ///     - "A": sort by fractional coordinates along a axis
-    ///     - "B": sort by fractional coordinates along b axis
-    ///     - "C": sort by fractional coordinates along c axis
-    ///     - "CAB": sort priority C > A > B
-    ///     - "CBA" "ABC" ... are similar
-    ///
-    /// If check passes:
-    ///     - return Result<true> for fractional axis
-    ///     - return Result<false> for cartesian axis
-    pub fn check_atomsortaxis(s: &str) -> Result<bool> {
+    // Check the atom sort axis
+    //
+    // Possible values for axis:
+    //     - "Z": sort by cartesian coordinates along z axis
+    //     - "Y": sort by cartesian coordinates along y axis
+    //     - "X": sort by cartesian coordinates along x axis
+    //     - "ZXY": sort priority Z > X > Y
+    //     - "ZYX" "XYZ" ... are similar
+    //
+    //     - "A": sort by fractional coordinates along a axis
+    //     - "B": sort by fractional coordinates along b axis
+    //     - "C": sort by fractional coordinates along c axis
+    //     - "CAB": sort priority C > A > B
+    //     - "CBA" "ABC" ... are similar
+    //
+    // If check passes:
+    //     - return Result<true> for fractional axis
+    //     - return Result<false> for cartesian axis
+    fn check_atomsortaxis(s: &str) -> Result<bool> {
         if s.len() == 0 || s.len() > 3 {
             bail!("Invalid axis input: \"{}\", too few/many axies. Please use ABC for fractional axis or XYZ for cartesian axis.", s);
         }
@@ -392,18 +398,36 @@ impl Poscar {
         Ok(all_frac)
     }
 
-    pub fn acell_to_bcell(mat: &Mat33<f64>) -> Option<Mat33<f64>> {
-        let inv = Self::mat33_inv(mat)?;
-        Some(Self::mat33_transpose(&inv))
+
+    fn convert_sortaxis_to_cmp(s: &str) -> Box<dyn Fn(&[f64;3], &[f64;3]) -> Ordering> {
+        let order = s.as_bytes()
+            .iter()
+            .map(|c| {
+                match c.to_ascii_uppercase() {
+                    b'A' | b'X' => 0usize,
+                    b'B' | b'Y' => 1usize,
+                    b'C' | b'Z' => 2usize,
+                    _ => panic!("unreachable"),
+                }
+            })
+            .collect::<Vec<usize>>();
+
+        Box::new(move |a: &[f64;3], b: &[f64;3]| {
+            let mut ret = Ordering::Equal;
+            for i in &order {
+                ret = ret.then(a[*i].partial_cmp(&b[*i]).unwrap());
+            }
+            return ret;
+        })
     }
 
 
-    fn into_grouped_atoms(&self) {
+    fn to_grouped_atoms(&self) {
         todo!()
     }
 
 
-    pub fn sort_by_height(&mut self) -> Self {
+    pub fn sort_by_axis(&mut self, axis: &str) -> Self {
         todo!()
     }
 }
@@ -571,17 +595,22 @@ impl GroupedAtoms {
     ///     "CBA" "ABC" ... are similar
     ///
     ///     Stable sort is used to preserve the order of the uncared axis
-    pub fn sort_by(&mut self, axis: &[usize]) {
-        // Aux function for cmp
-        fn cmp(a: &[f64; 3], b: &[f64; 3], order: &[usize]) -> Ordering {
-            let mut ret = Ordering::Equal;
-            for i in order {
-                ret = ret.then(a[*i].partial_cmp(&b[*i]).unwrap());
-            }
-            return ret;
-        }
+    pub fn sort_by_axis(
+        &mut self,
+        is_fractional: bool,
+        cmp: Box<dyn Fn(&[f64;3], &[f64; 3]) -> Ordering>
+        ) {
+        let idx = if is_fractional {
+            argsort_by(&self.pos_frac, |a, b| cmp(a, b))
+        } else {
+            argsort_by(&self.pos_cart, |a, b| cmp(a, b))
+        };
 
-        todo!()
+        self.pos_cart = idx.iter().cloned().map(|i| self.pos_cart[i]).collect();
+        self.pos_frac = idx.iter().cloned().map(|i| self.pos_frac[i]).collect();
+        self.constraints = self.constraints.as_ref().map(|constr| {
+            idx.iter().cloned().map(|i| constr[i]).collect()
+        });
     }
 }
 
