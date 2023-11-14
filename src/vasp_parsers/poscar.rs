@@ -11,7 +11,8 @@ use std::{
         Write as _,
     },
 };
-use anyhow::{anyhow, Context};
+use anyhow::{anyhow, Context, bail};
+use itertools::Itertools;
 use crate::{
     Result,
     Structure,
@@ -350,6 +351,47 @@ impl Poscar {
         ret
     }
 
+    
+    /// Check the atom sort axis
+    ///
+    /// Possible values for axis:
+    ///     - "Z": sort by cartesian coordinates along z axis
+    ///     - "Y": sort by cartesian coordinates along y axis
+    ///     - "X": sort by cartesian coordinates along x axis
+    ///     - "ZXY": sort priority Z > X > Y
+    ///     - "ZYX" "XYZ" ... are similar
+    ///
+    ///     - "A": sort by fractional coordinates along a axis
+    ///     - "B": sort by fractional coordinates along b axis
+    ///     - "C": sort by fractional coordinates along c axis
+    ///     - "CAB": sort priority C > A > B
+    ///     - "CBA" "ABC" ... are similar
+    ///
+    /// If check passes:
+    ///     - return Result<true> for fractional axis
+    ///     - return Result<false> for cartesian axis
+    pub fn check_atomsortaxis(s: &str) -> Result<bool> {
+        if s.len() == 0 || s.len() > 3 {
+            bail!("Invalid axis input: \"{}\", too few/many axies. Please use ABC for fractional axis or XYZ for cartesian axis.", s);
+        }
+
+        let s_upper = s.to_uppercase();
+
+        let all_frac = s_upper.as_bytes().iter().all(|c| b"ABC".contains(c));
+        let all_cart = s_upper.as_bytes().iter().all(|c| b"XYZ".contains(c));
+
+        if !(all_frac ^ all_cart) {
+            bail!("Invalid axis input: \"{}\": only one type of axis can be chosen, ABC or XYZ.", s);
+        }
+
+        let uniq_cnt = s_upper.clone().into_bytes().into_iter().sorted().count();
+        if uniq_cnt != s_upper.as_bytes().len() {
+            bail!("Invalid axis input: \"{}\": contains duplicated axis.", s);
+        }
+
+        Ok(all_frac)
+    }
+
     pub fn acell_to_bcell(mat: &Mat33<f64>) -> Option<Mat33<f64>> {
         let inv = Self::mat33_inv(mat)?;
         Some(Self::mat33_transpose(&inv))
@@ -485,38 +527,6 @@ impl fmt::Display for PoscarFormatter<'_> {
 }
 
 
-pub enum AtomSortOrder {
-    X,        Y,        Z,
-    XY,  XZ,  YX,  YZ,  ZX,  ZY,
-    XYZ, XZY, YXZ, YZX, ZXY, ZYX,
-}
-
-
-impl AtomSortOrder {
-    pub fn from_str(s: &str) -> Self {
-        use AtomSortOrder::*;
-        match s.to_uppercase().as_str() {
-            "X"   | "A"   => X,
-            "Y"   | "B"   => Y,
-            "Z"   | "C"   => Z,
-            "XY"  | "AB"  => XY,
-            "XZ"  | "AC"  => XZ,
-            "YX"  | "BA"  => YX,
-            "YZ"  | "BC"  => YZ,
-            "ZX"  | "CA"  => ZX,
-            "ZY"  | "CB"  => ZY,
-            "XYZ" | "ABC" => XYZ,
-            "XZY" | "ACB" => XZY,
-            "YXZ" | "BAC" => YXZ,
-            "YZX" | "BCA" => YZX,
-            "ZXY" | "CAB" => ZXY,
-            "ZYX" | "CBA" => ZYX,
-            _ => panic!("Invalid AtomSortOrder: {}", s)
-        }
-    }
-}
-
-
 pub struct GroupedAtoms {
     pub ion_type: String,
     pub ions_this_type: i32,
@@ -561,49 +571,14 @@ impl GroupedAtoms {
     ///     "CBA" "ABC" ... are similar
     ///
     ///     Stable sort is used to preserve the order of the uncared axis
-    pub fn sort_by(&self, axis: &str) {
+    pub fn sort_by(&mut self, axis: &[usize]) {
         // Aux function for cmp
-        fn cmp(a: &[f64; 3], b: &[f64; 3], order: AtomSortOrder) -> Ordering {
-            use AtomSortOrder::*;
-            match order {
-                X => a[0].partial_cmp(&b[0]).unwrap(),
-                Y => a[1].partial_cmp(&b[1]).unwrap(),
-                Z => a[2].partial_cmp(&b[2]).unwrap(),
-                XY => a[0].partial_cmp(&b[0]).unwrap()
-                    .then(a[1].partial_cmp(&b[1]).unwrap()),
-                XZ => a[0].partial_cmp(&b[0]).unwrap()
-                    .then(a[2].partial_cmp(&b[2]).unwrap()),
-                YX => a[1].partial_cmp(&b[1]).unwrap()
-                    .then(a[0].partial_cmp(&b[0]).unwrap()),
-                YZ => a[1].partial_cmp(&b[1]).unwrap()
-                    .then(a[2].partial_cmp(&b[2]).unwrap()),
-                ZX => a[2].partial_cmp(&b[2]).unwrap()
-                    .then(a[0].partial_cmp(&b[0]).unwrap()),
-                ZY => a[2].partial_cmp(&b[2]).unwrap()
-                    .then(a[1].partial_cmp(&b[1]).unwrap()),
-                XYZ => a[0].partial_cmp(&b[0]).unwrap()
-                    .then(a[1].partial_cmp(&b[1]).unwrap())
-                    .then(a[2].partial_cmp(&b[2]).unwrap()),
-                XZY => a[0].partial_cmp(&b[0]).unwrap()
-                    .then(a[2].partial_cmp(&b[2]).unwrap())
-                    .then(a[1].partial_cmp(&b[1]).unwrap()),
-                YXZ => a[1].partial_cmp(&b[1]).unwrap()
-                    .then(a[1].partial_cmp(&b[1]).unwrap())
-                    .then(a[2].partial_cmp(&b[2]).unwrap()),
-                YZX => a[1].partial_cmp(&b[1]).unwrap()
-                    .then(a[2].partial_cmp(&b[2]).unwrap())
-                    .then(a[1].partial_cmp(&b[1]).unwrap()),
-                ZXY => a[2].partial_cmp(&b[2]).unwrap()
-                    .then(a[0].partial_cmp(&b[0]).unwrap())
-                    .then(a[1].partial_cmp(&b[1]).unwrap()),
-                ZYX => a[2].partial_cmp(&b[2]).unwrap()
-                    .then(a[1].partial_cmp(&b[1]).unwrap())
-                    .then(a[0].partial_cmp(&b[0]).unwrap()),
+        fn cmp(a: &[f64; 3], b: &[f64; 3], order: &[usize]) -> Ordering {
+            let mut ret = Ordering::Equal;
+            for i in order {
+                ret = ret.then(a[*i].partial_cmp(&b[*i]).unwrap());
             }
-        }
-
-        match axis.to_uppercase() {
-            _ => { panic!("Invalid axis: {}, expected: X, Y, Z", axis) }
+            return ret;
         }
 
         todo!()
