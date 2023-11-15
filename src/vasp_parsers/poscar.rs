@@ -474,19 +474,19 @@ impl Poscar {
     /// Stably sort the atoms by the axis in ascending order
     ///
     /// Possible values for axis:
-    ///     "Z": sort by cartesian coordinates along z axis
-    ///     "Y": sort by cartesian coordinates along y axis
-    ///     "X": sort by cartesian coordinates along x axis
-    ///     "ZXY": sort priority Z > X > Y
-    ///     "ZYX" "XYZ" ... are similar
+    /// - "Z": sort by cartesian coordinates along z axis
+    /// - "Y": sort by cartesian coordinates along y axis
+    /// - "X": sort by cartesian coordinates along x axis
+    /// - "ZXY": sort priority Z > X > Y
+    /// - "ZYX" "XYZ" ... are similar
     ///
-    ///     "A": sort by fractional coordinates along a axis
-    ///     "B": sort by fractional coordinates along b axis
-    ///     "C": sort by fractional coordinates along c axis
-    ///     "CAB": sort priority C > A > B
-    ///     "CBA" "ABC" ... are similar
+    /// - "A": sort by fractional coordinates along a axis
+    /// - "B": sort by fractional coordinates along b axis
+    /// - "C": sort by fractional coordinates along c axis
+    /// - "CAB": sort priority C > A > B
+    /// - "CBA" "ABC" ... are similar
     ///
-    ///     Stable sort is used to preserve the order of the uncared axis
+    /// **NOTE**: Stable sort is used to preserve the order of the uncared axis
     pub fn sort_by_axis(&mut self, axis: &str) {
         let is_frac = Self::check_atomsortaxis(axis).unwrap();
         let cmp = Self::convert_sortaxis_to_cmp(axis);
@@ -650,19 +650,19 @@ impl GroupedAtoms {
     /// Stably sort the atoms by the axis in ascending order
     ///
     /// Possible values for axis:
-    ///     "Z": sort by cartesian coordinates along z axis
-    ///     "Y": sort by cartesian coordinates along y axis
-    ///     "X": sort by cartesian coordinates along x axis
-    ///     "ZXY": sort priority Z > X > Y
-    ///     "ZYX" "XYZ" ... are similar
+    /// - "Z": sort by cartesian coordinates along z axis
+    /// - "Y": sort by cartesian coordinates along y axis
+    /// - "X": sort by cartesian coordinates along x axis
+    /// - "ZXY": sort priority Z > X > Y
+    /// - "ZYX" "XYZ" ... are similar
     ///
-    ///     "A": sort by fractional coordinates along a axis
-    ///     "B": sort by fractional coordinates along b axis
-    ///     "C": sort by fractional coordinates along c axis
-    ///     "CAB": sort priority C > A > B
-    ///     "CBA" "ABC" ... are similar
+    /// - "A": sort by fractional coordinates along a axis
+    /// - "B": sort by fractional coordinates along b axis
+    /// - "C": sort by fractional coordinates along c axis
+    /// - "CAB": sort priority C > A > B
+    /// - "CBA" "ABC" ... are similar
     ///
-    ///     Stable sort is used to preserve the order of the uncared axis
+    /// **NOTE**: Stable sort is used to preserve the order of the uncared axis
     pub fn sort_by_axis(
         &mut self,
         is_fractional: bool,
