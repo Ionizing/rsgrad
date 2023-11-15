@@ -11,6 +11,11 @@ use std::{
         self,
         Write as _,
     },
+    convert::{
+        TryFrom,
+        TryInto,
+        Into,
+    },
 };
 use anyhow::{anyhow, Context, bail};
 use itertools::Itertools;
@@ -615,6 +620,117 @@ impl fmt::Display for PoscarFormatter<'_> {
         }
 
         Ok(())
+    }
+}
+
+
+#[derive(Clone, Copy)]
+pub enum CartesianAxis {
+    X = 0,
+    Y,
+    Z,
+}
+
+
+impl Into<usize> for CartesianAxis {
+    fn into(self) -> usize {
+        use CartesianAxis::*;
+        match self {
+            X => 0,
+            Y => 1,
+            Z => 2,
+        }
+    }
+}
+
+
+impl TryFrom<char> for CartesianAxis {
+    type Error = anyhow::Error;
+    fn try_from(value: char) -> Result<Self> {
+        use CartesianAxis::*;
+
+        match value.to_ascii_uppercase() {
+            'X' => Ok( X ),
+            'Y' => Ok( Y ),
+            'Z' => Ok( Z ),
+            _ => bail!("Invalid axis specified: {}, available axes: X Y Z for cartesian axis.", value),
+        }
+    }
+}
+
+
+#[derive(Clone, Copy)]
+pub enum FractionalAxis {
+    A, B, C,
+}
+
+
+impl Into<usize> for FractionalAxis {
+    fn into(self) -> usize {
+        use FractionalAxis::*;
+        match self {
+            A => 0,
+            B => 1,
+            C => 2,
+        }
+    }
+}
+
+
+impl TryFrom<char> for FractionalAxis {
+    type Error = anyhow::Error;
+    fn try_from(value: char) -> Result<Self> {
+        use FractionalAxis::*;
+
+        match value.to_ascii_uppercase() {
+            'A' => Ok( A ),
+            'B' => Ok( B ),
+            'C' => Ok( C ),
+            _ => bail!("Invalid axis specified: {}, available axes: A B C for fractional axis.", value),
+        }
+    }
+}
+
+
+pub enum Axes {
+    Cartesian( Vec<CartesianAxis> ),
+    Fractional( Vec<FractionalAxis> ),
+}
+
+
+impl Into<Vec<usize>> for Axes {
+    fn into(self) -> Vec<usize> {
+        use Axes::*;
+        match self {
+            Fractional(axis) => axis.into_iter().map(|x| x.into()).collect(),
+            Cartesian(axis) => axis.into_iter().map(|x| x.into()).collect(),
+        }
+    }
+}
+
+
+impl TryFrom<&str> for Axes {
+    type Error = anyhow::Error;
+    fn try_from(s: &str) -> Result<Self> {
+        use Axes::*;
+
+        if s.len() == 0 || s.len() > 3 {
+            bail!("Invalid axis input: \"{}\", too few/many axies. Please use ABC for fractional axis or XYZ for cartesian axis.", s);
+        }
+
+        // Duplication not checked here.
+        let frac_axes = s.chars().map(|c| c.try_into()).collect::<Result<Vec<FractionalAxis>>>();
+        let cart_axes = s.chars().map(|c| c.try_into()).collect::<Result<Vec<CartesianAxis>>>();
+
+        if frac_axes.is_ok() {
+            return Ok( Fractional( frac_axes? ) );
+        }
+
+        if cart_axes.is_ok() {
+            return Ok( Cartesian( cart_axes? ) );
+        }
+
+        bail!("Cannot convert input axis {} into either FractionalAxes or CartesianAxes: Invalid chars found please check.", s);
     }
 }
 
