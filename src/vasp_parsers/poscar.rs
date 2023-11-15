@@ -6,6 +6,7 @@ use std::{
         BufReader, 
         BufRead,
     },
+    iter::Iterator,
     fmt::{
         self,
         Write as _,
@@ -470,9 +471,32 @@ impl Poscar {
     }
 
 
-    pub fn sort_by_axis(&mut self, axis: &str) -> Self {
+    /// Stably sort the atoms by the axis in ascending order
+    ///
+    /// Possible values for axis:
+    ///     "Z": sort by cartesian coordinates along z axis
+    ///     "Y": sort by cartesian coordinates along y axis
+    ///     "X": sort by cartesian coordinates along x axis
+    ///     "ZXY": sort priority Z > X > Y
+    ///     "ZYX" "XYZ" ... are similar
+    ///
+    ///     "A": sort by fractional coordinates along a axis
+    ///     "B": sort by fractional coordinates along b axis
+    ///     "C": sort by fractional coordinates along c axis
+    ///     "CAB": sort priority C > A > B
+    ///     "CBA" "ABC" ... are similar
+    ///
+    ///     Stable sort is used to preserve the order of the uncared axis
+    pub fn sort_by_axis(&mut self, axis: &str) {
+        let is_frac = Self::check_atomsortaxis(axis).unwrap();
+        let cmp = Self::convert_sortaxis_to_cmp(axis);
 
-        todo!()
+        let mut grouped_atoms = self.to_grouped_atoms();
+        for group in grouped_atoms.iter_mut() {
+            group.sort_by_axis(is_frac, &cmp);
+        }
+
+        self.set_grouped_atoms(grouped_atoms);
     }
 }
 
@@ -642,7 +666,7 @@ impl GroupedAtoms {
     pub fn sort_by_axis(
         &mut self,
         is_fractional: bool,
-        cmp: Box<dyn Fn(&[f64;3], &[f64; 3]) -> Ordering>
+        cmp: &Box<dyn Fn(&[f64;3], &[f64; 3]) -> Ordering>
         ) {
         let idx = if is_fractional {
             argsort_by(&self.pos_frac, |a, b| cmp(a, b))
