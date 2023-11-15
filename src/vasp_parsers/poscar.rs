@@ -422,12 +422,56 @@ impl Poscar {
     }
 
 
-    fn to_grouped_atoms(&self) {
-        todo!()
+    fn to_grouped_atoms(&self) -> Vec<GroupedAtoms> {
+        let mut atoms = Vec::<GroupedAtoms>::new();
+
+        let mut idx_beg;
+        let mut idx_end = 0usize;
+
+        for i in 0 .. self.ions_per_type.len() {
+            idx_beg = idx_end;
+            idx_end = idx_beg + self.ions_per_type[i] as usize;
+
+            atoms.push(
+                GroupedAtoms::new(
+                    self.ion_types[i].clone(),
+                    self.pos_cart[idx_beg .. idx_end].to_vec(),
+                    self.pos_frac[idx_beg .. idx_end].to_vec(),
+                    self.constraints.as_ref().map(|constr| constr[idx_beg .. idx_end].to_vec())
+                )
+            );
+        }
+
+        atoms
+    }
+
+
+    fn set_grouped_atoms(&mut self, atoms: Vec<GroupedAtoms>) {
+        let nions_original = self.ions_per_type.iter().sum::<i32>();
+        let nions_current  = atoms.iter().map(|x| x.ions_this_type).sum::<i32>();
+
+        assert_eq!(nions_original, nions_current,
+            "Original NIONS {} != current NIONS {}", nions_original, nions_current);
+
+        let mut idx_beg;
+        let mut idx_end = 0usize;
+        for (i, atom_group) in atoms.into_iter().enumerate() {
+            idx_beg = idx_end;
+            idx_end = idx_beg + atom_group.ions_this_type as usize;
+
+            self.ion_types[i]     = atom_group.ion_type;
+            self.ions_per_type[i] = atom_group.ions_this_type;
+
+            for ii in idx_beg .. idx_end {
+                self.pos_cart[ii] = atom_group.pos_cart[ii - idx_beg];
+                self.pos_frac[ii] = atom_group.pos_frac[ii - idx_beg];
+            }
+        }
     }
 
 
     pub fn sort_by_axis(&mut self, axis: &str) -> Self {
+
         todo!()
     }
 }
