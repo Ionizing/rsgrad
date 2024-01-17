@@ -2,9 +2,9 @@ pub mod vasp_parsers;
 pub mod commands;
 pub mod types;
 pub mod settings;
+pub mod cli;
 
 pub use types::{
-    OptProcess,
     Result,
     index_transform,
     Vector,
@@ -47,4 +47,9 @@ pub use settings::{
 pub use vasp_parsers::procar::{
     ProjectedDOS,
     Procar,
+};
+
+pub use cli::{
+    OptProcess,
+    run,
 };

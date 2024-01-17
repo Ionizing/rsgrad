@@ -23,11 +23,11 @@ use crate::{
     },
     types::{
         Result,
-        OptProcess,
         Axis,
         range_parse,
     },
     commands::common::write_array_to_txt,
+    OptProcess,
 };
 
 

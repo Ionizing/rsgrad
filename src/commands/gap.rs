@@ -24,10 +24,8 @@ use crate::{
         procar::Procar,
         outcar::GetEFermi,
     },
-    types::{
-        Result,
-        OptProcess,
-    },
+    Result,
+    OptProcess,
 };
 
 

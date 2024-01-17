@@ -21,10 +21,6 @@ use serde::{
 
 pub type Result<T> = anyhow::Result<T>;
 
-pub trait OptProcess : Parser {
-    fn process(&self) -> Result<()>;
-}
-
 /// Index array containing negative indices => Index array full of positive indices.
 /// `-1` means the last index,
 /// If `v` contains `0`, selecting the total indices,  `1..=len` is returned.

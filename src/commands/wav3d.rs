@@ -24,11 +24,11 @@ use crate::{
     },
     types::{
         Result,
-        OptProcess,
         Axis,
         range_parse,
     },
     Poscar,
+    OptProcess,
 };
 
 #[derive(Debug, Parser)]
