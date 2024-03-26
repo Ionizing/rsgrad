@@ -15,10 +15,9 @@
 - [Wavefunction 1D](./Wavefunction1D.md)
 - [Workfunction](./Workfunction.md)
 - [POSCAR](./POSCAR.md)
-- [POTCAR](./POTCAR.md)
+- [POTCAR](./PseudoPotential.md)
 - [Transition Dipole Moment](./TransitionDipoleMoment.md)
 - [Gap](./Gap.md)
-- [PseudoPotential](./PseudoPotential.md)
 
 ---
 
