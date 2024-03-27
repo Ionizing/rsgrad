@@ -99,6 +99,18 @@ pub struct Tdm {
     #[clap(long, default_value = "0.1")]
     /// Specify the width of bars in the center of peaks. (eV)
     barwidth: f64,
+
+    #[clap(long, default_value = "500")]
+    /// How many points in the x axis PER eV
+    npoints: usize,
+
+    #[clap(long)]
+    /// Lowest energy scale for tdm_smeared.txt, default for min(dE) - 2.0
+    xmin: Option<f64>,
+
+    #[clap(long)]
+    /// Highest energy scale for tdm_smeared.txt, default for max(dE) + 2.0
+    xmax: Option<f64>,
 }
 
 
@@ -156,6 +168,7 @@ impl Tdm {
         Self::smearing_lorentz(x, centers, width, scales)
     }
 
+    // tdms: (iband, jband, Ei, Ej, dE, tx, ty, tz)
     fn gen_smeared_tdm(x: &[f64], tdms: Vec<(usize, usize, f64, f64, f64, f64, f64, f64)>, sigma: f64) -> Vec<Vector<f64>> {
         let mut smeared_tdms = vec![];  // x, y, z, tot
 
@@ -286,10 +299,11 @@ I suggest you provide `gamma_half` argument to avoid confusion.");
             plot.add_trace(tr);
         }
 
-
-        let x_min = tdms.iter().map(|t| t.4).reduce(f64::min).unwrap() - 2.0;
-        let x_max = tdms.iter().map(|t| t.4).reduce(f64::max).unwrap() + 2.0;
-        let nx = (x_max - x_min).ceil() as usize * 500;
+        let x_min = self.xmin
+            .unwrap_or_else(|| tdms.iter().map(|t| t.4).reduce(f64::min).unwrap() - 2.0);
+        let x_max = self.xmax
+            .unwrap_or_else(|| tdms.iter().map(|t| t.4).reduce(f64::max).unwrap() + 2.0);
+        let nx = (x_max - x_min).ceil() as usize * self.npoints;
         let x = Vector::<f64>::linspace(x_min, x_max, nx);
         let smeared_tdms = Self::gen_smeared_tdm(&x.to_vec(), tdms, self.sigma);
         
