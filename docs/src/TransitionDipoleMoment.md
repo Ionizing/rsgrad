@@ -59,6 +59,11 @@ OPTIONS:
 
             [default: 1]
 
+        --npoints <NPOINTS>
+            How many points in the x axis PER eV
+
+            [default: 500]
+
         --peakout <PEAKOUT>
             Write the TDM peaks to raw txt file
 
@@ -93,6 +98,12 @@ OPTIONS:
             WAVECAR file path
 
             [default: ./WAVECAR]
+
+        --xmax <XMAX>
+            Highest energy scale for tdm_smeared.txt, default for max(dE) + 2.0
+
+        --xmin <XMIN>
+            Lowest energy scale for tdm_smeared.txt, default for min(dE) - 2.0
 ```
 
 ## Example
