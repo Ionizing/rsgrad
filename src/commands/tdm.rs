@@ -237,7 +237,8 @@ I suggest you provide `gamma_half` argument to avoid confusion.");
 
         let tdms = iproduct!(ibands, jbands)
             .filter(|(iband, jband)| iband < jband)
-            .par_bridge()
+            .collect::<Vec<_>>()
+            .into_par_iter()
             .map(|(iband, jband)| {
                 let eig_i = eigs[(ispin, ikpoint, iband)] - efermi;
                 let eig_j = eigs[(ispin, ikpoint, jband)] - efermi;
