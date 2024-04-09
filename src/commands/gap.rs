@@ -3,10 +3,7 @@ use std::{
     path::PathBuf
 };
 
-use clap::{
-    Parser,
-    AppSettings,
-};
+use clap::Args;
 use log::info;
 use ndarray::{
     Array1,
@@ -29,24 +26,22 @@ use crate::{
 };
 
 
-#[derive(Debug, Parser)]
-#[clap(setting = AppSettings::ColoredHelp,
-       setting = AppSettings::ColorAuto)]
+#[derive(Debug, Args)]
 /// Find band gap and print positions of VBM and CBM
 pub struct Gap {
-    #[clap(long, short = 'w', default_value = "WAVECAR")]
+    #[arg(long, short = 'w', default_value = "WAVECAR")]
     /// WAVECAR file name, no more files needed.
     wavecar: PathBuf,
 
-    #[clap(long, short = 'p', default_value = "PROCAR")]
+    #[arg(long, short = 'p', default_value = "PROCAR")]
     /// PROCAR file name, OUTCAR is also needed to get Fermi level
     procar: PathBuf,
 
-    #[clap(long, short = 'o', default_value = "OUTCAR")]
+    #[arg(long, short = 'o', default_value = "OUTCAR")]
     /// OUTCAR file name, this file is parsed to get Fermi level only
     outcar: PathBuf,
 
-    #[clap(long, short = 'e')]
+    #[arg(long, short = 'e')]
     /// Specify Fermi level, if left empty, this value would be read from WAVECAR or OUTCAR
     efermi: Option<f64>,
 }

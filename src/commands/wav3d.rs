@@ -1,9 +1,6 @@
 use std::path::PathBuf;
 
-use clap::{
-    Parser,
-    AppSettings,
-};
+use clap::Args;
 use log::{
     info,
     warn,
@@ -31,52 +28,50 @@ use crate::{
     OptProcess,
 };
 
-#[derive(Debug, Parser)]
-#[clap(setting = AppSettings::ColoredHelp,
-       setting = AppSettings::ColorAuto,
-       setting = AppSettings::AllowNegativeNumbers)]
+#[derive(Debug, Args)]
+#[command(allow_negative_numbers = true)]
 /// Plot wavefunction in realspace, and save it as '.vasp' file.
 pub struct Wav3D {
-    #[clap(long, short = 'w', default_value = "./WAVECAR")]
+    #[arg(long, short = 'w', default_value = "./WAVECAR")]
     /// WAVECAR file name.
     wavecar: PathBuf,
 
-    #[clap(long, short = 'p', default_value = "./POSCAR")]
+    #[arg(long, short = 'p', default_value = "./POSCAR")]
     /// POSCAR filename, POSCAR is needed to get the real-space wavefunction.
     poscar: PathBuf,
 
-    #[clap(long, short = 's', default_value = "1", multiple_values = true)]
+    #[arg(long, short = 's', default_value = "1", num_args(0..))]
     /// Select spin index, starting from 1.
     ispins: Vec<i32>,
 
-    #[clap(long, short = 'k', default_value = "1", multiple_values = true)]
+    #[arg(long, short = 'k', default_value = "1", num_args(0..))]
     /// Select kpoint index, starting from 1.
     ///
     /// You can input ranges directly: `-k 1..4 5..10`
     ikpoints: Vec<String>,
 
-    #[clap(long, short = 'b', multiple_values = true)]
+    #[arg(long, short = 'b', num_args(0..))]
     /// Select band index, starting from 1.
     ///
     /// You can input ranges directly: `-b 1..4 5..10`
     ibands: Vec<String>,
 
-    #[clap(long, short = 'l')]
+    #[arg(long, short = 'l')]
     /// List the brief info of current WAVECAR.
     list: bool,
 
-    #[clap(long, short = 'd')]
+    #[arg(long, short = 'd')]
     /// Show the eigen values and band occupations of current WAVECAR.
     ///
     /// This flag should be used with `--list`
     detail: bool,
 
-    #[clap(long, possible_values = &["x", "z"])]
+    #[arg(long, value_parser = ["x", "z"])]
     /// Gamma Half direction of WAVECAR. You need to set this to 'x' or 'z' when
     /// processing WAVECAR produced by `vasp_gam`.
     gamma_half: Option<String>,
 
-    #[clap(long, number_of_values = 3)]
+    #[arg(long, number_of_values = 3)]
     /// Grid size for realspace wavefunction, 3 numbers are required, i.e. NGXF NGYF and NGZF.
     ///
     /// If this argument is left empty, NG_F will be set as NG_F=2*NG_.
@@ -84,8 +79,8 @@ pub struct Wav3D {
     /// Be aware that NG_F must be greater than or at least equal to corresponding NG_.
     ngrid: Option<Vec<u64>>,
 
-    #[clap(long, short = 'o', possible_values = &["normsquared", "ns", "uns", "dns", "real", "re", "imag", "im", "reim"],
-           multiple_values = true)]
+    #[arg(long, short = 'o', value_parser = ["normsquared", "ns", "uns", "dns", "real", "re", "imag", "im", "reim"],
+           num_args(0..))]
     /// Specify output part of the wavefunction.
     ///
     /// Detailed message:{n}
@@ -96,11 +91,11 @@ pub struct Wav3D {
     /// - uns/dns: Perform `ρ(r) = |ѱ(r)|^2` for spinor up/down only. **Note: this option works for `ncl` WAVECAR only.**
     output_parts: Vec<String>,
 
-    #[clap(long, default_value = "wav")]
+    #[arg(long, default_value = "wav")]
     /// Prefix of output filename.
     prefix: String,
 
-    #[clap(long, short = 'e')]
+    #[arg(long, short = 'e')]
     /// Add eigen value suffix to the filename
     show_eigs_suffix: bool,
 }

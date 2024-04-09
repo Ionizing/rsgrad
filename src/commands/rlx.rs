@@ -7,10 +7,7 @@ use log::{
     warn,
     debug,
 };
-use clap::{
-    Parser,
-    AppSettings,
-};
+use clap::Args;
 use crate::{
     Result,
     OptProcess,
@@ -20,9 +17,7 @@ use crate::{
 };
 
 
-#[derive(Debug, Parser)]
-#[clap(setting = AppSettings::ColoredHelp,
-       setting = AppSettings::ColorAuto)]
+#[derive(Debug, Args)]
 /// Tracking relaxation or MD progress.
 ///
 /// Contains the evolution of energy, maximum of Hellmann-Feynman forces, 
@@ -30,55 +25,55 @@ use crate::{
 ///
 /// Hint: This command may require POSCAR for atom constraints information.
 pub struct Rlx {
-    #[clap(default_value = "./OUTCAR")]
+    #[arg(default_value = "./OUTCAR")]
     /// Specify the input OUTCAR file
     outcar: PathBuf,
 
-    #[clap(short = 'p', long, default_value = "./POSCAR")]
+    #[arg(short = 'p', long, default_value = "./POSCAR")]
     /// Specify the input POSCAR file
     poscar: PathBuf,
 
-    #[clap(short = 'e', long = "toten")]
+    #[arg(short = 'e', long = "toten")]
     /// Prints TOTEN in eV
     print_energy: bool,
 
-    #[clap(short = 'a', long = "favg")]
+    #[arg(short = 'a', long = "favg")]
     /// Prints averaged total force in eV/A
     print_favg: bool,
 
-    #[clap(short = 'x', long = "fmaxis")]
+    #[arg(short = 'x', long = "fmaxis")]
     /// Prints the axis where the strongest total force component lies on. [XYZ]
     print_fmax_axis: bool,
 
-    #[clap(short = 'i' ,long = "fmidx")]
+    #[arg(short = 'i' ,long = "fmidx")]
     /// Prints the index of ion with maximum total force load. Starts from 1
     print_fmax_index: bool,
 
-    #[clap(short = 'v', long = "volume")]
+    #[arg(short = 'v', long = "volume")]
     /// Prints lattice volume in A^3
     print_volume: bool,
 
-    #[clap(long = "no-fmax")]
+    #[arg(long = "no-fmax")]
     /// Don't print maximum total force in A^3
     no_print_fmax: bool,
 
-    #[clap(long = "no-totenz")]
+    #[arg(long = "no-totenz")]
     /// Don't print TOTEN without entropy in eV
     no_print_energyz: bool,
 
-    #[clap(long = "no-lgde")]
+    #[arg(long = "no-lgde")]
     /// Don't print Log10(delta(TOTEN without entropy))
     no_print_lgde: bool,
 
-    #[clap(long = "no-magmom")]
+    #[arg(long = "no-magmom")]
     /// Don't print total magnetic moment in muB
     no_print_magmom: bool,
 
-    #[clap(long = "no-nscf")]
+    #[arg(long = "no-nscf")]
     /// Don't print number of SCF iteration for each ionic step
     no_print_nscf: bool,
 
-    #[clap(long = "no-time")]
+    #[arg(long = "no-time")]
     /// Don't print time elapsed for each ionic step in minutes
     no_print_time: bool,
 }

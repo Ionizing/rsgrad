@@ -1,8 +1,5 @@
 use std::path::PathBuf;
-use clap::{
-    Parser,
-    AppSettings,
-};
+use clap::Args;
 use log::info;
 use anyhow::{
     anyhow,
@@ -17,9 +14,7 @@ use crate::{
 };
 
 
-#[derive(Debug, Parser)]
-#[clap(setting = AppSettings::ColoredHelp,
-       setting = AppSettings::ColorAuto)]
+#[derive(Debug, Args)]
 /// Calculate charge density difference. 
 ///
 /// The operation is performed by `chgdiff = chgcar_ab - (chgcar_a + chgcar_b)`.
@@ -33,7 +28,7 @@ pub struct Chgdiff {
     /// The CHGCAR of B system
     chgcar_b: PathBuf,
 
-    #[clap(short, long, default_value = "CHGDIFF.vasp")]
+    #[arg(short, long, default_value = "CHGDIFF.vasp")]
     /// The output charge density difference file path
     output: PathBuf,
 }

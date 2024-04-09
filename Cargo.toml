@@ -14,7 +14,7 @@ path = "src/main.rs"
 rayon = "1"
 regex = "1"
 itertools = "0.10"
-clap = { version = "3.2", features = ["derive"] }
+clap = { version = "4.5.4", features = ["derive"] }
 colored = "2"
 log = "0.4"
 env_logger = "0.8"

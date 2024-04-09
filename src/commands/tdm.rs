@@ -4,10 +4,7 @@ use std::{
     path::PathBuf,
 };
 
-use clap::{
-    Parser,
-    AppSettings,
-};
+use clap::Args;
 use anyhow::bail;
 use log::{
     warn,
@@ -32,9 +29,7 @@ use crate::{
 };
 
 
-#[derive(Debug, Parser)]
-#[clap(setting = AppSettings::ColoredHelp,
-       setting = AppSettings::ColorAuto)]
+#[derive(Debug, Args)]
 /// Calculate Transition Dipole Moment (TDM) between given bands.
 ///
 /// Note: This command can only calculate the TDM between bands in
@@ -43,72 +38,72 @@ use crate::{
 ///
 /// tdm_{i->j} = <phi_j|e*r|phi_i> = i*ħ/(ΔE*m)*<phi_j|p|phi_i>
 pub struct Tdm {
-    #[clap(short, long, default_value = "./WAVECAR")]
+    #[arg(short, long, default_value = "./WAVECAR")]
     /// WAVECAR file path.
     wavecar: PathBuf,
 
-    #[clap(long, possible_values = &["x", "z"])]
+    #[arg(long, value_parser = ["x", "z"], ignore_case = true)]
     /// Gamma Half direction of WAVECAR. You need to set this to 'x' or 'z' when
     /// processing WAVECAR produced by `vasp_gam`.
     gamma_half: Option<String>,
 
-    #[clap(short = 's', long, default_value = "1", possible_values = &["1", "2"])]
+    #[arg(short = 's', long, default_value = "1", value_parser = ["1", "2"])]
     /// Spin index, 1 for up, 2 for down.
     ispin: usize,
 
-    #[clap(short = 'k', long, default_value = "1")]
+    #[arg(short = 'k', long, default_value = "1")]
     /// K-point index, starts from 1.
     ikpoint: usize,
 
-    #[clap(short = 'i', long, min_values = 1, required = true)]
+    #[arg(short = 'i', long, num_args(1..), required = true)]
     /// Initial band indices, start from 1.
     ibands: Vec<usize>,
 
-    #[clap(short = 'j', long, min_values = 1, required = true)]
+    #[arg(short = 'j', long, num_args(1..), required = true)]
     /// Final band indices, starts from 1.
     jbands: Vec<usize>,
 
-    #[clap(long, default_value = "0.05")]
+    #[arg(long, default_value = "0.05")]
     /// Smearing width, in eV.
     sigma: f64,
 
-    #[clap(short, long)]
+    #[arg(short, long)]
     /// Print the calculated TDM to screen.
     verbose: bool,
 
-    #[clap(long, default_value = "tdm_peaks.txt")]
+    #[arg(long, default_value = "tdm_peaks.txt")]
     /// Write the TDM peaks to raw txt file.
     peakout: PathBuf,
 
-    #[clap(long, default_value = "tdm_smeared.txt")]
+    #[arg(long, default_value = "tdm_smeared.txt")]
     /// Write the summed and smeared TDM to raw txt file.
     txtout: PathBuf,
 
-    #[clap(long, default_value = "tdm_smeared.html")]
+    #[arg(long, default_value = "tdm_smeared.html")]
     /// Write the plot of TDM to html file.
     htmlout: PathBuf,
 
-    #[clap(long)]
+    #[arg(long)]
     /// Print the inline HTML to stdout.
     to_inline_html: bool,
 
-    #[clap(long)]
+    #[arg(long)]
     /// Open the default browser to show the plot.
     show: bool,
 
-    #[clap(long, default_value = "0.1")]
+    #[arg(long, default_value = "0.1")]
     /// Specify the width of bars in the center of peaks. (eV)
     barwidth: f64,
 
-    #[clap(long, default_value = "500")]
+    #[arg(long, default_value = "500")]
     /// How many points in the x axis PER eV
     npoints: usize,
 
-    #[clap(long)]
+    #[arg(long)]
     /// Lowest energy scale for tdm_smeared.txt, default for min(dE) - 2.0
     xmin: Option<f64>,
 
-    #[clap(long)]
+    #[arg(long)]
     /// Highest energy scale for tdm_smeared.txt, default for max(dE) + 2.0
     xmax: Option<f64>,
 }
