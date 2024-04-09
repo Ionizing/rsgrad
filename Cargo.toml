@@ -22,7 +22,7 @@ ndarray = "0.15"
 ndarray-npy = "0.8"
 anyhow = "1.0"
 flate2 = "1.0"
-config = { git = "https://github.com/mehcode/config-rs", rev = "68e00251318cc17b1ccfa227f1b108ccab22d5de" }
+config = "0.14.0"
 directories = "4.0"
 serde = "1.0"
 plotly = { git = "https://github.com/Ionizing/plotly", rev = "25c41e39a8290f28429a7767404270ac91914110", features = ["plotly_ndarray"] }
@@ -30,7 +30,7 @@ toml = "0.5"
 indexmap = { version = "1.8", features = ["serde"] }
 rand = "0.8"
 byteorder = "1.4"
-ndrustfft = { git = "https://github.com/preiter93/ndrustfft", rev = "0f431451b6c60eed27f5632b245a3c933d02182c" }
+ndrustfft = "0.4.2"
 paste = "1.0"
 memchr = "2.6.4"
 enum_dispatch = "0.3.12"
