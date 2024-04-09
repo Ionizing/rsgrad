@@ -1,9 +1,6 @@
 use std::path::PathBuf;
 
-use clap::{
-    Parser,
-    AppSettings,
-};
+use clap::Args;
 use log::{
     info,
     warn,
@@ -31,48 +28,46 @@ use crate::{
 };
 
 
-#[derive(Debug, Parser)]
-#[clap(setting = AppSettings::ColoredHelp,
-       setting = AppSettings::ColorAuto,
-       setting = AppSettings::AllowNegativeNumbers)]
+#[derive(Debug, Args)]
+#[command(allow_negative_numbers = true)]
 /// Plot wavefunction in realspace, then integrate over some plane, and save it as '.txt' file.
 pub struct Wav1D {
-    #[clap(long, short = 'w', default_value = "./WAVECAR")]
+    #[arg(long, short = 'w', default_value = "./WAVECAR")]
     /// WAVECAR file name.
     wavecar: PathBuf,
 
-    #[clap(long, short = 's', default_value = "1", multiple_values = true)]
+    #[arg(long, short = 's', default_value = "1", num_args(0..))]
     /// Select spin index, starting from 1.
     ispins: Vec<i32>,
 
-    #[clap(long, short = 'k', default_value = "1", multiple_values = true)]
+    #[arg(long, short = 'k', default_value = "1", num_args(0..))]
     /// Select kpoint index, starting from 1.
     ///
     /// You can input range directly: `-k 1..5 8..10`
     ikpoints: Vec<String>,
 
-    #[clap(long, short = 'b', multiple_values = true)]
+    #[arg(long, short = 'b', num_args(0..))]
     /// Select band index, starting from 1.
     ///
     /// You can input range directly: `-b 5..10 14..19`
     ibands: Vec<String>,
 
-    #[clap(long, short = 'l')]
+    #[arg(long, short = 'l')]
     /// List the brief info of current WAVECAR.
     list: bool,
 
-    #[clap(long, short = 'd')]
+    #[arg(long, short = 'd')]
     /// Show the eigen values and band occupations of current WAVECAR.
     ///
     /// This flag should be used with `--list`
     detail: bool,
 
-    #[clap(long, possible_values = &["x", "z"])]
+    #[arg(long, value_parser = ["x", "z"])]
     /// Gamma Half direction of WAVECAR. You need to set this to 'x' or 'z' when
     /// processing WAVECAR produced by `vasp_gam`.
     gamma_half: Option<String>,
 
-//  #[clap(long, short = 'o', default_value = "ns",
+//  #[arg(long, short = 'o', default_value = "ns",
 //              possible_values=&["normsquared", "ns", "real", "re", "imag", "im"])]
 //  /// Specify output part of the wavefunction.
 //  ///
@@ -83,29 +78,27 @@ pub struct Wav1D {
 //  /// - reim: Output both real part and imaginary parts of the wavefunction.
 //  output_part: String,
 
-    #[clap(long, default_value = "wav1d.txt")]
+    #[arg(long, default_value = "wav1d.txt")]
     /// Specify the file name to be written with raw wav1d data.
     txtout: PathBuf,
 
-    #[clap(long, default_value = "wav1d.html")]
+    #[arg(long, default_value = "wav1d.html")]
     /// Specify the file name to be written with html wav1d data.
     htmlout: PathBuf,
 
-    #[clap(long, default_value = "z",
-                possible_values = Axis::variants(),
-                case_insensitive = true)]
+    #[arg(long, default_value = "z", value_enum, ignore_case = true)]
     /// Integration direction. e.g. if 'z' is provided, the XoY plane is integrated.
     axis: Axis,
 
-    #[clap(long)]
+    #[arg(long)]
     /// Render the plot and print thw rendered code to stdout.
     to_inline_html: bool,
 
-    #[clap(long)]
+    #[arg(long)]
     /// Open the browser and show the plot immediately.
     show: bool,
 
-    #[clap(long, default_value = "10")]
+    #[arg(long, default_value = "10")]
     /// Scale the wavefunction.
     scale: f64,
 }

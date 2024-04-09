@@ -1,4 +1,5 @@
 use std::cmp::Ordering;
+use std::fmt;
 
 use anyhow::{
     self,
@@ -10,10 +11,7 @@ use ndarray::{
     Array3,
 };
 use regex::Regex;
-use clap::{
-    Parser,
-    arg_enum,
-};
+use clap::ValueEnum;
 use serde::{
     Serialize,
     Deserialize,
@@ -99,12 +97,22 @@ pub struct Structure {
 }
 
 
-arg_enum! {
-    #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
-    pub enum Axis {
-        X,
-        Y,
-        Z,
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, ValueEnum)]
+pub enum Axis {
+    X,
+    Y,
+    Z,
+}
+
+impl fmt::Display for Axis {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
+            Self::X => "X",
+            Self::Y => "Y",
+            Self::Z => "Z",
+        };
+
+        f.write_str(s)
     }
 }
 

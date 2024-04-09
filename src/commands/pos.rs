@@ -1,8 +1,5 @@
 use std::path::PathBuf;
-use clap::{
-    Parser,
-    AppSettings,
-};
+use clap::Args;
 use log::{
     warn, 
     info,
@@ -17,17 +14,15 @@ use crate::{
 };
 
 
-#[derive(Debug, Parser)]
-#[clap(setting = AppSettings::ColoredHelp,
-       setting = AppSettings::ColorAuto,
-       setting = AppSettings::AllowNegativeNumbers)]
+#[derive(Debug, Args)]
+#[command(allow_negative_numbers = true)]
 /// Operation(s) about POSCAR, including split it into two POSCARs.
 pub struct Pos {
-    #[clap(default_value = "./POSCAR")]
+    #[arg(default_value = "./POSCAR")]
     /// Specify the input POSCAR file
     poscar: PathBuf,
 
-    #[clap(short = 'i', long, multiple_values = true)]
+    #[arg(short = 'i', long, num_args(0..))]
     /// Selects the indices to operate.
     ///
     /// Step indices start from '1', if '0' is given, all the structures will be selected.
@@ -35,35 +30,35 @@ pub struct Pos {
     /// E.g. "-i -2 -1 1 2 3" means selecting the last two and the first three atom.
     select_indices: Option<Vec<i32>>,
 
-    #[clap(short = 'a', long, default_value = "POSCAR_A")]
+    #[arg(short = 'a', long, default_value = "POSCAR_A")]
     /// Splitted POSCAR path with selected atoms
     a_name: PathBuf,
 
-    #[clap(short = 'b', long, default_value = "POSCAR_B")]
+    #[arg(short = 'b', long, default_value = "POSCAR_B")]
     /// Splitted POSCAR path with complement of `a_name`
     b_name: PathBuf,
 
-    #[clap(long)]
+    #[arg(long)]
     /// The symbols of each atom will not be written as comment in POSCAR
     no_add_symbols_tags: bool,
 
-    #[clap(long)]
+    #[arg(long)]
     /// Atom constraints will be dropped when writting POSCAR
     no_preserve_constraints: bool,
 
-    #[clap(short = 'c', long)]
+    #[arg(short = 'c', long)]
     /// Cartesian coordinates is used in writting POSCAR
     cartesian: bool,
 
-    #[clap(short = 's', long)]
+    #[arg(short = 's', long)]
     /// Split POSCAR according to selected_indices
     split: bool,
 
-    #[clap(long)]
+    #[arg(long)]
     /// Convert POSCAR to cartesian coordinates or fractional coordinates
     convert: bool,
 
-    #[clap(long, default_value = "POSCAR_new")]
+    #[arg(long, default_value = "POSCAR_new")]
     /// The target path of converted POSCAR
     converted: PathBuf,
 }

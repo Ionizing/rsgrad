@@ -8,10 +8,7 @@ use log::{
     warn,
     debug,
 };
-use clap::{
-    Parser,
-    AppSettings,
-};
+use clap::Args;
 use crate::{
     Result,
     index_transform,
@@ -23,32 +20,30 @@ use crate::{
 };
 
 
-#[derive(Debug, Parser)]
-#[clap(setting = AppSettings::ColoredHelp,
-       setting = AppSettings::ColorAuto,
-       setting = AppSettings::AllowNegativeNumbers)]
+#[derive(Debug, Args)]
+#[command(allow_negative_numbers = true)]
 /// Tracking vibration information.
 ///
 /// For systems enabled vibration mode calculation, this command can extract
 /// phonon eigenvalues and phonon eigenvectors at Gamma point.
 pub struct Vib {
-    #[clap(short = 'l', long)]
+    #[arg(short = 'l', long)]
     /// Shows vibration modes in brief
     list: bool,
 
-    #[clap(default_value = "./OUTCAR")]
+    #[arg(default_value = "./OUTCAR")]
     /// Specify the input OUTCAR file
     outcar: PathBuf,
 
-    #[clap(short = 'p', long, default_value = "./POSCAR")]
+    #[arg(short = 'p', long, default_value = "./POSCAR")]
     /// Specify the input POSCAR file, the consntraints info is needed
     poscar: PathBuf,
 
-    #[clap(short = 'x', long)]
+    #[arg(short = 'x', long)]
     /// Saves each selected modes to XSF file
     save_as_xsfs: bool,
 
-    #[clap(short = 'i', long, multiple_values = true)]
+    #[arg(short = 'i', long, num_args(0..))]
     /// Selects the mode indices to operate.
     ///
     /// Step indices start from '1', if '0' is given, all the structures will be selected.
@@ -56,20 +51,20 @@ pub struct Vib {
     /// E.g. "-i -2 -1 1 2 3" means selecting the last two and first three steps.
     select_indices: Option<Vec<i32>>,
 
-    #[clap(long, default_value = ".")]
+    #[arg(long, default_value = ".")]
     /// Define where the files would be saved
     save_in: PathBuf,
 
-    #[clap(short = 'm', long)]
+    #[arg(short = 'm', long)]
     /// Modulate the ground-state POSCAR with respect to a certern vibration frequencies.
     modulate: bool,
 
-    #[clap(short = 'a', long, default_value = "0.1")]
+    #[arg(short = 'a', long, default_value = "0.1")]
     /// Modulation amplitude coefficient, to avoid precision issue, abs(amplitude) >= 0.01 should
     /// be satisfied.
     amplitude: f64,
 
-    #[clap(short = 'c', long)]
+    #[arg(short = 'c', long)]
     /// Catesian coordinate is used when writting POSCAR. Fractional coordinate is used by default.
     cartesian: bool,
 }

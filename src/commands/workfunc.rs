@@ -1,8 +1,5 @@
 use std::path::PathBuf;
-use clap::{
-    Parser,
-    AppSettings,
-};
+use clap::Args;
 use rayon;
 use anyhow::{
     Context,
@@ -24,41 +21,37 @@ use crate::{
     commands::common::write_array_to_txt,
 };
 
-#[derive(Debug, Parser)]
-#[clap(setting = AppSettings::ColoredHelp,
-       setting = AppSettings::ColorAuto)]
+#[derive(Debug, Args)]
 /// Calculate work-function from LOCPOT file, OUTCAR is also needed to get the Fermi level.
 ///
 /// The work function is calculated by plannar integration of the data cube in LOCPOT. The
 /// selected axis should be perpendicular to the other two axises.
 pub struct Workfunc {
-    #[clap(default_value="./LOCPOT")]
+    #[arg(default_value="./LOCPOT")]
     /// LOCPOT file path. Turn on 'LVHAR' in INCAR to get the electro-static potential saved it.
     locpot: PathBuf,
 
-    #[clap(long, short = 'o', default_value="./workfunction.html")]
+    #[arg(long, short = 'o', default_value="./workfunction.html")]
     /// Write the plot to html and view it in the web browser.
     htmlout: PathBuf,
 
-    #[clap(long, default_value="locpot.txt")]
+    #[arg(long, default_value="locpot.txt")]
     /// Write the raw plot data as txt file in order to replot it with more advanced tools.
     txtout: PathBuf,
 
-    #[clap(long, default_value="./OUTCAR")]
+    #[arg(long, default_value="./OUTCAR")]
     /// OUTCAR file path. This file is needed to get the E-fermi level and lattice properties.
     outcar: PathBuf,
 
-    #[clap(long, default_value="z",
-                possible_values = Axis::variants(),
-                case_insensitive = true)]
+    #[arg(long, default_value="z", value_enum, ignore_case = true)]
     /// Integration direction. e.g. if 'z' is provided, the XoY plane is integrated.
     axis: Axis,
 
-    #[clap(long)]
+    #[arg(long)]
     /// Open default browser to see the plot immediately.
     show: bool,
 
-    #[clap(long)]
+    #[arg(long)]
     /// Render the plot and print the rendered code to stdout.
     to_inline_html: bool,
 }
