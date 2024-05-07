@@ -176,10 +176,10 @@ I suggest providing `gamma_half` argument to avoid confusion.");
         info!("Reading POSCAR: {:?}", &self.poscar);
         let pos = Poscar::from_file(&self.poscar)?;
 
-        let ngrid = wav.ngrid;
+        let wngrid = wav.ngrid;
         let efermi = wav.efermi;
         let eigs   = wav.band_eigs.clone();
-        let factor = ngrid.iter().product::<u64>() as f64 * 8.0;
+        let factor = wngrid.iter().product::<u64>() as f64 * 8.0;
 
         let has_normsquared = self.output_parts.iter().any(|s| s == "normsquared" || s == "ns");
         let has_real = self.output_parts.iter().any(|s| s == "real" || s == "re" || s == "reim");
@@ -221,7 +221,7 @@ I suggest providing `gamma_half` argument to avoid confusion.");
             .map(|v| v as u64 - 1)
             .collect::<Vec<_>>();
 
-        let ngrid = self.ngrid.as_ref().map(|g| { [g[0], g[1], g[2]] }).unwrap_or(wav.ngrid);
+        let ngrid = self.ngrid.as_ref().map(|g| { [g[0], g[1], g[2]] }).unwrap_or([wngrid[0] * 2, wngrid[1] * 2, wngrid[2] * 2]);
 
         let indices = iproduct!(ispins, ikpoints, ibands)
             .collect::<Vec<(u64, u64, u64)>>();
