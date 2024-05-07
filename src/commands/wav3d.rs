@@ -1,12 +1,14 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use std::ops::AddAssign;
+use std::sync::{Arc, Mutex};
 
-use clap::Args;
+use clap::{builder::ArgPredicate, Args};
 use log::{
     info,
     warn,
 };
 use anyhow::bail;
-use ndarray::s;
+use ndarray::{Array3, s};
 use rayon::prelude::*;
 use itertools::iproduct;
 
@@ -98,13 +100,31 @@ pub struct Wav3D {
     #[arg(long, short = 'e')]
     /// Add eigen value suffix to the filename
     show_eigs_suffix: bool,
+
+    #[arg(long, requires("sum-prefix"))]
+    /// Perform sum-up of the charge densities for selected bands.
+    ///
+    /// With this flag open, only `normsquared` or `ns` or `uns` or `dns` are allowed for
+    /// the `-o`/`--output-parts` option.
+    ///
+    /// IMPORTANT NOTES:
+    /// - The prefix for output filename `sum-prefix` is also required and has no default prefix.
+    /// - The individual charge densities will not be saved to corresponding '.vasp' files
+    ///   if this flag is on.
+    sum_chgs: bool,
+
+    #[arg(long, requires_if(ArgPredicate::IsPresent, "sum-chgs"))]
+    /// Specify the output file for the summed charge densities.
+    ///
+    /// This argument is required if `sum_chgs` is on.
+    sum_prefix: PathBuf,
 }
 
 
-fn save_to_vasp(fname: &str, chgd: &ndarray::Array3<f64>, pos: &Poscar) -> Result<()> {
+fn save_to_vasp(fname: impl AsRef<Path>, chgd: &Array3<f64>, pos: &Poscar) -> Result<()> {
     let ngrid = [chgd.raw_dim()[0], chgd.raw_dim()[1], chgd.raw_dim()[2]];
 
-    let fname = PathBuf::from(fname);
+    let fname = fname.as_ref();
     if fname.is_file() {
         warn!("File {:?} exists, overwriting ...", fname);
     } else {
@@ -141,7 +161,7 @@ please remove the argument `gamma_half`.")
         } else if wav.wavecar_type != WavecarType::Standard &&
             wav.wavecar_type != WavecarType::NonCollinear {
                 warn!("Current WAVECAR is gamma-halved, sometimes the gamma-x and gamma-z verions have same plane wave numbers.
-I suggest you provide `gamma_half` argument to avoid confusion.");
+I suggest providing `gamma_half` argument to avoid confusion.");
         }
 
         if self.list {
@@ -176,6 +196,17 @@ I suggest you provide `gamma_half` argument to avoid confusion.");
             return Ok(())
         }
 
+        // For charge summations
+        if self.sum_chgs {
+            if has_real || has_imag {
+                bail!("'--sum-chgs' is available for charge densities only.");
+            }
+
+            if has_normsquared && (has_uns || has_dns) {
+                warn!("Add upper or lower spinor density to the total charge density may result in non-physical charge densities, please check.");
+            }
+        }
+
 
         let ispins = self.ispins.iter()
             .cloned()
@@ -190,13 +221,18 @@ I suggest you provide `gamma_half` argument to avoid confusion.");
             .map(|v| v as u64 - 1)
             .collect::<Vec<_>>();
 
-        let ngrid = self.ngrid.as_ref().map(|g| { [g[0], g[1], g[2]] });
+        let ngrid = self.ngrid.as_ref().map(|g| { [g[0], g[1], g[2]] }).unwrap_or(wav.ngrid);
 
         let indices = iproduct!(ispins, ikpoints, ibands)
             .collect::<Vec<(u64, u64, u64)>>();
 
         let wavecar_type = wav.wavecar_type;
         let wav = wav;  // Cancel the mutability
+
+
+        let chg_sum = Arc::new(Mutex::new(
+                Array3::<f64>::zeros([ngrid[0] as usize, ngrid[1] as usize, ngrid[2] as usize])
+                ));
 
         indices.into_par_iter()
             .map(|(ispin, ikpoint, iband)| {
@@ -208,7 +244,7 @@ I suggest you provide `gamma_half` argument to avoid confusion.");
                     String::new()
                 };
 
-                let wavr = wav.get_wavefunction_realspace(ispin, ikpoint, iband, ngrid)?.normalize();
+                let wavr = wav.get_wavefunction_realspace(ispin, ikpoint, iband, Some(ngrid))?.normalize();
                 let chgd = match wavr.clone() {
                     Wavefunction::Complex64Array3(w)  => w.mapv(|v| v.norm_sqr() * factor),
                     Wavefunction::Float64Array3(w)    => w.mapv(|v| v * v * factor),
@@ -221,7 +257,12 @@ I suggest you provide `gamma_half` argument to avoid confusion.");
 
                 if has_normsquared {
                     let ofname = format!("{}_{}-{}-{}{}.vasp", &self.prefix, ispin+1, ikpoint+1, iband+1, eigs_suffix);
-                    save_to_vasp(&ofname, &chgd, &pos)?;
+
+                    if self.sum_chgs {
+                        chg_sum.lock().unwrap().add_assign(&chgd);
+                    } else {
+                        save_to_vasp(&ofname, &chgd, &pos)?;
+                    }
                 }
 
                 let (d1, d2, d3, d4) = match wavr {
@@ -274,7 +315,12 @@ I suggest you provide `gamma_half` argument to avoid confusion.");
                         WavecarType::NonCollinear => {
                             let ofname = format!("{}_{}-{}-{}{}_u.vasp", &self.prefix, ispin+1, ikpoint+1, iband+1, eigs_suffix);
                             let chgd   = d1.as_ref().unwrap().mapv(|v| v * v / factor) + d2.as_ref().unwrap().mapv(|v| v * v / factor);
-                            save_to_vasp(&ofname, &chgd, &pos)?;
+
+                            if self.sum_chgs {
+                                chg_sum.lock().unwrap().add_assign(&chgd);
+                            } else {
+                                save_to_vasp(&ofname, &chgd, &pos)?;
+                            }
                         },
                         _ => bail!("`-o uns` works for `ncl` WAVECAR only, please check.")
                     }
@@ -285,7 +331,12 @@ I suggest you provide `gamma_half` argument to avoid confusion.");
                         WavecarType::NonCollinear => {
                             let ofname = format!("{}_{}-{}-{}{}_d.vasp", &self.prefix, ispin+1, ikpoint+1, iband+1, eigs_suffix);
                             let chgd   = d3.as_ref().unwrap().mapv(|v| v * v / factor) + d4.as_ref().unwrap().mapv(|v| v * v / factor);
-                            save_to_vasp(&ofname, &chgd, &pos)?;
+
+                            if self.sum_chgs {
+                                chg_sum.lock().unwrap().add_assign(&chgd);
+                            } else {
+                                save_to_vasp(&ofname, &chgd, &pos)?;
+                            }
                         },
                         _ => bail!("`-o dns` works for `ncl` WAVECAR only, please check.")
                     }
@@ -293,6 +344,15 @@ I suggest you provide `gamma_half` argument to avoid confusion.");
 
                 Ok(())
             })
-            .collect::<Result<()>>()
+            .collect::<Result<()>>()?;
+
+        if self.sum_chgs {
+            save_to_vasp(
+                &self.sum_prefix.with_extension("vasp"),
+                &Arc::try_unwrap(chg_sum).unwrap().into_inner()?,
+                &pos)?;
+        }
+
+        Ok(())
     }
 }
