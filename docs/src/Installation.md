@@ -18,8 +18,10 @@ For the binaries with _0.3.6_ci-test_ or upper version, they can run on most Lin
 If it still complains with message like `/lib64/libc.so.6: version 'GLIBC_2.18' not found`, just switch to `-musl`
 binary or build from scratch.
 
-- `rsgrad-<VERSION>-macos-x86_64.tar.gz`: Binary for macOS system. `rsgrad` is developed on macOS 10.15, which
+- `rsgrad-<VERSION>-macos-x86_64.tar.gz`: Binary for macOS (Intel). `rsgrad` is developed on macOS 13, which
 means you are don't need to worry about the availability if you are using macOS.
+
+- `rsgrad-<VERSION>-macos-aarch64.tar.gz`: Binary for macOS (Apple Silicon).
 
 - `rsgrad-<VERSION>-windows-x86_64.zip`: Binary for Windows system. We have no plan to support 32-bit systems.
 
