@@ -105,10 +105,9 @@ pub struct Wav3D {
     /// Perform sum-up of the charge densities for selected bands.
     ///
     /// With this flag open, only `normsquared` or `ns` or `uns` or `dns` are allowed for
-    /// the `-o`/`--output-parts` option.
-    ///
-    /// IMPORTANT NOTES:
-    /// - The prefix for output filename `sum-prefix` is also required and has no default prefix.
+    /// the `-o`/`--output-parts` option.{n}
+    /// IMPORTANT NOTES:{n}
+    /// - The prefix for output filename `sum-prefix` is also required and has no default prefix.{n}
     /// - The individual charge densities will not be saved to corresponding '.vasp' files
     ///   if this flag is on.
     sum_chgs: bool,
