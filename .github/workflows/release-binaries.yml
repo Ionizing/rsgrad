@@ -4,36 +4,45 @@ on:
     types: [published]
 
 jobs:
-  release:
-    name: release ${{ matrix.target }}
+  linux-x86_64-musl:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - target: x86_64-pc-windows-gnu
-            archive: zip
-          - target: x86_64-unknown-linux-musl
-            archive: tar.gz
-          - target: x86_64-apple-darwin
-            archive: tar.gz
-          - target: aarch64-apple-darwin
-            archive: tar.gz
     steps:
-      - uses: actions/checkout@master
-      - name: Compile and release
-        uses: rust-build/rust-build.action@v1.4.5
+      - uses: actions/checkout@v1
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          default: true
+
+      - name: Build binary
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release --target x86_64-unknown-linux-musl
+          use-cross: true
+
+      - name: Optimize and package binary
+        run: |
+          cd target/x86_64-unknown-linux-musl/release
+          chmod +x rsgrad
+          tar -c rsgrad | gzip > rsgrad.tar.gz
+      - name: Upload binary
+        uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          RUSTTARGET: ${{ matrix.target }}
-          ARCHIVE_TYPES: ${{ matrix.archive }}
+          asset_name: rsgrad-${{ github.event.release.tag_name }}-linux-x86_64-musl.tar.gz
+          asset_path: target/x86_64-unknown-linux-musl/release/rsgrad.tar.gz
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_content_type: application/zip
 
   linux-x86_64:
     runs-on: ubuntu-latest
     container: centos:7
     steps:
       - uses: actions/checkout@v1
+
       - name: Install Rust
         run: |
           yum install -y gcc g++ which
@@ -45,11 +54,11 @@ jobs:
 
       - name: Build
         run: |
-          cargo build --verbose --release
+          cargo build --verbose --release --target x86_64-unknown-linux-gnu
 
       - name: Optimize and package binary
         run: |
-          cd target/release
+          cd target/x86_64-unknown-linux-gnu/release
           chmod +x rsgrad
           tar -c rsgrad | gzip > rsgrad.tar.gz
           
@@ -59,6 +68,107 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           asset_name: rsgrad-${{ github.event.release.tag_name }}-linux-x86_64.tar.gz
-          asset_path: target/release/rsgrad.tar.gz
+          asset_path: target/x86_64-unknown-linux-gnu/release/rsgrad.tar.gz
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_content_type: application/zip
+
+  macos-x86_64:
+    runs-on: macos-13
+    steps:
+      - uses: actions/checkout@v1
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          default: true
+
+      - name: Build binary
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release --target x86_64-apple-darwin
+          use-cross: true
+          
+      - name: Optimize and package binary
+        run: |
+          cd target/x86_64-apple-darwin/release
+          chmod +x rsgrad
+          tar -c rsgrad | gzip > rsgrad.tar.gz
+
+      - name: Upload binary
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          asset_name: rsgrad-${{ github.event.release.tag_name }}-macos-x86_64.tar.gz
+          asset_path: target/x86_64-apple-darwin/release/rsgrad.tar.gz
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_content_type: application/zip
+
+  macos-aarch64:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v1
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          default: true
+
+      - name: Build binary
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release --target aarch64-apple-darwin
+          use-cross: true
+          
+      - name: Optimize and package binary
+        run: |
+          cd target/aarch64-apple-darwin/release
+          chmod +x rsgrad
+          tar -c rsgrad | gzip > rsgrad.tar.gz
+
+      - name: Upload binary
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          asset_name: rsgrad-${{ github.event.release.tag_name }}-macos-aarch64.tar.gz
+          asset_path: target/aarch64-apple-darwin/release/rsgrad.tar.gz
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_content_type: application/zip
+
+  windows-x86_64:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v1
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          default: true
+
+      - name: Build binary
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release --target x86_64-pc-windows-msvc
+          use-cross: true
+
+      - name: Optimize and package binary
+        run: |
+          cd target/x86_64-pc-windows-msvc/release
+          7z a rsgrad.zip rsgrad.exe
+
+      - name: Upload binary
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          asset_name: rsgrad-${{ github.event.release.tag_name }}-windows-x86_64.zip
+          asset_path: target/x86_64-pc-windows-msvc/release/rsgrad.zip
           upload_url: ${{ github.event.release.upload_url }}
           asset_content_type: application/zip
