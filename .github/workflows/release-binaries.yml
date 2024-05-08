@@ -7,7 +7,6 @@ jobs:
   release:
     name: release ${{ matrix.target }}
     runs-on: ubuntu-latest
-    container: centos:7
     strategy:
       fail-fast: false
       matrix:
@@ -15,8 +14,6 @@ jobs:
           - target: x86_64-pc-windows-gnu
             archive: zip
           - target: x86_64-unknown-linux-musl
-            archive: tar.gz
-          - target: x86_64-unknown-linux-gnu
             archive: tar.gz
           - target: x86_64-apple-darwin
             archive: tar.gz
@@ -31,3 +28,37 @@ jobs:
         with:
           RUSTTARGET: ${{ matrix.target }}
           ARCHIVE_TYPES: ${{ matrix.archive }}
+
+  linux-x86_64:
+    runs-on: ubuntu-latest
+    container: centos:7
+    steps:
+      - uses: actions/checkout@v1
+      - name: Install Rust
+        run: |
+          yum install -y gcc g++ which
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y --target x86_64-unknown-linux-gnu
+          echo $HOME/.cargo/bin >> $GITHUB_PATH
+          source $HOME/.cargo/env
+          which rustup
+          which cargo
+
+      - name: Build
+        run: |
+          cargo build --verbose --release
+
+      - name: Optimize and package binary
+        run: |
+          cd target/release
+          chmod +x rsgrad
+          tar -c rsgrad | gzip > rsgrad.tar.gz
+          
+      - name: Upload binary
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          asset_name: rsgrad-${{ github.event.release.tag_name }}-linux-x86_64.tar.gz
+          asset_path: target/release/rsgrad.tar.gz
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_content_type: application/zip
