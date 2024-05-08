@@ -8,74 +8,93 @@ Main functions of `rsgrad wav3d`
 
 ```shell
 $ rsgrad wav3d --help
-rsgrad-wav3d
 Plot wavefunction in realspace, and save it as '.vasp' file
 
-USAGE:
-    rsgrad wav3d [OPTIONS]
+Usage: rsgrad wav3d [OPTIONS]
 
-OPTIONS:
-    -b, --ibands <IBANDS>...
-            Select band index, starting from 1
+Options:
+  -w, --wavecar <WAVECAR>
+          WAVECAR file name
+          
+          [default: ./WAVECAR]
 
-    -d, --detail
-            Show the eigen values and band occupations of current WAVECAR.
+  -p, --poscar <POSCAR>
+          POSCAR filename, POSCAR is needed to get the real-space wavefunction
+          
+          [default: ./POSCAR]
 
-            This flag should be used with `--list`
+  -s, --ispins [<ISPINS>...]
+          Select spin index, starting from 1
+          
+          [default: 1]
 
-    -e, --show-eigs-suffix
-            Add eigen value suffix to the filename
+  -k, --ikpoints [<IKPOINTS>...]
+          Select kpoint index, starting from 1.
+          
+          You can input ranges directly: `-k 1..4 5..10`
+          
+          [default: 1]
 
-        --gamma-half <GAMMA_HALF>
-            Gamma Half direction of WAVECAR. You need to set this to 'x' or 'z' when processing
-            WAVECAR produced by `vasp_gam`
+  -b, --ibands [<IBANDS>...]
+          Select band index, starting from 1.
+          
+          You can input ranges directly: `-b 1..4 5..10`
 
-            [possible values: x, z]
+  -l, --list
+          List the brief info of current WAVECAR
 
-    -h, --help
-            Print help information
+  -d, --detail
+          Show the eigen values and band occupations of current WAVECAR.
+          
+          This flag should be used with `--list`
 
-    -k, --ikpoints <IKPOINTS>...
-            Select kpoint index, starting from 1
+      --gamma-half <GAMMA_HALF>
+          Gamma Half direction of WAVECAR. You need to set this to 'x' or 'z' when processing WAVECAR produced by `vasp_gam`
+          
+          [possible values: x, z]
 
-            [default: 1]
+      --ngrid <NGRID> <NGRID> <NGRID>
+          Grid size for realspace wavefunction, 3 numbers are required, i.e. NGXF NGYF and NGZF.
+          
+          If this argument is left empty, NG_F will be set as NG_F=2*NG_.
+          
+          Be aware that NG_F must be greater than or at least equal to corresponding NG_.
 
-    -l, --list
-            List the brief info of current WAVECAR
+  -o, --output-parts [<OUTPUT_PARTS>...]
+          Specify output part of the wavefunction.
+          
+          Detailed message:
+           - normsquared/ns: Perform `ρ(r) = |ѱ(r)|^2` action to get the spatial distribution of selected band.
+           - real/re: Real part of the wavefunction, suffix '_re.vasp' is added to the output filename.
+           - imag/im: Imaginary part of the wavefunction, suffix '_im.vasp' is added to the output filename.
+           - reim: Output both real part and imaginary parts of the wavefunction.
+           - uns/dns: Perform `ρ(r) = |ѱ(r)|^2` for spinor up/down only. **Note: this option works for `ncl` WAVECAR only.**
+          
+          [possible values: normsquared, ns, uns, dns, real, re, imag, im, reim]
 
-    -o, --output-parts <OUTPUT_PARTS>...
-            Specify output part of the wavefunction.
+      --prefix <PREFIX>
+          Prefix of output filename
+          
+          [default: wav]
 
-            Detailed message:
-             - normsquared/ns: Perform `ρ(r) = |ѱ(r)|^2` action to get the spatial distribution of
-            selected band.
-             - real/re: Real part of the wavefunction, suffix '_re.vasp' is added to the output
-            filename.
-             - imag/im: Imaginary part of the wavefunction, suffix '_im.vasp' is added to the output
-            filename.
-             - reim: Output both real part and imaginary parts of the wavefunction.
+  -e, --show-eigs-suffix
+          Add eigen value suffix to the filename
 
-            [possible values: normsquared, ns, real, re, imag, im, reim]
+      --sum-chgs
+          Perform sum-up of the charge densities for selected bands.
+          
+          With this flag open, only `normsquared` or `ns` or `uns` or `dns` are allowed for the `-o`/`--output-parts` option.
+           IMPORTANT NOTES:
+           - The prefix for output filename `sum-prefix` is also required and has no default prefix.
+           - The individual charge densities will not be saved to corresponding '.vasp' files if this flag is on.
 
-    -p, --poscar <POSCAR>
-            POSCAR filename, POSCAR is needed to get the real-space wavefunction
+      --sum-prefix <SUM_PREFIX>
+          Specify the output file for the summed charge densities.
+          
+          This argument is required if `sum_chgs` is on.
 
-            [default: ./POSCAR]
-
-        --prefix <PREFIX>
-            Prefix of output filename
-
-            [default: wav]
-
-    -s, --ispins <ISPINS>...
-            Select spin index, starting from 1
-
-            [default: 1]
-
-    -w, --wavecar <WAVECAR>
-            WAVECAR file name
-
-            [default: ./WAVECAR]
+  -h, --help
+          Print help (see a summary with '-h')
 ```
 
 ## Example
