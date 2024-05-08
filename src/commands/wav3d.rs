@@ -101,7 +101,7 @@ pub struct Wav3D {
     /// Add eigen value suffix to the filename
     show_eigs_suffix: bool,
 
-    #[arg(long, requires("sum-prefix"))]
+    #[arg(long, requires("sum_prefix"))]
     /// Perform sum-up of the charge densities for selected bands.
     ///
     /// With this flag open, only `normsquared` or `ns` or `uns` or `dns` are allowed for
@@ -113,11 +113,11 @@ pub struct Wav3D {
     ///   if this flag is on.
     sum_chgs: bool,
 
-    #[arg(long, requires_if(ArgPredicate::IsPresent, "sum-chgs"))]
+    #[arg(long, requires("sum_chgs"))]
     /// Specify the output file for the summed charge densities.
     ///
     /// This argument is required if `sum_chgs` is on.
-    sum_prefix: PathBuf,
+    sum_prefix: Option<PathBuf>,
 }
 
 
@@ -348,7 +348,7 @@ I suggest providing `gamma_half` argument to avoid confusion.");
 
         if self.sum_chgs {
             save_to_vasp(
-                &self.sum_prefix.with_extension("vasp"),
+                &self.sum_prefix.as_ref().unwrap().with_extension("vasp"),
                 &Arc::try_unwrap(chg_sum).unwrap().into_inner()?,
                 &pos)?;
         }
