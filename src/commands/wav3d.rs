@@ -42,7 +42,7 @@ pub struct Wav3D {
     /// POSCAR filename, POSCAR is needed to get the real-space wavefunction.
     poscar: PathBuf,
 
-    #[arg(long, short = 's', default_value = "1", num_args(0..))]
+    #[arg(long, short = 's', default_value = "1", num_args(0..=2))]
     /// Select spin index, starting from 1.
     ispins: Vec<i32>,
 

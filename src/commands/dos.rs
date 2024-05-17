@@ -204,7 +204,7 @@ pub struct Dos {
     /// Render the plot and print the rendered code to stdout.
     to_inline_html: bool,
 
-    #[arg(long, default_value = "200")]
+    #[arg(long, default_value_t = 200)]
     /// Sample density of DOS. Defined by number of points in 1 eV.
     sample_density: usize,
 }

@@ -47,11 +47,11 @@ pub struct Tdm {
     /// processing WAVECAR produced by `vasp_gam`.
     gamma_half: Option<String>,
 
-    #[arg(short = 's', long, default_value = "1", value_parser = ["1", "2"])]
+    #[arg(short = 's', long, default_value = "1", value_parser = clap::value_parser!(u64).range(1..=2))]
     /// Spin index, 1 for up, 2 for down.
-    ispin: usize,
+    ispin: u64,
 
-    #[arg(short = 'k', long, default_value = "1")]
+    #[arg(short = 'k', long, default_value_t = 1)]
     /// K-point index, starts from 1.
     ikpoint: usize,
 
@@ -63,7 +63,7 @@ pub struct Tdm {
     /// Final band indices, starts from 1.
     jbands: Vec<usize>,
 
-    #[arg(long, default_value = "0.05")]
+    #[arg(long, default_value_t = 0.05)]
     /// Smearing width, in eV.
     sigma: f64,
 
@@ -91,11 +91,11 @@ pub struct Tdm {
     /// Open the default browser to show the plot.
     show: bool,
 
-    #[arg(long, default_value = "0.1")]
+    #[arg(long, default_value_t = 0.1)]
     /// Specify the width of bars in the center of peaks. (eV)
     barwidth: f64,
 
-    #[arg(long, default_value = "500")]
+    #[arg(long, default_value_t = 500)]
     /// How many points in the x axis PER eV
     npoints: usize,
 
@@ -211,11 +211,11 @@ I suggest you provide `gamma_half` argument to avoid confusion.");
         }
 
 
-        let ispin = if self.ispin > 0 && self.ispin <= wav.nspin as usize {
+        let ispin = if self.ispin > 0 && self.ispin <= wav.nspin {
             self.ispin - 1
         } else {
             bail!("Invalid ispin: ispin shoule be >= 1 and <= {}.", wav.nspin);
-        };
+        } as usize;
 
         let ikpoint = if self.ikpoint > 0 && self.ikpoint <= wav.nkpoints as usize {
             self.ikpoint - 1

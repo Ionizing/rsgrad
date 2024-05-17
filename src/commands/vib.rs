@@ -59,7 +59,7 @@ pub struct Vib {
     /// Modulate the ground-state POSCAR with respect to a certern vibration frequencies.
     modulate: bool,
 
-    #[arg(short = 'a', long, default_value = "0.1")]
+    #[arg(short = 'a', long, default_value_t = 0.1)]
     /// Modulation amplitude coefficient, to avoid precision issue, abs(amplitude) >= 0.01 should
     /// be satisfied.
     amplitude: f64,
