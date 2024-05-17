@@ -1,0 +1,8 @@
+kpoint-labels   = ["M", "Γ", "K", "M"]
+procar          = "PROCAR"
+outcar          = "OUTCAR"
+txtout-prefix   = "band_ncl_raw"
+htmlout         = "band_ncl.html"
+segment-ranges  = [[81, 120], [1, 40], [41, 80]]
+ncl-spinor      = "Z"
+colormap        = "jet"
