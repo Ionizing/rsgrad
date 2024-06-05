@@ -3,6 +3,7 @@
 use std::{
     mem,
     slice,
+    ops::Range,
     io::{
         Read,
         Seek,
@@ -34,7 +35,8 @@ use ndarray::{
     arr2,
     s,
 };
-use anyhow::bail;
+use ndarray_linalg::Norm;
+use anyhow::{bail, ensure};
 use ndrustfft::{
     FftNum,
     FftHandler,
@@ -43,6 +45,7 @@ use ndrustfft::{
     ndifft_r2c,
     Complex,
 };
+use hdf5::File as H5File;
 
 use crate::{
     types::{
@@ -64,6 +67,12 @@ const RY_TO_EV:     f64 = 13.605826;
 const AU_TO_A:      f64 = 0.529177249;
 const AU_TO_DEBYE:  f64 = 2.541746;
 const HBAR2D2ME:    f64 = RY_TO_EV * AU_TO_A * AU_TO_A;
+
+
+#[allow(non_camel_case_types)]
+type c64 = Complex<f64>;
+#[allow(non_camel_case_types)]
+type c32 = Complex<f32>;
 
 
 // Wavefunction precision type
@@ -108,74 +117,46 @@ impl fmt::Display for WavecarType {
 
 #[derive(Clone, Debug)]
 pub enum Wavefunction {
-    Complex32Array1(Array1<Complex<f32>>),
-    Complex64Array1(Array1<Complex<f64>>),
-    Complex64Array3(Array3<Complex<f64>>),
+    Complex32Array1(Array1<c32>),
+    Complex64Array1(Array1<c64>),
+    Complex64Array3(Array3<c64>),
     Float64Array3(Array3<f64>),
-    Ncl32Array2(Array2<Complex<f32>>),
-    Ncl64Array2(Array2<Complex<f64>>),
-    Ncl64Array4(Array4<Complex<f64>>),
+    Ncl32Array2(Array2<c32>),
+    Ncl64Array2(Array2<c64>),
+    Ncl64Array4(Array4<c64>),
 }
 
 
 impl Wavefunction {
     pub fn normalize(self) -> Self {
         match self {
-            Self::Complex32Array1(mut wav) => {
-                let norm = wav.iter()
-                    .map(Complex::<f32>::norm_sqr)
-                    .sum::<f32>()
-                    .sqrt();
-                wav.mapv_inplace(|v| v.unscale(norm));
-                Self::Complex32Array1(wav)
+            Self::Complex32Array1(wav) => {
+                let norm = wav.norm();
+                Self::Complex32Array1(wav / norm)
             },
-            Self::Complex64Array1(mut wav) => {
-                let norm = wav.iter()
-                    .map(Complex::<f64>::norm_sqr)
-                    .sum::<f64>()
-                    .sqrt();
-                wav.mapv_inplace(|v| v.unscale(norm));
-                Self::Complex64Array1(wav)
+            Self::Complex64Array1(wav) => {
+                let norm = wav.norm();
+                Self::Complex64Array1(wav / norm)
             },
-            Self::Complex64Array3(mut wav) => {
-                let norm = wav.iter()
-                    .map(Complex::<f64>::norm_sqr)
-                    .sum::<f64>()
-                    .sqrt();
-                wav.mapv_inplace(|v| v.unscale(norm));
-                Self::Complex64Array3(wav)
+            Self::Complex64Array3(wav) => {
+                let norm = wav.norm();
+                Self::Complex64Array3(wav / norm)
             },
-            Self::Ncl32Array2(mut wav) => {
-                let norm = wav.iter()
-                    .map(Complex::<f32>::norm_sqr)
-                    .sum::<f32>()
-                    .sqrt();
-                wav.mapv_inplace(|v| v.unscale(norm));
-                Self::Ncl32Array2(wav)
+            Self::Ncl32Array2(wav) => {
+                let norm = wav.norm();
+                Self::Ncl32Array2(wav / norm)
             },
-            Self::Ncl64Array2(mut wav) => {
-                let norm = wav.iter()
-                    .map(Complex::<f64>::norm_sqr)
-                    .sum::<f64>()
-                    .sqrt();
-                wav.mapv_inplace(|v| v.unscale(norm));
-                Self::Ncl64Array2(wav)
+            Self::Ncl64Array2(wav) => {
+                let norm = wav.norm();
+                Self::Ncl64Array2(wav / norm)
             },
-            Self::Ncl64Array4(mut wav) => {
-                let norm = wav.iter()
-                    .map(Complex::<f64>::norm_sqr)
-                    .sum::<f64>()
-                    .sqrt();
-                wav.mapv_inplace(|v| v.unscale(norm));
-                Self::Ncl64Array4(wav)
+            Self::Ncl64Array4(wav) => {
+                let norm = wav.norm();
+                Self::Ncl64Array4(wav / norm)
             },
-            Self::Float64Array3(mut wav) => {
-                let norm = wav.iter()
-                    .map(|x| x * x)
-                    .sum::<f64>()
-                    .sqrt();
-                wav.mapv_inplace(|v| v / norm);
-                Self::Float64Array3(wav)
+            Self::Float64Array3(wav) => {
+                let norm = wav.norm();
+                Self::Float64Array3(wav / norm)
             },
         }
     }
@@ -212,7 +193,6 @@ pub struct Wavecar {
 
 
 impl Wavecar {
-
     pub fn from_file(path: &(impl AsRef<Path> + ?Sized)) -> Result<Self> {
         let mut file = File::open(path)?;
         let file_len = file.metadata()?.len();
@@ -599,7 +579,7 @@ impl Wavecar {
                     return Ok(Wavefunction::Complex32Array1(ret));
                 }
 
-                assert_eq!(nplw % 2, 0, "Odd NPLW for NCL WAVECAR.");   // ncl wavefunction, two spinors
+                ensure!(nplw % 2 == 0, "Odd NPLW for NCL WAVECAR.");   // ncl wavefunction, two spinors
                 let nplw = nplw / 2;
                 Ok(Wavefunction::Ncl32Array2(ret.into_shape((2, nplw)).unwrap()))
             },
@@ -609,7 +589,7 @@ impl Wavecar {
                     return Ok(Wavefunction::Complex64Array1(ret));
                 }
 
-                assert_eq!(nplw % 2, 0, "Odd NPLW for NCL WAVECAR.");
+                ensure!(nplw % 2 == 0, "Odd NPLW for NCL WAVECAR.");
                 let nplw = nplw / 2;
                 Ok(Wavefunction::Ncl64Array2(ret.into_shape((2, nplw)).unwrap()))
             },
@@ -667,6 +647,7 @@ impl Wavecar {
     }
 
 
+    // All indices counts from 0.
     fn _get_wavefunction_realspace_std(&self, ispin: u64, ikpoint :u64, iband: u64, ngxr: i64, ngyr: i64, ngzr: i64) -> Result<Wavefunction> {
         assert_eq!(self.wavecar_type, WavecarType::Standard);
 
@@ -685,15 +666,15 @@ impl Wavecar {
         let ngyr = ngyr as usize;
         let ngzr = ngzr as usize;
 
-        let coeffs: Array1<Complex<f64>> = match self.prec_type {
+        let coeffs: Array1<c64> = match self.prec_type {
             WFPrecType::Complex32 => self._read_wavefunction_raw::<f32>(ispin, ikpoint, iband)?
                 .mapv(|x| Complex::<f64>{re: x.re as f64, im: x.im as f64}),
             WFPrecType::Complex64 => self._read_wavefunction_raw::<f64>(ispin, ikpoint, iband)?,
         };
 
         assert_eq!(coeffs.len(), gvecs.len());
-        let mut wavk = Array3::<Complex<f64>>::zeros((ngxr, ngyr, ngzr));
-        let mut wavr = Array3::<Complex<f64>>::zeros((ngxr, ngyr, ngzr));
+        let mut wavk = Array3::<c64>::zeros((ngxr, ngyr, ngzr));
+        let mut wavr = Array3::<c64>::zeros((ngxr, ngyr, ngzr));
 
         gvecs.into_iter().zip(coeffs.into_iter())
             .for_each(|(idx, v)| wavk[idx] = v);
@@ -711,6 +692,7 @@ impl Wavecar {
     }
 
 
+    // All indices counts from 0.
     fn _get_wavefunction_realspace_gamx(&self, ispin: u64, ikpoint: u64, iband: u64, ngxr: i64, ngyr: i64, ngzr: i64) -> Result<Wavefunction> {
         assert_eq!(self.wavecar_type, WavecarType::GamaHalf(Axis::X));
 
@@ -736,12 +718,12 @@ impl Wavecar {
         let ngyk = ngyk as usize;
         let ngzk = ngzk as usize;
 
-        let coeffs: Array1<Complex<f64>> = match self.prec_type {
+        let coeffs: Array1<c64> = match self.prec_type {
             WFPrecType::Complex32 => self._read_wavefunction_raw::<f32>(ispin, ikpoint, iband)?
                 .mapv(|x| Complex::<f64>{re: x.re as f64, im: x.im as f64}),
             WFPrecType::Complex64 => self._read_wavefunction_raw::<f64>(ispin, ikpoint, iband)?,
         };
-        let mut wavk = Array3::<Complex<f64>>::zeros((ngxk, ngyk, ngzk));
+        let mut wavk = Array3::<c64>::zeros((ngxk, ngyk, ngzk));
         let mut wavr = Array3::<f64>::zeros((ngxr, ngyr, ngzr));
 
         gvecs.zip(coeffs.into_iter())
@@ -762,7 +744,7 @@ impl Wavecar {
         wavk.mapv_inplace(|v| v.unscale(f64::sqrt(2.0)));
         wavk[[0, 0, 0]].scale(f64::sqrt(2.0));
 
-        let mut work = Array3::<Complex<f64>>::zeros(wavk.dim());
+        let mut work = Array3::<c64>::zeros(wavk.dim());
         let mut handler_x = R2cFftHandler::<f64>::new(ngxr);
         let mut handler_y =    FftHandler::<f64>::new(ngyr);
         let mut handler_z =    FftHandler::<f64>::new(ngzr);
@@ -774,6 +756,7 @@ impl Wavecar {
     }
 
 
+    // All indices counts from 0.
     fn _get_wavefunction_realspace_gamz(&self, ispin: u64, ikpoint: u64, iband: u64, ngxr: i64, ngyr: i64, ngzr: i64) -> Result<Wavefunction> {
         assert_eq!(self.wavecar_type, WavecarType::GamaHalf(Axis::Z));
 
@@ -799,13 +782,13 @@ impl Wavecar {
         let ngyk = ngyk as usize;
         let ngzk = ngzk as usize;
 
-        let coeffs: Array1<Complex<f64>> = match self.prec_type {
+        let coeffs: Array1<c64> = match self.prec_type {
             WFPrecType::Complex32 => self._read_wavefunction_raw::<f32>(ispin, ikpoint, iband)?
                 .mapv(|x| Complex::<f64>{re: x.re as f64, im: x.im as f64}),
             WFPrecType::Complex64 => self._read_wavefunction_raw::<f64>(ispin, ikpoint, iband)?
         };
 
-        let mut wavk = Array3::<Complex<f64>>::zeros((ngxk, ngyk, ngzk));
+        let mut wavk = Array3::<c64>::zeros((ngxk, ngyk, ngzk));
         let mut wavr = Array3::<f64>::zeros((ngxr, ngyr, ngzr));
 
         gvecs.zip(coeffs.into_iter())
@@ -826,7 +809,7 @@ impl Wavecar {
         wavk.mapv_inplace(|v| v.unscale(f64::sqrt(2.0)));
         wavk[[0, 0, 0]].scale(f64::sqrt(2.0));
 
-        let mut work = Array3::<Complex<f64>>::zeros(wavk.dim());
+        let mut work = Array3::<c64>::zeros(wavk.dim());
         let mut handler_x =    FftHandler::<f64>::new(ngxr);
         let mut handler_y =    FftHandler::<f64>::new(ngyr);
         let mut handler_z = R2cFftHandler::<f64>::new(ngzr);
@@ -838,6 +821,7 @@ impl Wavecar {
     }
 
 
+    // All indices counts from 0.
     fn _get_wavefunction_realspace_ncl(&self, ispin: u64, ikpoint: u64, iband: u64, ngxr: i64, ngyr: i64, ngzr: i64) -> Result<Wavefunction> {
         assert_eq!(self.wavecar_type, WavecarType::NonCollinear);
 
@@ -856,16 +840,16 @@ impl Wavecar {
         let ngyr = ngyr as usize;
         let ngzr = ngzr as usize;
 
-        let coeffs: Array1<Complex<f64>> = match self.prec_type {
+        let coeffs: Array1<c64> = match self.prec_type {
             WFPrecType::Complex32 => self._read_wavefunction_raw::<f32>(ispin, ikpoint, iband)?
                 .mapv(|x| Complex::<f64>{re: x.re as f64, im: x.im as f64}),
             WFPrecType::Complex64 => self._read_wavefunction_raw::<f64>(ispin, ikpoint, iband)?
         };
 
         let nplw = self.nplws[ikpoint as usize] as usize / 2;
-        let coeffs: Array2<Complex<f64>> = coeffs.into_shape((2, nplw)).unwrap();
-        let mut wavk = Array4::<Complex<f64>>::zeros((2, ngxr, ngyr, ngzr));
-        let mut wavr = Array4::<Complex<f64>>::zeros((2, ngxr, ngyr, ngzr));
+        let coeffs: Array2<c64> = coeffs.into_shape((2, nplw)).unwrap();
+        let mut wavk = Array4::<c64>::zeros((2, ngxr, ngyr, ngzr));
+        let mut wavr = Array4::<c64>::zeros((2, ngxr, ngyr, ngzr));
 
         for ispinor in 0 .. 2usize {
             let mut wk = wavk.slice_mut(s![ispinor, .., .., ..]);
@@ -889,7 +873,9 @@ impl Wavecar {
 
 
     // Read wavefunction coefficients and convert to Array1<Complex64>
-    fn _wav_kspace(&self, ispin: u64, ikpoint: u64, iband: u64, nplw: usize) -> Array2<Complex<f64>> {
+    //
+    // All indices starts from 0.
+    fn _wav_kspace(&self, ispin: u64, ikpoint: u64, iband: u64, nplw: usize) -> Array2<c64> {
         let wav = self.read_wavefunction(ispin, ikpoint, iband).unwrap();
         match wav {
             Wavefunction::Complex32Array1(wf) => {
@@ -916,8 +902,10 @@ impl Wavecar {
     }
 
 
-    // All indices starts from 0
-    pub fn transition_dipole_moment(&self, ispin: u64, ikpoint: u64, iniband: u64, finband: u64) -> [Complex<f64>; 3] {
+    /// Calculate transition dipole moment using pseudo wavefunction.
+    ///
+    /// All indices starts from 0.
+    pub fn transition_dipole_moment(&self, ispin: u64, ikpoint: u64, iniband: u64, finband: u64) -> [c64; 3] {
         self.check_indices(ispin, ikpoint, iniband).unwrap();
         self.check_indices(ispin, ikpoint, finband).unwrap();
         assert!(iniband != finband);
@@ -965,6 +953,170 @@ impl Wavecar {
             .mapv_into(|v| v.scale(AU_TO_A * AU_TO_DEBYE * 2.0 * RY_TO_EV / dE));
 
         [tdm[0], tdm[1], tdm[2]]
+    }
+
+
+    /// Performs <psi | sigma_z | psi> for given ncl wavefunction.
+    pub fn get_sigmaz(psi: &Array2<c64>) -> f64 {
+        psi.slice(s![0, ..]).norm() - psi.slice(s![1, ..]).norm()
+    }
+
+
+    /// Performs <psi | sigma_z | psi> for ncl wavefunction.
+    ///
+    /// This method can is dedicated for the ncl system, thus ispin is bounded to be 0
+    pub fn get_band_sigmaz(&self, ikpoint: u64, iband: u64) -> Result<f64> {
+        ensure!(self.wavecar_type == WavecarType::NonCollinear);
+        let nplw = self.nplws[ikpoint as usize] / 2;
+        let wav = self._wav_kspace(0, ikpoint, iband, nplw as usize);
+
+        Ok(Self::get_sigmaz(&wav))
+    }
+
+
+    /// Performs <psi_j | sigma_z | psi_i> for given ncl wavefunction pair. psi_i and psi_j
+    /// must have same sizes.
+    pub fn get_sigmaz_ji(psi_i: &Array2<c64>, psi_j: &Array2<c64>) -> c64 {
+        (psi_j.slice(s![0, ..]).mapv(|v| v.conj()) * psi_i.slice(s![0, ..])).sum()
+            -
+        (psi_j.slice(s![1, ..]).mapv(|v| v.conj()) * psi_i.slice(s![1, ..])).sum()
+    }
+
+
+    /// Performs <psi_j | sigma_z | psi_i> for ncl wavefunctions. Where psi_i and psi_j
+    /// must be in same k-point.
+    ///
+    /// This method can is dedicated for the ncl system, thus ispin is bounded to be 0
+    pub fn get_band_sigmaz_ji(&self, ikpoint: u64, iband: u64, jband: u64) -> Result<c64> {
+        ensure!(self.wavecar_type == WavecarType::NonCollinear);
+        let nplw = self.nplws[ikpoint as usize] / 2;
+        let psi_i = self._wav_kspace(0, ikpoint, iband, nplw as usize);
+        let psi_j = self._wav_kspace(0, ikpoint, jband, nplw as usize);
+
+        Ok(
+            (psi_j.slice(s![0, ..]).mapv(|v| v.conj()) * psi_i.slice(s![0, ..])).sum()
+            -
+            (psi_j.slice(s![1, ..]).mapv(|v| v.conj()) * psi_i.slice(s![1, ..])).sum()
+        )
+    }
+
+
+
+    /// Performs an unitary transform for a pair of degenerated state.
+    ///
+    /// Returns the transformed wavefunction pair where the `sigma_z` of first one purely
+    /// points to `+z` and `sigma_z` of the other one points to `-z`.
+    ///
+    /// NOTE: Please make sure the input wavefunctions are degenerated.
+    pub fn pair_unitary_transform(mut psi_i: Array2<c64>, mut psi_j: Array2<c64>, threshold: f64) -> Result<[Array2<c64>; 2]> {
+        ensure!(threshold > 0.0);
+
+        let mut z11 = Self::get_sigmaz(&psi_i);
+        let mut z22 = Self::get_sigmaz(&psi_j);
+        let mut z21 = Self::get_sigmaz_ji(&psi_i, &psi_j);
+
+        if f64::abs(z11 + z22) > threshold {
+            bail!("Degeneracy check failed: |z11:{z11:10.5} + z22:{z22:10.5}| = {:10.5} > threshold:{threshold:10.5}", f64::abs(z11+z22));
+        }
+
+        let reverse = z11 < 0.0;
+        if reverse {
+            mem::swap(&mut psi_i, &mut psi_j);
+            mem::swap(&mut z11, &mut z22);
+            z21.im = -z21.im;     // z21 = z21.conj()
+        }
+
+        let expitheta = z21 / z21.norm();
+        let phi = f64::atan( z21.norm() / z11 ) / 2.0;
+
+        let a = phi.cos();
+        let b = expitheta * phi.sin();
+
+        // U = [[ a , b ],
+        //      [-b*, a*]]
+        // [psi_i'; psi_j'] = U * [psi_i; psi_j]
+        let ret_psi_i = psi_i.clone() * a   + psi_j.clone() * b;
+        let ret_psi_j = psi_i * (-b.conj()) + psi_j * a;
+
+        Ok([ret_psi_i, ret_psi_j])
+    }
+
+
+    /// Performs an unitary transform for a pair of degenerated state on same k-point.
+    ///
+    /// Returns the transformed wavefunction pair where the `sigma_z` of first one purely
+    /// points to `+z` and `sigma_z` of the other one points to `-z`.
+    ///
+    /// NOTE: Please make sure the selected bands are degenerated and have nearly opposite spin
+    /// polarization.
+    pub fn band_pair_unitary_transform(&self, ikpoint: u64, iband: u64, jband: u64, threshold: f64) -> Result<[Array2<c64>; 2]> {
+        ensure!(self.wavecar_type == WavecarType::NonCollinear);
+        let nplw = self.nplws[ikpoint as usize] / 2;
+        let psi_i = self._wav_kspace(0, ikpoint, iband, nplw as usize);
+        let psi_j = self._wav_kspace(0, ikpoint, jband, nplw as usize);
+        Self::pair_unitary_transform(psi_i, psi_j, threshold)
+    }
+
+
+    /// Save slices of wavefunction into HDF5 file.
+    ///
+    /// All indices count from 0.
+    pub fn save_slices_to_h5<P: AsRef<Path>>(
+        &self, fname: P,
+        kslice: Range<usize>,
+        bslice: Range<usize>) -> Result<()> {
+
+        let nkpt = kslice.len();
+        let nbnd = bslice.len();
+        let nspn = self.nspin as usize;
+        ensure!(nkpt >= 1 && nkpt < self.nkpoints as usize);
+        ensure!(nbnd >= 1 && nbnd < self.nbands as usize);
+
+        let wavtype = match self.wavecar_type {
+            WavecarType::Standard => b'S',
+            WavecarType::NonCollinear => b'N',
+            WavecarType::GamaHalf(Axis::X) => b'X',
+            WavecarType::GamaHalf(Axis::Z) => b'Z',
+            _ => bail!("Unexpected wavecar type."),
+        };
+
+        let prec: usize = match self.prec_type {
+            WFPrecType::Complex32 => 32,
+            WFPrecType::Complex64 => 64,
+        };
+
+        // Range are not Copy, Fxxk off.
+        let kid_list = kslice.clone().map(|x| x + 1).collect::<Vec<usize>>();
+        let bid_list = bslice.clone().map(|x| x + 1).collect::<Vec<usize>>();
+
+        let nplw_list = self.nplws[kslice.clone()].to_owned();
+        let klist = self.kvecs.slice(s![kslice.clone(), ..]).to_owned();
+        let eigs = self.band_eigs.slice(s![.., kslice.clone(), bslice.clone()]).to_owned();
+        let whts = self.band_eigs.slice(s![.., kslice.clone(), bslice.clone()]).to_owned();
+
+        let f = H5File::open(fname)?;
+        f.new_dataset::<usize>().create("prectype")?.write_scalar(&prec)?;
+        f.new_dataset::<u8>().create("wavtype")?.write_scalar(&wavtype)?;
+        f.new_dataset::<usize>().create("nspin")?.write_scalar(&nspn)?;
+        f.new_dataset::<usize>().create("nkpoint")?.write_scalar(&nkpt)?;
+        f.new_dataset::<usize>().create("nband")?.write_scalar(&nbnd)?;
+
+        f.new_dataset::<f64>().create("encut")?.write_scalar(&self.encut)?;
+        f.new_dataset::<f64>().create("efermi")?.write_scalar(&self.efermi)?;
+        f.new_dataset::<[[f64;3];3]>().create("acell")?.write_scalar(&self.acell)?;
+        f.new_dataset::<[[f64;3];3]>().create("bcell")?.write_scalar(&self.bcell)?;
+        f.new_dataset::<f64>().create("volume")?.write_scalar(&self.volume)?;
+        f.new_dataset::<[u64;3]>().create("ngrid")?.write_scalar(&self.ngrid)?;
+
+        f.new_dataset_builder().with_data(&kid_list).create("kpoint_id_list")?;
+        f.new_dataset_builder().with_data(&bid_list).create("band_id_list")?;
+        f.new_dataset_builder().with_data(&klist).create("kpoint_list")?;
+        f.new_dataset_builder().with_data(&eigs).create("band_eigvals")?;
+        f.new_dataset_builder().with_data(&whts).create("fermi_weights")?;
+        f.new_dataset_builder().with_data(&nplw_list).create("nplws_list")?;
+
+
+        todo!()
     }
 }
 

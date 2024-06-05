@@ -2,7 +2,8 @@ use std::path::{Path, PathBuf};
 use std::ops::AddAssign;
 use std::sync::{Arc, Mutex};
 
-use clap::{builder::ArgPredicate, Args};
+//use clap::{builder::ArgPredicate, Args};
+use clap::Args;
 use log::{
     info,
     warn,
