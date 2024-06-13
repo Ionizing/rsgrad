@@ -230,6 +230,7 @@ I suggest you provide `gamma_half` argument to avoid confusion.");
                     .title(plotly::common::Title::new("Distance (Å)")));
         plot.set_layout(layout);
 
+        plot.use_local_plotly();
         info!("Writing to {:?}", self.htmlout);
         plot.to_html(&self.htmlout);
 
