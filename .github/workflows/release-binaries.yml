@@ -3,6 +3,9 @@ on:
   release:
     types: [published]
 
+env:
+  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
+
 jobs:
   linux-x86_64-musl:
     runs-on: ubuntu-latest
@@ -40,8 +43,6 @@ jobs:
   linux-x86_64:
     runs-on: ubuntu-latest
     container: centos:7
-    env:
-      ACTIONS_RUNNER_FORCE_ACTIONS_NODE_VERSION: true
     steps:
       - uses: actions/checkout@v1
 
