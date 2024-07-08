@@ -78,7 +78,7 @@ impl OptProcess for Workfunc {
 
         let efermi = outcar.efermi;
         let ngrid = locpot.ngrid;
-        let cell = outcar.ion_iters.last().unwrap().cell;
+        let cell = locpot.pos.cell;
         let iaxis = match self.axis {
             Axis::X => 0usize,
             Axis::Y => 1usize,

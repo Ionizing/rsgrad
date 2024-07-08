@@ -405,18 +405,16 @@ impl Outcar {
             .skip(2)
             .take(3)
             .map(|l| {
-                let v = Regex::new(r"[+-]?([0-9]*[.])?[0-9]+").unwrap()
-                    .captures_iter(l)
-                    .take(3)
-                    .map(|x| x.get(0).unwrap()
-                              .as_str()
-                              .parse::<f64>()
-                              .unwrap_or_else(|_| 
-                                  panic!("Cannot parse lattice vector as float numbers: \"{}\"",
-                                         x.get(0).unwrap().as_str()))
-                    )
-                    .collect::<Vec<f64>>();
-                [v[0], v[1], v[2]]
+                // Drop regex version since there may be situation like "0.000000000108.808388788",
+                // meaning it's better to use the split and parse scheme.
+                let mut v = [0.0f64; 3];
+                for i in 0 .. 3 {
+                    let s = &l[(3 + 13*i) .. (3 + 13*i + 13)];
+                    v[i] = s.trim()
+                            .parse()
+                            .expect(&format!("Cannot parse {:?} as float number.", s));
+                }
+                v
             })
             .collect::<Vec<[f64; 3]>>();
         [v[0], v[1], v[2]]
@@ -1418,6 +1416,18 @@ mod tests{
         let output = [[32.525610787, -18.778670143,         0.0],
                       [         0.0,  37.557340287,         0.0],
                       [         0.0,   0.0        , 24.71775999]];
+        assert_eq!(Outcar::parse_cell(input), output);
+
+        let input = r#"
+  energy-cutoff  :      400.00
+  volume of cell :      941.99
+      direct lattice vectors                 reciprocal lattice vectors
+     3.161739970  0.000000000  0.000000000     0.316281544  0.182605280  0.000000000
+    -1.580869985  2.738146453  0.000000000     0.000000000  0.365210560  0.000000000
+     0.000000000  0.000000000108.808388788     0.000000000  0.000000000  0.009190468 "#;
+        let output = [[ 3.161739970, 0.000000000,   0.000000000],
+                      [-1.580869985, 2.738146453,   0.000000000],
+                      [ 0.000000000, 0.000000000, 108.808388788]];
         assert_eq!(Outcar::parse_cell(input), output);
     }
 

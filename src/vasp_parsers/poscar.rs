@@ -77,7 +77,7 @@ impl Poscar {
                 if row.len() < 3 {
                     return Err(anyhow!("[POSCAR]: Cell lines incomplete."));
                 }
-                for (j, x) in row.into_iter().enumerate() {
+                for (j, x) in row.into_iter().take(3).enumerate() {
                     let val = x.parse::<f64>().context(format!("[POSCAR]: Cell lines contain invalid value: `{}` .", x))?;
                     if val.is_nan() {
                         return Err(anyhow!("[POSCAR]: Cell lines contain NaN value."));
