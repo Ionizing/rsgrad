@@ -26,7 +26,7 @@ use byteorder::{
     LittleEndian,
 };
 use ndarray::{
-    self,
+    self as nd,
     Array1,
     Array2,
     Array3,
@@ -35,7 +35,7 @@ use ndarray::{
     arr2,
     s,
 };
-use ndarray_linalg::Norm;
+use cauchy::Scalar;
 use anyhow::{bail, ensure};
 use ndrustfft::{
     FftNum,
@@ -73,6 +73,27 @@ const HBAR2D2ME:    f64 = RY_TO_EV * AU_TO_A * AU_TO_A;
 type c64 = Complex<f64>;
 #[allow(non_camel_case_types)]
 type c32 = Complex<f32>;
+
+
+
+// impl Norm for ArrayBase to reduce binary size.
+// copied from https://docs.rs/ndarray-linalg/latest/src/ndarray_linalg/norm.rs.html
+trait Norm {
+    type Output;
+    fn norm(&self) -> Self::Output;
+}
+
+impl<A, S, D> Norm for nd::ArrayBase<S, D>
+where A: Scalar,
+      S: nd::Data<Elem=A>,
+      D: nd::Dimension,
+{
+    type Output = A::Real;
+    fn norm(&self) -> Self::Output {
+        self.iter().map(|x| x.square()).sum::<A::Real>().sqrt()
+    }
+}
+
 
 
 // Wavefunction precision type

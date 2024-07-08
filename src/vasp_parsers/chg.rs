@@ -219,6 +219,7 @@ impl ChargeDensity {
 
         let chg_vec = txt[start_pos .. end_pos]
             .split_whitespace()
+            .take(ngrid.0 * ngrid.1 * ngrid.2)
             .map(|s| s.parse::<f64>().unwrap_or_else(|_| panic!("[CHG]: Cannot parse {} into float number", s)))
             .collect::<Vec<f64>>();
         let chg = Array3::from_shape_vec(ngrid.f(), chg_vec)?;
