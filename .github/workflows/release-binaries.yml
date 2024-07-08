@@ -45,7 +45,7 @@ jobs:
 
       - name: Install Rust
         run: |
-          sudo sed -i.bak \
+          sed -i.bak \
             -e 's|^mirrorlist=|#mirrorlist=|g' \
             -e 's|^#baseurl=http://mirror.centos.org/centos|baseurl=https://vault.centos.org/centos|g' \
             /etc/yum.repos.d/CentOS-Base.repo
