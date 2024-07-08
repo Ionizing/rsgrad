@@ -22,11 +22,10 @@ ndarray = "0.15"
 #ndarray-npy = "0.8"
 anyhow = "1.0"
 flate2 = "1.0"
-config = "0.14.0"
 directories = "4.0"
 serde = "1.0"
 plotly = { git = "https://github.com/Ionizing/plotly", rev = "25c41e39a8290f28429a7767404270ac91914110", features = ["plotly_ndarray"] }
-toml = "0.5"
+toml = "0.8"
 indexmap = { version = "1.8", features = ["serde"] }
 rand = "0.8"
 byteorder = "1.4"
@@ -37,13 +36,13 @@ enum_dispatch = "0.3.12"
 ndarray-linalg = { version = "0.16.0", features = ["intel-mkl-static"] }
 hdf5 = "0.8.1"
 hdf5-sys = { version = "0.8.1", features = ["static"] }
+figment = { version = "0.10.19", features = ["toml"] }
 
 [dev-dependencies]
 tempdir = "0.3"
 
 
 [profile.release]
-# debug = true  # too large for linux
 incremental = true
-lto = true
+#lto = true
 opt-level = 3

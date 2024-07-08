@@ -8,11 +8,11 @@ use anyhow::{
     Context,
     bail,
 };
-use log::{
-    info,
-    debug,
+use log::info;
+use figment::{
+    Figment,
+    providers::{Format, Toml},
 };
-use config::Config;
 use directories::BaseDirs;
 use serde::{
     Deserialize,
@@ -43,19 +43,17 @@ pub struct FunctionalPath {
 
 
 impl Settings {
-    pub fn from_file(path: &(impl AsRef<Path> + ?Sized)) -> Result<Self> {
+    pub fn from_file(path: impl AsRef<Path>) -> Result<Self> {
         info!("Reading rsgrad settings from {:?} ...", path.as_ref());
-        Self::check_file_availability(path)?;
+        Self::check_file_availability(&path)?;
         
-        let mut settings = Config::builder()
-            .add_source(config::File::new(path.as_ref().to_str().unwrap(), config::FileFormat::Toml))
-            .build()?
-            .try_deserialize::<Settings>()?;
+        let mut settings: Settings = Figment::new()
+            .merge(Toml::file(path))
+            .extract()?;
 
         settings.functional_path.paw_lda = Self::expand_home_dir(&settings.functional_path.paw_lda);
         settings.functional_path.paw_pbe = Self::expand_home_dir(&settings.functional_path.paw_pbe);
 
-        debug!("Configuration file {:?} content: {:#?}", path.as_ref(), settings);
         settings.check_availability()?;
 
         Ok(settings)
@@ -98,7 +96,7 @@ Please replace {} with actual path of corresponding PP's directory, for example:
         Ok(())
     }
 
-    fn check_dir_availability(dir: &(impl AsRef<Path> + ?Sized)) -> Result<()> {
+    fn check_dir_availability(dir: impl AsRef<Path>) -> Result<()> {
         if !dir.as_ref().is_dir() {
             bail!("Directory {:?} not available. It should be a regular directory.", dir.as_ref())
         } else {
@@ -106,7 +104,7 @@ Please replace {} with actual path of corresponding PP's directory, for example:
         }
     }
 
-    fn check_file_availability(path: &(impl AsRef<Path> + ?Sized)) -> Result<()> {
+    fn check_file_availability(path: impl AsRef<Path>) -> Result<()> {
         if !path.as_ref().is_file() {
             bail!("File {:?} not available. It should be a regular file.", path.as_ref())
         } else {
@@ -115,7 +113,7 @@ Please replace {} with actual path of corresponding PP's directory, for example:
     }
 
     // copied from https://stackoverflow.com/a/70926549/8977923
-    fn expand_home_dir<P: AsRef<Path> + ?Sized>(path: &P) -> PathBuf {
+    fn expand_home_dir<P: AsRef<Path>>(path: P) -> PathBuf {
         let path = path.as_ref();
 
         if !path.starts_with("~") {
