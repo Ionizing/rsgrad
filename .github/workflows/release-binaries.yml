@@ -40,6 +40,8 @@ jobs:
   linux-x86_64:
     runs-on: ubuntu-latest
     container: centos:7
+    env:
+      ACTIONS_RUNNER_FORCE_ACTIONS_NODE_VERSION: true
     steps:
       - uses: actions/checkout@v1
 
@@ -84,7 +86,6 @@ jobs:
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
         with:
           asset_name: rsgrad-${{ github.event.release.tag_name }}-linux-x86_64.tar.gz
           asset_path: target/x86_64-unknown-linux-gnu/release/rsgrad.tar.gz
