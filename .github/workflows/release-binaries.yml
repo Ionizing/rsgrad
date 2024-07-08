@@ -84,6 +84,7 @@ jobs:
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
         with:
           asset_name: rsgrad-${{ github.event.release.tag_name }}-linux-x86_64.tar.gz
           asset_path: target/x86_64-unknown-linux-gnu/release/rsgrad.tar.gz
