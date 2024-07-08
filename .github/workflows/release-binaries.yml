@@ -50,7 +50,8 @@ jobs:
             -e 's|^#baseurl=http://mirror.centos.org/centos|baseurl=https://vault.centos.org/centos|g' \
             /etc/yum.repos.d/CentOS-Base.repo
           yum makecache
-          yum install -y gcc g++ which wget centos-release-scl devtoolset-9
+          yum install -y gcc g++ which wget centos-release-scl
+          yum install -y devtoolset-9
           source /opt/rh/devtoolset-9/enable
           wget https://cmake.org/files/v3.20/cmake-3.20.3.tar.gz
           tar zxvf cmake-3.*
