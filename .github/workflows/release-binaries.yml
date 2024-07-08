@@ -45,6 +45,11 @@ jobs:
 
       - name: Install Rust
         run: |
+          sudo sed -i.bak \
+            -e 's|^mirrorlist=|#mirrorlist=|g' \
+            -e 's|^#baseurl=http://mirror.centos.org/centos|baseurl=https://vault.centos.org/centos|g' \
+            /etc/yum.repos.d/CentOS-Base.repo
+          yum makecache
           yum install -y gcc g++ which
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y --target x86_64-unknown-linux-gnu
           echo $HOME/.cargo/bin >> $GITHUB_PATH
