@@ -50,17 +50,14 @@ jobs:
             -e 's|^#baseurl=http://mirror.centos.org/centos|baseurl=https://vault.centos.org/centos|g' \
             /etc/yum.repos.d/CentOS-Base.repo
           yum makecache
-          yum install -y gcc g++ which cmake3
-          alternatives --install /usr/local/bin/cmake cmake /usr/bin/cmake 10 \
-            --slave /usr/local/bin/ctest ctest /usr/bin/ctest \
-            --slave /usr/local/bin/cpack cpack /usr/bin/cpack \
-            --slave /usr/local/bin/ccmake ccmake /usr/bin/ccmake \
-            --family cmake
-          alternatives --install /usr/local/bin/cmake cmake /usr/bin/cmake3 20 \
-            --slave /usr/local/bin/ctest ctest /usr/bin/ctest3 \
-            --slave /usr/local/bin/cpack cpack /usr/bin/cpack3 \
-            --slave /usr/local/bin/ccmake ccmake /usr/bin/ccmake3 \
-            --family cmake
+          yum install -y gcc g++ which
+          wget https://cmake.org/files/v3.20/cmake-3.20.0.tar.gz
+          tar zxvf cmake-3.*
+          cd cmake-3.*
+          ./bootstrap --prefix=/usr/local
+          make -j
+          make install
+          cd ..
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y --target x86_64-unknown-linux-gnu
           echo $HOME/.cargo/bin >> $GITHUB_PATH
           source $HOME/.cargo/env
