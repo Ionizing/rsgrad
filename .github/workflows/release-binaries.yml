@@ -51,6 +51,7 @@ jobs:
             /etc/yum.repos.d/CentOS-Base.repo
           yum makecache
           yum groupinstall 'Development Tools' -y
+          yum install which -y
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y --target x86_64-unknown-linux-gnu
           echo $HOME/.cargo/bin >> $GITHUB_PATH
           source $HOME/.cargo/env
