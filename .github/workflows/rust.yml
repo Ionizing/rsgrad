@@ -21,8 +21,8 @@ jobs:
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: stable
-    - name: Install dependencies
-      run: yum install -y gcc g++
+    # - name: Install dependencies
+    #   run: apt install -y gcc g++
     - name: Build
       run: cargo build --verbose --release
     - name: Run tests
