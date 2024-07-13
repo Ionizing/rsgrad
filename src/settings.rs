@@ -22,6 +22,7 @@ use colored::Colorize;
 
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
 pub struct Settings {
     #[serde(rename(serialize   = "functional-path",
                    deserialize = "functional-path"))]
@@ -30,6 +31,7 @@ pub struct Settings {
 
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
 pub struct FunctionalPath {
     #[serde(rename(serialize   = "PAW_PBE",
                    deserialize = "PAW_PBE"))]

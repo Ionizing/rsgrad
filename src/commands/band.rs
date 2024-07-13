@@ -112,7 +112,8 @@ fn rawsel_to_sel(r: IndexMap<String, RawSelection>,
 
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
-#[serde(rename_all = "kebab-case")]
+#[serde(rename_all = "kebab-case",
+        deny_unknown_fields)]
 struct Configuration {
     kpoint_labels: Option<Vec<String>>,
 

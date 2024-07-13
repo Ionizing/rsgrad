@@ -136,6 +136,7 @@ pub fn write_array_to_txt(file_name: &(impl AsRef<Path> + ?Sized), ys: Vec<&Arra
 
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
+#[serde(deny_unknown_fields)]
 pub struct RawSelection {
     pub spins:      Option<String>,
     pub kpoints:    Option<String>,

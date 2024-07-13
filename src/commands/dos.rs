@@ -96,6 +96,7 @@ pub enum SmearingMethod {
 
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
+#[serde(deny_unknown_fields)]
 struct Configuration {
     #[serde(default = "Configuration::method_default")]
     method: SmearingMethod,
