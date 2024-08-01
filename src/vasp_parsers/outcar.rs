@@ -178,10 +178,17 @@ impl Outcar {
         assert!(len > 0, "At least one complete ionic step is needed.");
         assert_eq!(nscfv.len()    , len, "Init failed due to incomplete OUTCAR: nscfv.len()    = {} != {}", nscfv.len(),    len);
         assert_eq!(toten_zv.len() , len, "Init failed due to incomplete OUTCAR: toten_zv.len() = {} != {}", toten_zv.len(), len);
-        assert_eq!(cputimev.len() , len, "Init failed due to incomplete OUTCAR: cputimev.len() = {} != {}", cputimev.len(), len);
         assert_eq!(posv.len()     , len, "Init failed due to incomplete OUTCAR: posv.len()     = {} != {}", posv.len(),     len);
         assert_eq!(forcev.len()   , len, "Init failed due to incomplete OUTCAR: forcev.len()   = {} != {}", forcev.len(),   len);
         assert_eq!(cellv.len()    , len, "Init failed due to incomplete OUTCAR: cellv.len()    = {} != {}", cellv.len(),    len);
+
+        if cputimev.len() < len {
+            warn!("Last ionic relaxation might be unfinished yet. cputimev.len() = {} != {}", cputimev.len(), len);
+            while cputimev.len() < len {
+                cputimev.push(0.0);
+            }
+        }
+        assert_eq!(cputimev.len() , len, "Init failed due to incomplete OUTCAR: cputimev.len() = {} != {}", cputimev.len(), len);
 
         if ext_pressure.is_empty() {
             warn!("No external pressure data found.");
