@@ -760,7 +760,7 @@ impl IonicIterationsFormat {
 
 impl fmt::Display for IonicIterationsFormat {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let len = self._data.len();
+        let len = self._data[0].positions.len();
         let dynamics = self._constraints.as_ref()
             .unwrap_or(&vec![[true; 3]; len])
             .iter()

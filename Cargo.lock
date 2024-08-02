@@ -1017,7 +1017,7 @@ dependencies = [
 
 [[package]]
 name = "rsgrad"
-version = "0.4.14"
+version = "0.4.15"
 dependencies = [
  "anyhow",
  "byteorder",
