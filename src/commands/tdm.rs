@@ -91,9 +91,9 @@ pub struct Tdm {
     /// Open the default browser to show the plot.
     show: bool,
 
-    #[arg(long, default_value_t = 0.1)]
-    /// Specify the width of bars in the center of peaks. (eV)
-    barwidth: f64,
+    // #[arg(long, default_value_t = 0.1)]
+    // /// Specify the width of bars in the center of peaks. (eV)
+    // barwidth: f64,
 
     #[arg(long, default_value_t = 500)]
     /// How many points in the x axis PER eV
@@ -288,7 +288,7 @@ I suggest you provide `gamma_half` argument to avoid confusion.");
         for (label, t, color) in [("Tx", txs, "#1f77b4"), ("Ty", tys, "#ff7f0e"), ("Tz", tzs, "#2ca02c")] {
             let tr = plotly::Bar::new(des.clone(), t)
                 .marker(plotly::common::Marker::new().color(color))
-                .width(self.barwidth)
+                //.width(self.barwidth)
                 .name(label)
                 .hover_template_array(hover_template_array.clone())
                 .legend_group(label);
@@ -324,12 +324,12 @@ I suggest you provide `gamma_half` argument to avoid confusion.");
         plot.use_local_plotly();
         let layout = plotly::Layout::new()
             .bar_mode(plotly::layout::BarMode::Stack)
-            .title(plotly::common::Title::new("Transition Dipole Moments"))
+            .title(plotly::common::Title::with_text("Transition Dipole Moments"))
             .y_axis(plotly::layout::Axis::new()
-                    .title(plotly::common::Title::new("TDM (Debye)"))
+                    .title(plotly::common::Title::with_text("TDM (Debye)"))
                     .fixed_range(false))
             .x_axis(plotly::layout::Axis::new()
-                    .title(plotly::common::Title::new("Energy (eV)"))
+                    .title(plotly::common::Title::with_text("Energy (eV)"))
                     .fixed_range(false))
             .hover_mode(plotly::layout::HoverMode::X);
 
@@ -337,7 +337,7 @@ I suggest you provide `gamma_half` argument to avoid confusion.");
 
         // Write html
         info!("Writing plot to {:?}", &self.htmlout);
-        plot.to_html(&self.htmlout);
+        fs::write(&self.htmlout, plot.to_html())?;
 
         if self.to_inline_html {
             info!("Printing inline HTML to stdout ...");

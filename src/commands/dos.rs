@@ -533,15 +533,15 @@ impl OptProcess for Dos {
 
         plot.use_local_plotly();
         let layout = plotly::Layout::new()
-            .title(plotly::common::Title::new("Density of States"))
+            .title(plotly::common::Title::with_text("Density of States"))
             .y_axis(plotly::layout::Axis::new()
-                    .title(plotly::common::Title::new("DOS (arb. unit)"))
+                    .title(plotly::common::Title::with_text("DOS (arb. unit)"))
                     .zero_line(true)
                     .fixed_range(false)
                     //.range(ylim)
                     )
             .x_axis(plotly::layout::Axis::new()
-                    .title(plotly::common::Title::new("E-Ef (eV)"))
+                    .title(plotly::common::Title::with_text("E-Ef (eV)"))
                     .zero_line(true)
                     .range_slider(plotly::layout::RangeSlider::new().visible(true))
                     .range(xlim)
@@ -549,7 +549,7 @@ impl OptProcess for Dos {
         plot.set_layout(layout);
 
         info!("Writing DOS plot to {:?}", htmlout);
-        plot.to_html(&htmlout);
+        fs::write(&htmlout, plot.to_html())?;
 
         info!("Writing raw DOS data to {:?}", txtout);
         let label = labels.join(" ");

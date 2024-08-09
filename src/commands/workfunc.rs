@@ -1,3 +1,4 @@
+use std::fs;
 use std::path::PathBuf;
 use clap::Args;
 use rayon;
@@ -120,17 +121,17 @@ impl OptProcess for Workfunc {
         plot.use_local_plotly();
 
         let layout = plotly::Layout::new()
-            .title(plotly::common::Title::new(&format!("Work function along {} axis", self.axis)))
+            .title(plotly::common::Title::with_text(&format!("Work function along {} axis", self.axis)))
             .y_axis(plotly::layout::Axis::new()
-                    .title(plotly::common::Title::new("E-Ef (eV)"))
+                    .title(plotly::common::Title::with_text("E-Ef (eV)"))
                     .zero_line(true))
             .x_axis(plotly::layout::Axis::new()
-                    .title(plotly::common::Title::new("Distance (A)"))
+                    .title(plotly::common::Title::with_text("Distance (A)"))
                     .zero_line(true));
         plot.set_layout(layout);
 
         info!("Writing to {:?}", self.htmlout);
-        plot.to_html(&self.htmlout);
+        fs::write(&self.htmlout, plot.to_html())?;
 
         if self.show {
             plot.show();

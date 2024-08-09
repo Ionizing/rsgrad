@@ -42,6 +42,7 @@ use plotly::{
         ShapeType,
         ShapeLine,
         Layout,
+        ItemSizing,
     }
 };
 
@@ -781,19 +782,19 @@ impl OptProcess for Band {
         plot.use_local_plotly();
 
         let mut layout = plotly::Layout::new()
-            .title(plotly::common::Title::new("Bandstructure"))
+            .title(plotly::common::Title::with_text("Bandstructure"))
             .y_axis(plotly::layout::Axis::new()
-                    .title(plotly::common::Title::new("E-Ef (eV)"))
+                    .title(plotly::common::Title::with_text("E-Ef (eV)"))
                     .zero_line(true)
                     .range(ylim)
                     )
             .x_axis(plotly::layout::Axis::new()
-                    .title(plotly::common::Title::new("Wavevector"))
+                    .title(plotly::common::Title::with_text("Wavevector"))
                     .tick_values(kxs.clone())
                     .tick_text(klabels)
                     .zero_line(true)
                     )
-            .legend(plotly::layout::Legend::new().item_sizing("constant"));
+            .legend(plotly::layout::Legend::new().item_sizing(ItemSizing::Constant));
 
         Self::plot_boundaries(&mut layout, &kxs);
         plot.set_layout(layout);
@@ -896,7 +897,7 @@ impl OptProcess for Band {
             write_array_to_txt(&fname, data_ref, "kpath(in_2pi) band-levels(nkpoints_x_nbands)")?;
         }
 
-        plot.to_html(htmlout);
+        fs::write(&self.htmlout, plot.to_html())?;
 
         if self.to_inline_html {
             info!("Printing inline html to stdout ...");
