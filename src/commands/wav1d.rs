@@ -1,5 +1,4 @@
 use std::path::PathBuf;
-use std::fs;
 
 use clap::Args;
 use log::{
@@ -228,12 +227,13 @@ I suggest you provide `gamma_half` argument to avoid confusion.");
                     .title(plotly::common::Title::with_text("E-E<sub>f</sub> (eV)"))
                     .zero_line(true))
             .x_axis(plotly::layout::Axis::new()
-                    .title(plotly::common::Title::with_text("Distance (Å)")));
+                    .title(plotly::common::Title::with_text("Distance (Å)")))
+            .height(960);
         plot.set_layout(layout);
 
         plot.use_local_plotly();
         info!("Writing to {:?}", self.htmlout);
-        fs::write(&self.htmlout, plot.to_html())?;
+        plot.write_html(&self.htmlout);
 
         let comment = dat.iter()
             .map(|(_, l, _)| l.clone())

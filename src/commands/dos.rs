@@ -33,7 +33,6 @@ use crate::{
     commands::common::{
         RawSelection,
         write_array_to_txt,
-        CustomColor,
     }
 };
 
@@ -47,7 +46,7 @@ struct Selection {
     ikpoints:   Vec<usize>,
     iatoms:     Vec<usize>,
     iorbits:    Vec<usize>,
-    color:      Option<CustomColor>,
+    color:      Option<String>,
     factor:     f64,
 }
 
@@ -545,11 +544,12 @@ impl OptProcess for Dos {
                     .zero_line(true)
                     .range_slider(plotly::layout::RangeSlider::new().visible(true))
                     .range(xlim)
-                    );
+                    )
+            .height(960);
         plot.set_layout(layout);
 
         info!("Writing DOS plot to {:?}", htmlout);
-        fs::write(&htmlout, plot.to_html())?;
+        plot.write_html(&htmlout);
 
         info!("Writing raw DOS data to {:?}", txtout);
         let label = labels.join(" ");

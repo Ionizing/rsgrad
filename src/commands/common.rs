@@ -2,10 +2,10 @@ use std::{
     io::Write,
     fs,
     path::Path,
-    panic::catch_unwind,
     fmt::Write as _,
 };
 
+use regex::Regex;
 use serde::{
     Serialize,
     Deserialize,
@@ -16,13 +16,7 @@ use anyhow::{
     Result,
     Context,
 };
-use plotly::common::{
-    ColorScalePalette,
-    color::{
-        Color,
-        ColorWrapper,
-    },
-};
+use plotly::common::ColorScalePalette;
 use ndarray::Array1;
 
 use crate::types::{
@@ -63,16 +57,6 @@ const NAMED_COLORS: &[&str] = &[
         "turquoise",            "violet",           "wheat",            "white",            "whitesmoke",
         "yellow",               "yellowgreen",      "transparent",
     ];
-
-
-#[derive(Debug, Clone)]
-pub struct CustomColor (ColorWrapper);
-
-impl Color for CustomColor {
-    fn to_color(&self) -> ColorWrapper {
-        self.0.clone()
-    }
-}
 
 
 const PALETTES: &[&str] = &[
@@ -275,20 +259,18 @@ bail!("[DOS]: Invalid spin component selected: `{}`, available components are `u
     }
 
     // Parse the color to this curve.
-    pub fn parse_color(input: &str) -> Result<CustomColor> {
-        if NAMED_COLORS.contains(&input.to_ascii_lowercase().as_ref()) {
-            Ok(CustomColor(ColorWrapper::S(input.to_owned())))
-        } else {
-            let ret = catch_unwind(|| {
-                input.to_color()
-            });
+    pub fn parse_color(input: &str) -> Result<String> {
+        let re_rgb  = Regex::new("^#(?:[0-9a-fA-F]{3}){1,2}$").unwrap().is_match(input);
+        let re_argb = Regex::new("^#(?:[0-9a-fA-F]{3,4}){1,2}$").unwrap().is_match(input);
 
-            if let Ok(c) = ret {
-                Ok(CustomColor(c))
-            } else {
-                bail!("The input color is neither a named color nor a valid hex code. 
+        let input_lowercase = input.to_lowercase();
+
+        if NAMED_COLORS.contains(&input_lowercase.as_ref()) ||
+            re_rgb || re_argb {
+            Ok(input_lowercase)
+        } else {
+            bail!("The input color is neither a named color nor a valid hex code. 
 See \"https://developer.mozilla.org/en-US/docs/Web/CSS/color_value for availed named colors.\"");
-            }
         }
     }
 
@@ -301,12 +283,12 @@ See \"https://developer.mozilla.org/en-US/docs/Web/CSS/color_value for availed n
         }
     }
 
-    pub fn get_random_color() -> CustomColor {
+    pub fn get_random_color() -> &'static str {
         use rand::Rng;
 
         let mut rng = rand::thread_rng();
         let id = rng.gen_range(0 .. NAMED_COLORS.len());
-        Self::parse_color(NAMED_COLORS[id]).unwrap()
+        NAMED_COLORS[id]
     }
 
 }

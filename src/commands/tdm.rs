@@ -331,13 +331,14 @@ I suggest you provide `gamma_half` argument to avoid confusion.");
             .x_axis(plotly::layout::Axis::new()
                     .title(plotly::common::Title::with_text("Energy (eV)"))
                     .fixed_range(false))
-            .hover_mode(plotly::layout::HoverMode::X);
+            .hover_mode(plotly::layout::HoverMode::X)
+            .height(960);
 
         plot.set_layout(layout);
 
         // Write html
         info!("Writing plot to {:?}", &self.htmlout);
-        fs::write(&self.htmlout, plot.to_html())?;
+        plot.write_html(&self.htmlout);
 
         if self.to_inline_html {
             info!("Printing inline HTML to stdout ...");

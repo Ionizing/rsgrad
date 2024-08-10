@@ -1,4 +1,3 @@
-use std::fs;
 use std::path::PathBuf;
 use clap::Args;
 use rayon;
@@ -127,11 +126,12 @@ impl OptProcess for Workfunc {
                     .zero_line(true))
             .x_axis(plotly::layout::Axis::new()
                     .title(plotly::common::Title::with_text("Distance (A)"))
-                    .zero_line(true));
+                    .zero_line(true))
+            .height(960);
         plot.set_layout(layout);
 
         info!("Writing to {:?}", self.htmlout);
-        fs::write(&self.htmlout, plot.to_html())?;
+        plot.write_html(&self.htmlout);
 
         if self.show {
             plot.show();

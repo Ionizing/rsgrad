@@ -61,7 +61,6 @@ use crate::{
     commands::common::{
         write_array_to_txt,
         RawSelection,
-        CustomColor,
     }
 };
 
@@ -75,7 +74,7 @@ struct Selection {
     ispins:     Vec<usize>,
     iatoms:     Vec<usize>,
     iorbits:    Vec<usize>,
-    color:      Option<CustomColor>,
+    color:      Option<String>,
 }
 
 
@@ -509,7 +508,7 @@ impl Band {
         assert_eq!(kpath.len(), nkpoints);      // cropped_eigvals[ispin, ikpoint, iband]
 
         let rand_color = RawSelection::get_random_color();
-        let color = selection.color.clone().unwrap_or(rand_color);
+        let color = selection.color.clone().unwrap_or(rand_color.into());
         let marker = plotly::common::Marker::new().color(color);
 
         for ispin in 0 .. nspin {
@@ -794,6 +793,7 @@ impl OptProcess for Band {
                     .tick_text(klabels)
                     .zero_line(true)
                     )
+            .height(960)
             .legend(plotly::layout::Legend::new().item_sizing(ItemSizing::Constant));
 
         Self::plot_boundaries(&mut layout, &kxs);
@@ -876,7 +876,7 @@ impl OptProcess for Band {
 
 
         // save data
-        info!("Writing Bandstructure to {:?}", &self.htmlout);
+        info!("Writing Bandstructure to {:?}", &htmlout);
 
         for is in 0 .. nspin {
             let spin_label = match (is_ncl, nspin, is) {
@@ -897,7 +897,7 @@ impl OptProcess for Band {
             write_array_to_txt(&fname, data_ref, "kpath(in_2pi) band-levels(nkpoints_x_nbands)")?;
         }
 
-        fs::write(&self.htmlout, plot.to_html())?;
+        plot.write_html(&htmlout);
 
         if self.to_inline_html {
             info!("Printing inline html to stdout ...");
