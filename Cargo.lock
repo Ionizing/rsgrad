@@ -1196,6 +1196,7 @@ dependencies = [
  "memchr",
  "ndarray",
  "ndrustfft",
+ "nom",
  "paste",
  "plotly",
  "rand 0.8.5",

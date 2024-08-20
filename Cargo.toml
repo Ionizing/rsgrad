@@ -40,6 +40,7 @@ hdf5 = { git = "https://github.com/CramBL/hdf5-rust", rev = "1b53164290abc4250ab
 hdf5-sys = { git = "https://github.com/CramBL/hdf5-rust", rev = "1b53164290abc4250abd59b98e8fa78901078632", features = ["static"] }
 figment = { version = "0.10.19", features = ["toml"] }
 cauchy = "0.4.0"
+nom = "7.1.3"
 
 [dev-dependencies]
 tempdir = "0.3"
