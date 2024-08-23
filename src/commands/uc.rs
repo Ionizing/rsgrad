@@ -5,17 +5,29 @@ use std::collections::HashMap;
 use nom::{
     branch::alt,
     bytes::complete::tag,
-    character::complete::multispace0 as multispace,
-    number::complete::double,
-    combinator::map,
-    sequence::delimited,
+    character::complete::{
+        digit1,
+        multispace0,
+    },
+    combinator::{
+        opt,
+        map,
+        recognize,
+    },
+    //multi::{
+        //many1,
+    //},
+    sequence::{
+        delimited,
+        tuple,
+    },
     IResult,
 };
 
 use crate::Result;
 
 
-#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
 /// Metrix prefixes
 pub enum MetricPrefix {
     /// 10⁻¹⁸
@@ -79,34 +91,67 @@ impl MetricPrefix {
     fn parse_prefix(i: &str) -> IResult<&str, MetricPrefix> {
         use MetricPrefix::*;
 
-        let atto  = prefix_parser!(Atto,  "a", "atto",  "Atto");
-        let femto = prefix_parser!(Femto, "f", "femto", "Femto");
-        let pico  = prefix_parser!(Pico,  "p", "pico",  "Pico");
-        let nano  = prefix_parser!(Nano,  "n", "nano",  "Nano");
-        let micro = prefix_parser!(Micro, "u", "μ", "mu", "Mu", "micro", "Micro");
-        let milli = prefix_parser!(Milli, "m", "milli", "Milli");
-        let kilo  = prefix_parser!(Kilo,  "K", "kilo",  "Kilo");
-        let mega  = prefix_parser!(Mega,  "M", "mega",  "Mega", "Mi");
-        let giga  = prefix_parser!(Giga,  "G", "giga",  "Giga", "Gi");
-        let tera  = prefix_parser!(Tera,  "T", "tera",  "Tera", "Ti");
-        let peta  = prefix_parser!(Peta,  "P", "peta",  "Peta", "Pi");
-        let exa   = prefix_parser!(Exa,   "E", "exa",   "Exa");
-        let one   = prefix_parser!(One, "");
+        let atto  = prefix_parser!(Atto,  "atto",  "Atto");
+        let femto = prefix_parser!(Femto, "femto", "Femto");
+        let pico  = prefix_parser!(Pico,  "pico",  "Pico");
+        let nano  = prefix_parser!(Nano,  "nano",  "Nano");
+        let micro = prefix_parser!(Micro, "μ",     "micro", "Micro");
+        let milli = prefix_parser!(Milli, "milli", "Milli");
+        let kilo  = prefix_parser!(Kilo,  "kilo",  "Kilo");
+        let mega  = prefix_parser!(Mega,  "mega",  "Mega");
+        let giga  = prefix_parser!(Giga,  "giga",  "Giga");
+        let tera  = prefix_parser!(Tera,  "tera",  "Tera");
+        let peta  = prefix_parser!(Peta,  "peta",  "Peta");
+        let exa   = prefix_parser!(Exa,   "exa",   "Exa");
+
+        let atto_abbr  = prefix_parser!(Atto,  "a");
+        let femto_abbr = prefix_parser!(Femto, "f");
+        let pico_abbr  = prefix_parser!(Pico,  "p");
+        let nano_abbr  = prefix_parser!(Nano,  "n");
+        let micro_abbr = prefix_parser!(Micro, "Mu", "mu", "u");
+        let milli_abbr = prefix_parser!(Milli, "m");
+        let kilo_abbr  = prefix_parser!(Kilo,  "K");
+        let mega_abbr  = prefix_parser!(Mega,  "Mi", "M");
+        let giga_abbr  = prefix_parser!(Giga,  "Gi", "G");
+        let tera_abbr  = prefix_parser!(Tera,  "Ti", "T");
+        let peta_abbr  = prefix_parser!(Peta,  "Pi", "P");
+        let exa_abbr   = prefix_parser!(Exa,   "E");
+
+        //let one   = prefix_parser!(One,   "");
+
 
         alt((
-            atto,
-            femto,
-            pico,
-            nano,
-            micro,
-            milli,
-            kilo,
-            mega,
-            giga,
-            tera,
-            peta,
-            exa,
-            one,
+            alt((
+                atto,
+                femto,
+                pico,
+                nano,
+                micro,
+                milli,
+                kilo,
+                mega,
+                giga,
+                tera,
+                peta,
+                exa,
+            )),
+
+            alt((
+                atto_abbr,
+                femto_abbr,
+                pico_abbr,
+                nano_abbr,
+                micro_abbr,
+                milli_abbr,
+                kilo_abbr,
+                mega_abbr,
+                giga_abbr,
+                tera_abbr,
+                peta_abbr,
+                exa_abbr,
+            )),
+
+            //one,
         ))(i)
     }
 }
@@ -166,6 +211,58 @@ pub enum Unit {
 }
 
 
+impl Unit {
+    fn parse_unit(i: &str) -> IResult<&str, Unit> {
+        use Unit::*;
+
+        let ev         = prefix_parser!(ElectronVolt,   "ElectronVolt");
+        let calpmol    = prefix_parser!(CaloriePerMole, "Calorie/mol");
+        let jpmol      = prefix_parser!(JoulePerMole,   "Joule/mol");
+        let kelvin     = prefix_parser!(Kelvin,         "Kelvin");
+        let hartree    = prefix_parser!(Hartree,        "Hartree");
+        let wavenumber = prefix_parser!(Wavenumber,     "Cm-1");
+        let meter      = prefix_parser!(Meter,          "Meter");
+        let hertz      = prefix_parser!(Hertz,          "Hertz");
+        let second     = prefix_parser!(Second,         "Second");
+
+        let ev_abbr         = prefix_parser!(ElectronVolt,   "eV");
+        let calpmol_abbr    = prefix_parser!(CaloriePerMole, "Cal/mol");
+        let jpmol_abbr      = prefix_parser!(JoulePerMole,   "J/mol");
+        let kelvin_abbr     = prefix_parser!(Kelvin,         "K");
+        let hartree_abbr    = prefix_parser!(Hartree,        "Ha");
+        let wavenumber_abbr = prefix_parser!(Wavenumber,     "cm-1");
+        let meter_abbr      = prefix_parser!(Meter,          "m");
+        let hertz_abbr      = prefix_parser!(Hertz,          "Hz");
+        let second_abbr     = prefix_parser!(Second,         "s");
+
+        alt((
+            alt((
+                ev,
+                calpmol,
+                jpmol,
+                kelvin,
+                hartree,
+                wavenumber,
+                meter,
+                hertz,
+                second,
+            )),
+            alt((
+                ev_abbr,
+                calpmol_abbr,
+                jpmol_abbr,
+                kelvin_abbr,
+                hartree_abbr,
+                wavenumber_abbr,
+                meter_abbr,
+                hertz_abbr,
+                second_abbr,
+            )),
+        ))(i)
+    }
+}
+
+
 fn get_ratio_ev_to_other() -> &'static HashMap<Unit, f64> {
     static INSTANCE: OnceLock<HashMap<Unit, f64>> = OnceLock::new();
     &INSTANCE.get_or_init(|| {
@@ -201,6 +298,30 @@ pub struct Quantity {
 impl Quantity {
     pub fn from_str(i: &str) -> Result<Self> {
         todo!();
+    }
+
+
+    fn parse_quantity(i: &str) -> IResult<&str, (f64, MetricPrefix, Unit)> {
+        let pprefix = MetricPrefix::parse_prefix;
+        let punit   = Unit::parse_unit;
+
+        let with_prefix = tuple((
+            double,
+            delimited(multispace0, pprefix, multispace0),
+            punit,
+        ));
+
+        let one = prefix_parser!(MetricPrefix::One, "");
+        let without_prefix = tuple((
+            double,
+            delimited(multispace0, one, multispace0),
+            punit,
+        ));
+
+        alt((
+            with_prefix,
+            without_prefix,
+        ))(i)
     }
 
 
@@ -273,25 +394,166 @@ impl Quantity {
 }
 
 
-fn pnumber(i: &str) -> IResult<&str, f64> {
-    delimited(
-        multispace,
-        map(double, |x| x),
-        multispace,
-    )(i)
+fn double(i: &str) -> IResult<&str, f64> {
+    fn integral(i: &str) -> IResult<&str, &str> {
+        digit1(i)
+    }
+    fn sign(i: &str) -> IResult<&str, &str> {
+        alt((tag("+"), tag("-")))(i)
+    }
+    fn opt_sign(i: &str) -> IResult<&str, &str> {
+        map(opt(sign), |x| x.unwrap_or(""))(i)
+    }
+    fn fraction(i: &str) -> IResult<&str, &str> {
+        recognize(
+            tuple((
+                tag("."), integral
+            ))
+        )(i)
+    }
+    fn exponent(i: &str) -> IResult<&str, &str> {
+        recognize(
+            tuple((
+                alt(( tag("e"), tag("E") )),
+                opt_sign,
+                integral,
+            ))
+        )(i)
+    }
+
+    map(tuple((
+        opt_sign,
+        integral,
+        map(opt(fraction), |x| x.unwrap_or("") ),
+        map(opt(exponent), |x| x.unwrap_or("") ),
+    )), |(a, b, c, d)| {
+        let s = a.to_string() + b + c + d;
+        s.parse::<f64>().unwrap()
+    })(i)
 }
 
 
-fn pprefix(i: &str) -> IResult<&str, MetricPrefix> {
-    use MetricPrefix::*;
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    alt((
-            map(
-                alt((
-                        tag("a"),
-                        tag("atto"),
-                        tag("Atto")
-                )), |_| Atto
-            ),
-    ))(i)
+
+    #[test]
+    fn test_parse_prefix() {
+        use MetricPrefix::*;
+
+        let parser = MetricPrefix::parse_prefix;
+        let cases = vec![
+            (Atto,  vec!["atto",  "Atto",  "a"]),
+            (Femto, vec!["femto", "Femto", "f"]),
+            (Pico,  vec!["pico",  "Pico",  "p"]),
+            (Nano,  vec!["nano",  "Nano",  "n"]),
+            (Micro, vec!["μ",     "mu",    "Mu", "micro", "Micro", "u"]),
+            (Milli, vec!["milli", "Milli", "m"]),
+            (Kilo,  vec!["kilo",  "Kilo",  "K"]),
+            (Mega,  vec!["mega",  "Mega",  "Mi", "M"]),
+            (Giga,  vec!["giga",  "Giga",  "Gi", "G"]),
+            (Tera,  vec!["tera",  "Tera",  "Ti", "T"]),
+            (Peta,  vec!["peta",  "Peta",  "Pi", "P"]),
+            (Exa,   vec!["exa",   "Exa",   "E"]),
+        ];
+
+        for (prefix, ss) in cases {
+            for s in ss {
+                assert_eq!(parser(s), Ok(("", prefix)));
+            }
+        }
+    }
+
+    #[test]
+    fn test_parse_unit() {
+        use Unit::*;
+
+        let parser = Unit::parse_unit;
+        let cases = vec![
+            (ElectronVolt,   vec!["ElectronVolt", "eV"]),
+            (CaloriePerMole, vec!["Calorie/mol", "Cal/mol"]),
+            (JoulePerMole,   vec!["Joule/mol", "J/mol"]),
+            (Kelvin,         vec!["Kelvin", "K"]),
+            (Hartree,        vec!["Hartree", "Ha"]),
+            (Wavenumber,     vec!["Cm-1", "cm-1"]),
+            (Meter,          vec!["Meter", "m"]),
+            (Hertz,          vec!["Hertz", "Hz"]),
+            (Second,         vec!["Second", "s"]),
+        ];
+
+        for (unit, ss) in cases {
+            for s in ss {
+                assert_eq!(parser(s), Ok(("", unit)));
+            }
+        }
+    }
+
+    #[test]
+    fn test_parse_quantity() {
+        use MetricPrefix::*;
+        use Unit::*;
+
+        let parser = Quantity::parse_quantity;
+
+        let prefix_cases = vec![
+            (Atto,  vec!["atto",  "Atto",  "a"]),
+            (Femto, vec!["femto", "Femto", "f"]),
+            (Pico,  vec!["pico",  "Pico",  "p"]),
+            (Nano,  vec!["nano",  "Nano",  "n"]),
+            (Micro, vec!["μ",     "mu",    "Mu", "micro", "Micro", "u"]),
+            (Milli, vec!["milli", "Milli", "m"]),
+            (Kilo,  vec!["kilo",  "Kilo",  "K"]),
+            (Mega,  vec!["mega",  "Mega",  "Mi", "M"]),
+            (Giga,  vec!["giga",  "Giga",  "Gi", "G"]),
+            (Tera,  vec!["tera",  "Tera",  "Ti", "T"]),
+            (Peta,  vec!["peta",  "Peta",  "Pi", "P"]),
+            (Exa,   vec!["exa",   "Exa",   "E"]),
+        ];
+
+        let unit_cases = vec![
+            (ElectronVolt,   vec!["ElectronVolt", "eV"]),
+            (CaloriePerMole, vec!["Calorie/mol", "Cal/mol"]),
+            (JoulePerMole,   vec!["Joule/mol", "J/mol"]),
+            (Kelvin,         vec!["Kelvin", "K"]),
+            (Hartree,        vec!["Hartree", "Ha"]),
+            (Wavenumber,     vec!["Cm-1", "cm-1"]),
+            (Meter,          vec!["Meter", "m"]),
+            (Hertz,          vec!["Hertz", "Hz"]),
+            (Second,         vec!["Second", "s"]),
+        ];
+
+        for (prefix, ssprefix) in &prefix_cases {
+            for (unit, ssunit) in &unit_cases {
+                for sunit in ssunit {
+                    for sprefix in ssprefix {
+                        let s = vec!["1.0", sprefix, sunit].join(" ");
+                        assert_eq!(parser(&s), Ok(("", (1.0f64, *prefix, *unit))), "{}", s);
+
+                        let s = vec!["0.05E2", sprefix, sunit].join(" ");
+                        assert_eq!(parser(&s), Ok(("", (5.0f64, *prefix, *unit))), "{}", s);
+
+                        let s = vec!["1.0", sprefix, sunit].join("");
+                        assert_eq!(parser(&s), Ok(("", (1.0f64, *prefix, *unit))), "{}", s);
+
+                        let s = vec!["0.05E2", sprefix, sunit].join("");
+                        assert_eq!(parser(&s), Ok(("", (5.0f64, *prefix, *unit))), "{}", s);
+                    }
+
+                    let s = vec!["1.0", sunit].join(" ");
+                    assert_eq!(parser(&s), Ok(("", (1.0f64, One, *unit))), "{}", s);
+
+                    let s = vec!["0.05E2", sunit].join(" ");
+                    assert_eq!(parser(&s), Ok(("", (5.0f64, One, *unit))), "{}", s);
+
+                    let s = vec!["1.0", sunit].join("");
+                    assert_eq!(parser(&s), Ok(("", (1.0f64, One, *unit))), "{}", s);
+
+                    let s = vec!["0.05E2", sunit].join("");
+                    assert_eq!(parser(&s), Ok(("", (5.0f64, One, *unit))), "{}", s);
+                }
+            }
+        }
+
+    }
 }
