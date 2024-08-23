@@ -1,6 +1,7 @@
 use std::sync::OnceLock;
 use std::hash::Hash;
 use std::collections::HashMap;
+use std::str::FromStr;
 
 use nom::{
     branch::alt,
@@ -12,18 +13,19 @@ use nom::{
     combinator::{
         opt,
         map,
+        eof,
         recognize,
     },
-    //multi::{
-        //many1,
-    //},
     sequence::{
         delimited,
+        terminated,
         tuple,
     },
     IResult,
+    Finish,
 };
 
+use anyhow::Error;
 use crate::Result;
 
 
@@ -281,27 +283,39 @@ fn get_ratio_ev_to_other() -> &'static HashMap<Unit, f64> {
 }
 
 
+#[derive(Copy, Clone)]
 /// Each energy quantity should contains three parts: number, prefix and unit.
 pub struct Quantity {
     /// Singular float number
-    number: f64,
+    pub number: f64,
 
     /// Prefix of the unit.
     /// Example: 'f' in 'fs' (femto second), 'n' in 'ns' (nano second).
-    prefix: MetricPrefix,
+    pub prefix: MetricPrefix,
 
     /// Energy unit.
-    unit: Unit,
+    pub unit: Unit,
+}
+
+impl FromStr for Quantity {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self> {
+        Quantity::parse_quantity(s)
+    }
 }
 
 
 impl Quantity {
-    pub fn from_str(i: &str) -> Result<Self> {
-        todo!();
+    pub fn parse_quantity(i: &str) -> Result<Self> {
+        match Self::parse_quantity_helper(i).finish() {
+            Ok((_, (number, prefix, unit))) => Ok( Self{ number, prefix, unit } ),
+            Err(e) => { anyhow::bail!("{}", e) }
+        }
     }
 
 
-    fn parse_quantity(i: &str) -> IResult<&str, (f64, MetricPrefix, Unit)> {
+    fn parse_quantity_helper(i: &str) -> IResult<&str, (f64, MetricPrefix, Unit)> {
         let pprefix = MetricPrefix::parse_prefix;
         let punit   = Unit::parse_unit;
 
@@ -318,10 +332,10 @@ impl Quantity {
             punit,
         ));
 
-        alt((
+        terminated(alt((
             with_prefix,
             without_prefix,
-        ))(i)
+        )), eof)(i)
     }
 
 
@@ -354,13 +368,13 @@ impl Quantity {
     }
 
 
-    fn to_quantity(mut self, unit: Unit) -> Self {
+    pub fn to_quantity(self, unit: Unit) -> Self {
         self.to_normalized_quantity(unit)
             .add_metrix_prefix()
     }
 
     // the `prefix` must be `One` before calling this function
-    fn to_normalized_quantity(mut self, unit: Unit) -> Self {
+    pub fn to_normalized_quantity(mut self, unit: Unit) -> Self {
         use Unit::*;
         //assert_eq!(self.prefix, MetricPrefix::One);
         //assert_eq!(self.unit, Unit::ElectronVolt);
@@ -376,7 +390,7 @@ impl Quantity {
     }
 
 
-    fn add_metrix_prefix(mut self) -> Self {
+    pub fn add_metrix_prefix(mut self) -> Self {
         use MetricPrefix::*;
 
         //assert_eq!(self.prefix, One);
@@ -494,7 +508,7 @@ mod tests {
         use MetricPrefix::*;
         use Unit::*;
 
-        let parser = Quantity::parse_quantity;
+        let parser = Quantity::parse_quantity_helper;
 
         let prefix_cases = vec![
             (Atto,  vec!["atto",  "Atto",  "a"]),
@@ -533,10 +547,16 @@ mod tests {
                         let s = vec!["0.05E2", sprefix, sunit].join(" ");
                         assert_eq!(parser(&s), Ok(("", (5.0f64, *prefix, *unit))), "{}", s);
 
+                        let s = vec!["0.05e2", sprefix, sunit].join(" ");
+                        assert_eq!(parser(&s), Ok(("", (5.0f64, *prefix, *unit))), "{}", s);
+
                         let s = vec!["1.0", sprefix, sunit].join("");
                         assert_eq!(parser(&s), Ok(("", (1.0f64, *prefix, *unit))), "{}", s);
 
                         let s = vec!["0.05E2", sprefix, sunit].join("");
+                        assert_eq!(parser(&s), Ok(("", (5.0f64, *prefix, *unit))), "{}", s);
+
+                        let s = vec!["0.05e2", sprefix, sunit].join("");
                         assert_eq!(parser(&s), Ok(("", (5.0f64, *prefix, *unit))), "{}", s);
                     }
 
@@ -546,10 +566,16 @@ mod tests {
                     let s = vec!["0.05E2", sunit].join(" ");
                     assert_eq!(parser(&s), Ok(("", (5.0f64, One, *unit))), "{}", s);
 
+                    let s = vec!["0.05e2", sunit].join(" ");
+                    assert_eq!(parser(&s), Ok(("", (5.0f64, One, *unit))), "{}", s);
+
                     let s = vec!["1.0", sunit].join("");
                     assert_eq!(parser(&s), Ok(("", (1.0f64, One, *unit))), "{}", s);
 
                     let s = vec!["0.05E2", sunit].join("");
+                    assert_eq!(parser(&s), Ok(("", (5.0f64, One, *unit))), "{}", s);
+
+                    let s = vec!["0.05e2", sunit].join("");
                     assert_eq!(parser(&s), Ok(("", (5.0f64, One, *unit))), "{}", s);
                 }
             }
