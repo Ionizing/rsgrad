@@ -22,7 +22,6 @@ use nom::{
         tuple,
     },
     IResult,
-    Finish,
 };
 
 use anyhow::Error;
@@ -308,7 +307,7 @@ impl FromStr for Quantity {
 
 impl Quantity {
     pub fn parse_quantity(i: &str) -> Result<Self> {
-        match Self::parse_quantity_helper(i).finish() {
+        match Self::parse_quantity_helper(i) {
             Ok((_, (number, prefix, unit))) => Ok( Self{ number, prefix, unit } ),
             Err(e) => { anyhow::bail!("{}", e) }
         }
@@ -374,7 +373,7 @@ impl Quantity {
     }
 
     // the `prefix` must be `One` before calling this function
-    pub fn to_normalized_quantity(mut self, unit: Unit) -> Self {
+    fn to_normalized_quantity(mut self, unit: Unit) -> Self {
         use Unit::*;
         //assert_eq!(self.prefix, MetricPrefix::One);
         //assert_eq!(self.unit, Unit::ElectronVolt);
@@ -390,7 +389,7 @@ impl Quantity {
     }
 
 
-    pub fn add_metrix_prefix(mut self) -> Self {
+    fn add_metrix_prefix(mut self) -> Self {
         use MetricPrefix::*;
 
         //assert_eq!(self.prefix, One);
