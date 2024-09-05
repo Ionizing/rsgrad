@@ -90,7 +90,7 @@ const PALETTES_ENUM: &[ColorScalePalette] = &[
 
 
 pub fn write_array_to_txt(file_name: &(impl AsRef<Path> + ?Sized), ys: Vec<&Array1<f64>>, comment: &str) -> Result<()> {
-    let x = ys.get(0).context("At lease two data sets are needed")?;
+    let x = ys.first().context("At lease two data sets are needed")?;
     let nrow = x.len();
 
     if nrow == 0 || !ys.iter().all(|y| y.len() == nrow) {

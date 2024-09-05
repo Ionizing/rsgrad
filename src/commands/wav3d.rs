@@ -213,11 +213,11 @@ I suggest providing `gamma_half` argument to avoid confusion.");
             .map(|v| v as u64 - 1)
             .collect::<Vec<_>>();
         let ikpoints = self.ikpoints.iter()
-            .flat_map(|x| range_parse(&x).unwrap().into_iter())
+            .flat_map(|x| range_parse(x).unwrap().into_iter())
             .map(|v| v as u64 - 1)
             .collect::<Vec<_>>();
         let ibands = self.ibands.iter()
-            .flat_map(|x| range_parse(&x).unwrap().into_iter())
+            .flat_map(|x| range_parse(x).unwrap().into_iter())
             .map(|v| v as u64 - 1)
             .collect::<Vec<_>>();
 
@@ -348,7 +348,7 @@ I suggest providing `gamma_half` argument to avoid confusion.");
 
         if self.sum_chgs {
             save_to_vasp(
-                &self.sum_prefix.as_ref().unwrap().with_extension("vasp"),
+                self.sum_prefix.as_ref().unwrap().with_extension("vasp"),
                 &Arc::try_unwrap(chg_sum).unwrap().into_inner()?,
                 &pos)?;
         }

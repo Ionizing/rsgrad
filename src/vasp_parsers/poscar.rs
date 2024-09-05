@@ -383,7 +383,7 @@ impl Poscar {
     //     - return Result<true> for fractional axis
     //     - return Result<false> for cartesian axis
     fn check_atomsortaxis(s: &str) -> Result<bool> {
-        if s.len() == 0 || s.len() > 3 {
+        if s.is_empty() || s.len() > 3 {
             bail!("Invalid axis input: \"{}\", too few/many axies. Please use ABC for fractional axis or XYZ for cartesian axis.", s);
         }
 
@@ -405,7 +405,7 @@ impl Poscar {
     }
 
 
-    fn convert_sortaxis_to_cmp(s: &str) -> Box<dyn Fn(&[f64;3], &[f64;3]) -> Ordering> {
+    fn convert_sortaxis_to_cmp(s: &str) -> Box<CmpFunction> {
         let order = s.as_bytes()
             .iter()
             .map(|c| {
@@ -423,7 +423,7 @@ impl Poscar {
             for i in &order {
                 ret = ret.then(a[*i].partial_cmp(&b[*i]).unwrap());
             }
-            return ret;
+            ret
         })
     }
 
@@ -577,7 +577,7 @@ impl fmt::Display for PoscarFormatter<'_> {
         }
 
         let atom_symbol_index = {
-            let mut ret = vec![String::new(); 0];
+            let mut ret = Vec::<String>::new();
             let mut ind = 0;
             
             for (symbol, count) in poscar.ion_types.iter().zip(poscar.ions_per_type.iter()) {
@@ -632,10 +632,10 @@ pub enum CartesianAxis {
 }
 
 
-impl Into<usize> for CartesianAxis {
-    fn into(self) -> usize {
+impl From<CartesianAxis> for usize {
+    fn from(val: CartesianAxis) -> Self {
         use CartesianAxis::*;
-        match self {
+        match val {
             X => 0,
             Y => 1,
             Z => 2,
@@ -665,10 +665,10 @@ pub enum FractionalAxis {
 }
 
 
-impl Into<usize> for FractionalAxis {
-    fn into(self) -> usize {
+impl From<FractionalAxis> for usize {
+    fn from(val: FractionalAxis) -> Self {
         use FractionalAxis::*;
-        match self {
+        match val {
             A => 0,
             B => 1,
             C => 2,
@@ -698,10 +698,10 @@ pub enum Axes {
 }
 
 
-impl Into<Vec<usize>> for Axes {
-    fn into(self) -> Vec<usize> {
+impl From<Axes> for Vec<usize> {
+    fn from(val: Axes) -> Self {
         use Axes::*;
-        match self {
+        match val {
             Fractional(axis) => axis.into_iter().map(|x| x.into()).collect(),
             Cartesian(axis) => axis.into_iter().map(|x| x.into()).collect(),
         }
@@ -714,7 +714,7 @@ impl TryFrom<&str> for Axes {
     fn try_from(s: &str) -> Result<Self> {
         use Axes::*;
 
-        if s.len() == 0 || s.len() > 3 {
+        if s.is_empty() || s.len() > 3 {
             bail!("Invalid axis input: \"{}\", too few/many axies. Please use ABC for fractional axis or XYZ for cartesian axis.", s);
         }
 
@@ -733,6 +733,9 @@ impl TryFrom<&str> for Axes {
         bail!("Cannot convert input axis {} into either FractionalAxes or CartesianAxes: Invalid chars found please check.", s);
     }
 }
+
+
+type CmpFunction = dyn Fn(&[f64;3], &[f64;3]) -> Ordering;
 
 
 pub struct GroupedAtoms {
@@ -782,7 +785,7 @@ impl GroupedAtoms {
     pub fn sort_by_axis(
         &mut self,
         is_fractional: bool,
-        cmp: &Box<dyn Fn(&[f64;3], &[f64; 3]) -> Ordering>
+        cmp: &CmpFunction
         ) {
         let idx = if is_fractional {
             argsort_by(&self.pos_frac, |a, b| cmp(a, b))

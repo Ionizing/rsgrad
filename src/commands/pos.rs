@@ -67,11 +67,8 @@ pub struct Pos {
 fn poscar_split(poscar: &Poscar, inds: &[usize]) -> (Poscar, Poscar) {
     // Assume the inds is neither empty nor full.
     
-    let inds_a = inds.iter()
-        .map(|x| *x as usize)
-        .collect::<Vec<_>>();
+    let inds_a = inds.to_vec();
     let inds_b = (0 .. poscar.pos_cart.len())
-        .into_iter()
         .filter(|i| !inds.contains(i))
         .collect::<Vec<_>>();
 
@@ -204,7 +201,7 @@ impl OptProcess for Pos {
                     .into_iter()
                     .map(|i| i - 1)
                     .collect::<Vec<_>>();
-                if inds == (0 .. pos.get_natoms() as usize).into_iter().collect::<Vec<_>>() {
+                if inds == (0 .. pos.get_natoms() as usize).collect::<Vec<_>>() {
                     error!("You selected all the atoms for {:?}, leaving {:?} nothing,\
 please check you input (`0` means selecting all the atoms)",
                         &self.a_name, &self.b_name);

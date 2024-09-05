@@ -370,7 +370,7 @@ impl Band {
         };
 
         for ispin in 0 .. nspin {
-            (0 .. nbands).into_iter()
+            (0 .. nbands)
                 .for_each(|iband| {
                     let dispersion = cropped_eigvals.slice(s![ispin, .., iband]).to_owned();
                     let show_legend = 0 == iband;
@@ -512,7 +512,7 @@ impl Band {
         let marker = plotly::common::Marker::new().color(color);
 
         for ispin in 0 .. nspin {
-            (0 .. nbands).into_iter()
+            (0 .. nbands)
                 .for_each(|iband| {
                     let dispersion = cropped_eigvals.slice(s![ispin, .., iband]).to_owned();
                     let projection = projections.slice(s![ispin, .., iband])
@@ -595,7 +595,7 @@ impl Band {
         assert_eq!(nspin, 1);
         assert_eq!(kpath.len(), nkpoints);
 
-        (0 .. nbands).into_iter()
+        (0 .. nbands)
             .for_each(|iband| {
                 let dispersion = cropped_eigvals.slice(s![0, .., iband]).to_owned();
                 let projection = projections.slice(s![.., iband]).to_owned().into_raw_vec();
@@ -811,7 +811,7 @@ impl OptProcess for Band {
             Self::plot_nclband(&mut plot, &kpath, &cropped_eigvals, &projected_band_ncl, colormap.clone(), &label);
 
             let fname = PathBuf::from(&format!("{}_ncl_{}.txt", txtout_prefix, ax));
-            let data = (0 .. nbands).into_iter()
+            let data = (0 .. nbands)
                 .map(|iband| projected_band_ncl.slice(s![.., iband]).to_owned())
                 .collect::<Vec<_>>();
             let data_ref = data.iter().collect::<Vec<&Vector<f64>>>();
@@ -861,7 +861,7 @@ impl OptProcess for Band {
                     };
 
                     let fname = PathBuf::from(&format!("{}_{}{}.txt", txtout_prefix, &sel.label, spin_label));
-                    let data = (0 .. nbands).into_iter()
+                    let data = (0 .. nbands)
                         .map(|iband| band.slice(s![*is, .., iband]).to_owned())
                         .collect::<Vec<_>>();
                     let data_ref = data.iter().collect::<Vec<&Vector<f64>>>();
@@ -887,7 +887,7 @@ impl OptProcess for Band {
             };
 
             let fname = PathBuf::from(&format!("{}{}.txt", txtout_prefix, spin_label));
-            let mut data = (0 .. nbands).into_iter()
+            let mut data = (0 .. nbands)
                 .map(|iband| cropped_eigvals.slice(s![is, .., iband]).to_owned())
                 .collect::<Vec<_>>();
             data.insert(0, kpath.to_owned());
@@ -897,7 +897,7 @@ impl OptProcess for Band {
             write_array_to_txt(&fname, data_ref, "kpath(in_2pi) band-levels(nkpoints_x_nbands)")?;
         }
 
-        plot.write_html(&htmlout);
+        plot.write_html(htmlout);
 
         if self.to_inline_html {
             info!("Printing inline html to stdout ...");

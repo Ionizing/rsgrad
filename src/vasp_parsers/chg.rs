@@ -200,7 +200,7 @@ impl ChargeDensity {
         let _regex = Regex::new(r"(?m)^\s+\d+\s+\d+\s+\d+\s*$").unwrap();
         let mat = _regex.find(txt).unwrap();
         let ngrid = {
-            let mut v = vec![0usize; 3];
+            let mut v = [0usize; 3];
             for (i, s) in txt[mat.start() .. mat.end()].split_whitespace()
                     .take(3).enumerate() {
                 v[i] = s.parse::<usize>()
@@ -350,23 +350,23 @@ impl Add for ChargeDensity {
             let scale           = 1.0f64;
             let cell            = self.pos.cell;
             let ion_types       = self.pos.ion_types.into_iter()
-                .chain(other.pos.ion_types.into_iter())
+                .chain(other.pos.ion_types)
                 .collect::<Vec<_>>();
             let ions_per_type   = self.pos.ions_per_type.into_iter()
-                .chain(other.pos.ions_per_type.into_iter())
+                .chain(other.pos.ions_per_type)
                 .collect::<Vec<_>>();
             
             let pos_cart        = self.pos.pos_cart.into_iter()
-                .chain(other.pos.pos_cart.into_iter())
+                .chain(other.pos.pos_cart)
                 .collect::<Vec<_>>();
             let pos_frac        = self.pos.pos_frac.into_iter()
-                .chain(other.pos.pos_frac.into_iter())
+                .chain(other.pos.pos_frac)
                 .collect::<Vec<_>>();
             let constraints     = self.pos.constraints
                 .zip(other.pos.constraints)
                 .map(|(x, y)| {
                     x.into_iter()
-                     .chain(y.into_iter()).collect::<Vec<_>>()
+                     .chain(y).collect::<Vec<_>>()
                 });
 
             if ions_per_type.iter().sum::<i32>() != pos_cart.len() as i32 || 
@@ -389,7 +389,7 @@ impl Add for ChargeDensity {
 
         let chgtype = self.chgtype;
         let ngrid = self.ngrid;
-        let chg = self.chg.into_iter().zip(other.chg.into_iter())
+        let chg = self.chg.into_iter().zip(other.chg)
             .map(|(x, y)| x + y)
             .collect::<Vec<_>>();
 
@@ -445,7 +445,7 @@ impl Sub for ChargeDensity {
 
         let chgtype = self.chgtype;
         let ngrid = self.ngrid;
-        let chg = self.chg.into_iter().zip(other.chg.into_iter())
+        let chg = self.chg.into_iter().zip(other.chg)
             .map(|(x, y)| x - y)
             .collect::<Vec<_>>();
 

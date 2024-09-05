@@ -131,17 +131,18 @@ impl Outcar {
         let mut efermi          = 0.0f64;
         let mut cell            = [[0.0f64; 3]; 3];
         let mut ions_per_type   = vec![0i32; 0];
-        let mut ion_types       = vec![String::new();0];
+        let mut ion_types       = Vec::<String>::new();
         let mut ion_masses      = vec![0.0f64; 0];
 
         let mut ext_pressure   = vec![0.0f64; 0];
         let mut nscfv          = vec![0i32; 0];
         let mut totenv         = vec![0.0f64; 0];
         let mut toten_zv       = vec![0.0f64; 0];
-        let mut magmomv        = vec![Some(vec![0.0f64; 0]); 0];
+        let mut magmomv        = Vec::<Option<Vec<f64>>>::new();
         let mut cputimev       = vec![0.0f64; 0];
-        let (mut posv, mut forcev) = (vec![vec![[0.0f64; 3];0]; 0], vec![vec![[0.0f64; 3];0]; 0]);
-        let mut cellv          = vec![[[0.0f64; 3]; 3]; 0];
+        let mut posv           = Vec::<Vec<[f64;3]>>::new();
+        let mut forcev         = Vec::<Vec<[f64;3]>>::new();
+        let mut cellv          = Vec::<[[f64;3]; 3]>::new();
 
         rayon::scope(|s| {
             s.spawn(|_| { lsorbit         = Self::parse_lsorbit(&context) });
@@ -419,7 +420,7 @@ impl Outcar {
                     let s = &l[(3 + 13*i) .. (3 + 13*i + 13)];
                     v[i] = s.trim()
                             .parse()
-                            .expect(&format!("Cannot parse {:?} as float number.", s));
+                            .unwrap_or_else(|_| panic!("Cannot parse {:?} as float number.", s));
                 }
                 v
             })
@@ -559,7 +560,7 @@ impl Outcar {
                        .parse::<f64>()
                        .unwrap()
             })
-            .zip(ions_per_type.into_iter())
+            .zip(ions_per_type)
             .fold(vec![], |mut acc, (m, n): (f64, i32)| {
                 acc.extend(vec![m; n as usize]);
                 acc
@@ -665,7 +666,7 @@ fn _save_as_xsf_helper(fname: &Path, structure: &Structure, forces: &MatX3<f64>)
         .create(true)
         .truncate(true)
         .write(true)
-        .open(&fname)?;
+        .open(fname)?;
 
     writeln!(f, "CRYSTAL")?;
     writeln!(f, "PRIMVEC")?;
@@ -1863,8 +1864,8 @@ mod tests{
 
         let output = Some(
             freqs.into_iter()
-                 .zip(dxdydzs.into_iter())
-                 .zip(is_imagines.into_iter())
+                 .zip(dxdydzs)
+                 .zip(is_imagines)
                  .map(|((f, d), im)| Vibration::new(f, d, im))
                  .collect::<Vec<_>>()
         );
@@ -1965,8 +1966,8 @@ Direct
         let is_imagines = vec![false, false, true];
         Vibrations{
             modes: freqs.into_iter()
-                        .zip(dxdydzs.into_iter())
-                        .zip(is_imagines.into_iter())
+                        .zip(dxdydzs)
+                        .zip(is_imagines)
                         .map(|((f, d), im)| Vibration::new(f, d, im))
                         .collect::<Vec<_>>(),
             structure: _generate_structure(),

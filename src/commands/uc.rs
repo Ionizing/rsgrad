@@ -160,7 +160,7 @@ impl MetricPrefix {
 
 fn get_prefix_scale() -> &'static HashMap<MetricPrefix, f64> {
     static INSTANCE: OnceLock<HashMap<MetricPrefix, f64>> = OnceLock::new();
-    &INSTANCE.get_or_init(|| {
+    INSTANCE.get_or_init(|| {
         [
             (MetricPrefix::Atto,  1E-18),
             (MetricPrefix::Femto, 1E-15),
@@ -266,7 +266,7 @@ impl Unit {
 
 fn get_ratio_ev_to_other() -> &'static HashMap<Unit, f64> {
     static INSTANCE: OnceLock<HashMap<Unit, f64>> = OnceLock::new();
-    &INSTANCE.get_or_init(|| {
+    INSTANCE.get_or_init(|| {
         [
             (Unit::ElectronVolt,   1.0f64),
             (Unit::CaloriePerMole, 1.60217733 * 6.0223 * 1E4 / 4.184),

@@ -321,7 +321,6 @@ impl Dos {
             for ikpoint in selection.ikpoints.iter().copied() {
                 let eigs = procar.pdos.eigvals.slice(s![ispin, ikpoint, ..]).to_slice().unwrap();
                 let bandweights = (0 .. nbands)
-                    .into_iter()
                     .map(|iband| {
                         let mut wht = 0.0;
                         for iion in selection.iatoms.iter().copied() {
@@ -549,7 +548,7 @@ impl OptProcess for Dos {
         plot.set_layout(layout);
 
         info!("Writing DOS plot to {:?}", htmlout);
-        plot.write_html(&htmlout);
+        plot.write_html(htmlout);
 
         info!("Writing raw DOS data to {:?}", txtout);
         let label = labels.join(" ");

@@ -85,7 +85,7 @@ impl Gap {
                     Self::bands_from_procar(v, &self.outcar, self.efermi)
                 })
             })
-            .with_context(|| format!("Neither WAVECAR nor PROCAR is accessible, please specify a valid WAVECAR or PROCAR"))
+            .with_context(|| "Neither WAVECAR nor PROCAR is accessible, please specify a valid WAVECAR or PROCAR".to_string())
     }
 }
 

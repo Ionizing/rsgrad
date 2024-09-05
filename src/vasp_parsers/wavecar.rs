@@ -59,7 +59,8 @@ use crate::{
 
 
 // Constants
-const PI:           f64 = 3.141592653589793238;
+#[allow(clippy::approx_constant)]
+const PI:           f64 = 3.141_592_653_589_793;
 const PIx2:         f64 = PI * 2.0;
 //const H_PLANCK:     f64 = 6.6260755E-34;
 //const HBAR:         f64 = H_PLANCK / PIx2;
@@ -697,17 +698,17 @@ impl Wavecar {
         let mut wavk = Array3::<c64>::zeros((ngxr, ngyr, ngzr));
         let mut wavr = Array3::<c64>::zeros((ngxr, ngyr, ngzr));
 
-        gvecs.into_iter().zip(coeffs.into_iter())
+        gvecs.into_iter().zip(coeffs)
             .for_each(|(idx, v)| wavk[idx] = v);
 
-        let mut handlers: [FftHandler<f64>; 3] = [
+        let handlers: [FftHandler<f64>; 3] = [
             FftHandler::new(ngxr),
             FftHandler::new(ngyr),
             FftHandler::new(ngzr),
         ];
-        ndifft(&wavk, &mut wavr, &mut handlers[0], 0);
-        ndifft(&wavr, &mut wavk, &mut handlers[1], 1);
-        ndifft(&wavk, &mut wavr, &mut handlers[2], 2);
+        ndifft(&wavk, &mut wavr, &handlers[0], 0);
+        ndifft(&wavr, &mut wavk, &handlers[1], 1);
+        ndifft(&wavk, &mut wavr, &handlers[2], 2);
 
         Ok(Wavefunction::Complex64Array3(wavr))
     }
@@ -747,7 +748,7 @@ impl Wavecar {
         let mut wavk = Array3::<c64>::zeros((ngxk, ngyk, ngzk));
         let mut wavr = Array3::<f64>::zeros((ngxr, ngyr, ngzr));
 
-        gvecs.zip(coeffs.into_iter())
+        gvecs.zip(coeffs)
             .for_each(|(idx, v)| wavk[idx] = v);
 
         {
@@ -766,12 +767,12 @@ impl Wavecar {
         wavk[[0, 0, 0]].scale(f64::sqrt(2.0));
 
         let mut work = Array3::<c64>::zeros(wavk.dim());
-        let mut handler_x = R2cFftHandler::<f64>::new(ngxr);
-        let mut handler_y =    FftHandler::<f64>::new(ngyr);
-        let mut handler_z =    FftHandler::<f64>::new(ngzr);
-        ndifft    (&wavk, &mut work, &mut handler_y, 1);
-        ndifft    (&work, &mut wavk, &mut handler_z, 2);
-        ndifft_r2c(&wavk, &mut wavr, &mut handler_x, 0);
+        let handler_x = R2cFftHandler::<f64>::new(ngxr);
+        let handler_y =    FftHandler::<f64>::new(ngyr);
+        let handler_z =    FftHandler::<f64>::new(ngzr);
+        ndifft    (&wavk, &mut work, &handler_y, 1);
+        ndifft    (&work, &mut wavk, &handler_z, 2);
+        ndifft_r2c(&wavk, &mut wavr, &handler_x, 0);
 
         Ok(Wavefunction::Float64Array3(wavr))
     }
@@ -812,7 +813,7 @@ impl Wavecar {
         let mut wavk = Array3::<c64>::zeros((ngxk, ngyk, ngzk));
         let mut wavr = Array3::<f64>::zeros((ngxr, ngyr, ngzr));
 
-        gvecs.zip(coeffs.into_iter())
+        gvecs.zip(coeffs)
             .for_each(|(idx, v)| wavk[idx] = v);
 
         {
@@ -831,12 +832,12 @@ impl Wavecar {
         wavk[[0, 0, 0]].scale(f64::sqrt(2.0));
 
         let mut work = Array3::<c64>::zeros(wavk.dim());
-        let mut handler_x =    FftHandler::<f64>::new(ngxr);
-        let mut handler_y =    FftHandler::<f64>::new(ngyr);
-        let mut handler_z = R2cFftHandler::<f64>::new(ngzr);
-        ndifft    (&wavk, &mut work, &mut handler_x, 0);
-        ndifft    (&work, &mut wavk, &mut handler_y, 1);
-        ndifft_r2c(&wavk, &mut wavr, &mut handler_z, 2);
+        let handler_x =    FftHandler::<f64>::new(ngxr);
+        let handler_y =    FftHandler::<f64>::new(ngyr);
+        let handler_z = R2cFftHandler::<f64>::new(ngzr);
+        ndifft    (&wavk, &mut work, &handler_x, 0);
+        ndifft    (&work, &mut wavk, &handler_y, 1);
+        ndifft_r2c(&wavk, &mut wavr, &handler_z, 2);
 
         Ok(Wavefunction::Float64Array3(wavr))
     }
@@ -879,14 +880,14 @@ impl Wavecar {
             gvecs.iter().zip(coeffs.slice(s![ispinor, ..]))
                 .for_each(|(idx, v)| wk[*idx] = *v);
 
-            let mut handlers: [FftHandler<f64>; 3] = [
+            let handlers: [FftHandler<f64>; 3] = [
                 FftHandler::new(ngxr),
                 FftHandler::new(ngyr),
                 FftHandler::new(ngzr),
             ];
-            ndifft(&wk, &mut wr, &mut handlers[0], 0);
-            ndifft(&wr, &mut wk, &mut handlers[1], 1);
-            ndifft(&wk, &mut wr, &mut handlers[2], 2);
+            ndifft(&wk, &mut wr, &handlers[0], 0);
+            ndifft(&wr, &mut wk, &handlers[1], 1);
+            ndifft(&wk, &mut wr, &handlers[2], 2);
         }
 
         Ok(Wavefunction::Ncl64Array4(wavr))

@@ -70,7 +70,7 @@ impl AtomicPotcar {
         //let titel = prefix.aliases.as_ref()
             //.and_then(|tok| { tok.get(&titel).cloned() })
             //.unwrap_or(titel);
-        let titel = if let Some(alias) = prefix.aliases.as_ref().map(|tok| tok.get(&titel)).flatten() {
+        let titel = if let Some(alias) = prefix.aliases.as_ref().and_then(|tok| tok.get(&titel)) {
             info!("Found functional alias: \"{}\" -> \"{}\".", titel, alias);
             alias.clone()
         } else {

@@ -109,6 +109,25 @@ pub struct Tdm {
 }
 
 
+#[allow(non_snake_case)]
+struct Tdms {
+    iband: usize,
+    jband: usize,
+
+    #[allow(non_snake_case)]
+    Ei: f64,
+
+    #[allow(non_snake_case)]
+    Ej: f64,
+
+    #[allow(non_snake_case)]
+    dE: f64,
+    tx: f64,
+    ty: f64,
+    tz: f64,
+}
+
+
 impl Tdm {
     fn check_and_transform_band_index(ibands: &[usize], nbands: usize) -> Result<Vec<usize>> {
         let mut ibands = ibands.to_vec();
@@ -163,18 +182,18 @@ impl Tdm {
         Self::smearing_lorentz(x, centers, width, scales)
     }
 
-    // tdms: (iband, jband, Ei, Ej, dE, tx, ty, tz)
-    fn gen_smeared_tdm(x: &[f64], tdms: Vec<(usize, usize, f64, f64, f64, f64, f64, f64)>, sigma: f64) -> Vec<Vector<f64>> {
+
+    fn gen_smeared_tdm(x: &[f64], tdms: Vec<Tdms>, sigma: f64) -> Vec<Vector<f64>> {
         let mut smeared_tdms = vec![];  // x, y, z, tot
 
-        let centers = tdms.iter().map(|t| t.4).collect::<Vec<f64>>();
-        let txs     = tdms.iter().map(|t| t.5).collect::<Vec<f64>>();
-        let tys     = tdms.iter().map(|t| t.6).collect::<Vec<f64>>();
-        let tzs     = tdms.iter().map(|t| t.7).collect::<Vec<f64>>();
+        let centers = tdms.iter().map(|t| t.dE).collect::<Vec<f64>>();
+        let txs     = tdms.iter().map(|t| t.tx).collect::<Vec<f64>>();
+        let tys     = tdms.iter().map(|t| t.ty).collect::<Vec<f64>>();
+        let tzs     = tdms.iter().map(|t| t.tz).collect::<Vec<f64>>();
 
-        smeared_tdms.push(Self::apply_smearing(&x, &centers, sigma, Some(&txs)));
-        smeared_tdms.push(Self::apply_smearing(&x, &centers, sigma, Some(&tys)));
-        smeared_tdms.push(Self::apply_smearing(&x, &centers, sigma, Some(&tzs)));
+        smeared_tdms.push(Self::apply_smearing(x, &centers, sigma, Some(&txs)));
+        smeared_tdms.push(Self::apply_smearing(x, &centers, sigma, Some(&tys)));
+        smeared_tdms.push(Self::apply_smearing(x, &centers, sigma, Some(&tzs)));
         let tot_tdms = smeared_tdms[0].clone() + &smeared_tdms[1] + &smeared_tdms[2];
         smeared_tdms.push(tot_tdms);
 
@@ -246,7 +265,7 @@ I suggest you provide `gamma_half` argument to avoid confusion.");
                 let tdmy = tdmy.norm();
                 let tdmz = tdmz.norm();
 
-                (iband, jband, eig_i, eig_j, dE, tdmx, tdmy, tdmz)
+                Tdms{iband, jband, Ei: eig_i, Ej: eig_j, dE, tx: tdmx, ty: tdmy, tz: tdmz}
             })
             .collect::<Vec<_>>();
 
@@ -254,13 +273,10 @@ I suggest you provide `gamma_half` argument to avoid confusion.");
             let mut txt: String = String::new();
             
             writeln!(&mut txt, "# iband jband     E_i     E_j      ΔE        Tx       Ty       Tz")?;
-            tdms.iter()
-                .map(|(iband, jband, eig_i, eig_j, d_e, tx, ty, tz)| {
-                    writeln!(&mut txt, "  {:5} {:5} {:7.3} {:7.3} {:7.3}  {:8.3} {:8.3} {:8.3}",
-                             iband+1, jband+1, eig_i, eig_j, d_e, tx, ty, tz)?;
-                    Ok(())
-                })
-                .collect::<Result<()>>()?;
+            for Tdms{iband, jband, Ei, Ej, dE, tx, ty, tz} in tdms.iter() {
+                writeln!(&mut txt, "  {:5} {:5} {:7.3} {:7.3} {:7.3}  {:8.3} {:8.3} {:8.3}",
+                         iband+1, jband+1, Ei, Ej, dE, tx, ty, tz)?;
+            }
 
             if self.verbose {
                 print!("{}", txt);
@@ -274,14 +290,14 @@ I suggest you provide `gamma_half` argument to avoid confusion.");
         // Plot with plotly
         let mut plot = plotly::Plot::new();
 
-        let des = tdms.iter().map(|t| t.4).collect::<Vec<f64>>();
-        let txs = tdms.iter().map(|t| t.5).collect::<Vec<f64>>();
-        let tys = tdms.iter().map(|t| t.6).collect::<Vec<f64>>();
-        let tzs = tdms.iter().map(|t| t.7).collect::<Vec<f64>>();
+        let des = tdms.iter().map(|t| t.dE).collect::<Vec<f64>>();
+        let txs = tdms.iter().map(|t| t.tx).collect::<Vec<f64>>();
+        let tys = tdms.iter().map(|t| t.ty).collect::<Vec<f64>>();
+        let tzs = tdms.iter().map(|t| t.tz).collect::<Vec<f64>>();
 
         let hover_template_array = tdms.iter()
-            .map(|(iband, jband, _, _, de, _, _, _)| {
-                format!("{}->{},dE={:.3}eV<br>%{{y:.4f}}Debye", iband+1, jband+1, de)
+            .map(|Tdms{ iband, jband, dE, ..}| {
+                format!("{}->{},dE={:.3}eV<br>%{{y:.4f}}Debye", iband+1, jband+1, dE)
             })
             .collect::<Vec<String>>();
 
@@ -296,9 +312,9 @@ I suggest you provide `gamma_half` argument to avoid confusion.");
         }
 
         let x_min = self.xmin
-            .unwrap_or_else(|| tdms.iter().map(|t| t.4).reduce(f64::min).unwrap() - 2.0);
+            .unwrap_or_else(|| tdms.iter().map(|t| t.dE).reduce(f64::min).unwrap() - 2.0);
         let x_max = self.xmax
-            .unwrap_or_else(|| tdms.iter().map(|t| t.4).reduce(f64::max).unwrap() + 2.0);
+            .unwrap_or_else(|| tdms.iter().map(|t| t.dE).reduce(f64::max).unwrap() + 2.0);
         let nx = (x_max - x_min).ceil() as usize * self.npoints;
         let x = Vector::<f64>::linspace(x_min, x_max, nx);
         let smeared_tdms = Self::gen_smeared_tdm(&x.to_vec(), tdms, self.sigma);

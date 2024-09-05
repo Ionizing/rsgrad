@@ -145,11 +145,11 @@ I suggest you provide `gamma_half` argument to avoid confusion.");
             .map(|v| v as u64 - 1)
             .collect::<Vec<_>>();
         let ikpoints = self.ikpoints.iter()
-            .flat_map(|x| range_parse(&x).unwrap().into_iter())
+            .flat_map(|x| range_parse(x).unwrap().into_iter())
             .map(|v| v as u64 - 1)
             .collect::<Vec<_>>();
         let ibands = self.ibands.iter()
-            .flat_map(|x| range_parse(&x).unwrap().into_iter())
+            .flat_map(|x| range_parse(x).unwrap().into_iter())
             .map(|v| v as u64 - 1)
             .collect::<Vec<_>>();
 
