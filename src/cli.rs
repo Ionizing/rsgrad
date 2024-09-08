@@ -25,6 +25,7 @@ use crate::{
         wav1d::Wav1D,
         tdm::Tdm,
         gap::Gap,
+        uc::Uc, 
     },
 };
 
@@ -86,6 +87,8 @@ enum Opt {
     Tdm,
 
     Gap,
+
+    Uc,
 }
 
 

@@ -2,7 +2,9 @@ use std::sync::OnceLock;
 use std::hash::Hash;
 use std::collections::HashMap;
 use std::str::FromStr;
+use std::fmt;
 
+use clap::Args;
 use nom::{
     branch::alt,
     bytes::complete::tag,
@@ -23,9 +25,10 @@ use nom::{
     },
     IResult,
 };
-
 use anyhow::Error;
+
 use crate::Result;
+use crate::OptProcess;
 
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
@@ -180,6 +183,39 @@ fn get_prefix_scale() -> &'static HashMap<MetricPrefix, f64> {
 }
 
 
+fn get_prefix_str() -> &'static HashMap<MetricPrefix, &'static str> {
+    static INSTANCE: OnceLock<HashMap<MetricPrefix, &'static str>> = OnceLock::new();
+    INSTANCE.get_or_init(|| {
+        [
+            (MetricPrefix::Atto,  "a"),
+            (MetricPrefix::Femto, "f"),
+            (MetricPrefix::Pico,  "p"),
+            (MetricPrefix::Nano,  "n"),
+            (MetricPrefix::Micro, "μ"),
+            (MetricPrefix::Milli, "m"),
+            (MetricPrefix::One,   ""),
+            (MetricPrefix::Kilo,  "K"),
+            (MetricPrefix::Mega,  "M"),
+            (MetricPrefix::Giga,  "G"),
+            (MetricPrefix::Tera,  "T"),
+            (MetricPrefix::Peta,  "P"),
+            (MetricPrefix::Exa,   "E"),
+        ].iter().cloned().collect()
+    })
+}
+
+
+impl fmt::Display for MetricPrefix {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if f.alternate() {  // print full form of prefix
+            write!(f, "{:?}", self)
+        } else {    // abbreviative by default
+            write!(f, "{}", get_prefix_str()[self])
+        }
+    }
+}
+
+
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
 /// Energy units.
 pub enum Unit {
@@ -209,6 +245,35 @@ pub enum Unit {
 
     /// Period of light
     Second,
+}
+
+
+fn get_unit_str() -> &'static HashMap<Unit, &'static str> {
+    static INSTANCE: OnceLock<HashMap<Unit, &'static str>> = OnceLock::new();
+    INSTANCE.get_or_init(|| {
+        [
+            (Unit::ElectronVolt, "eV"),
+            (Unit::CaloriePerMole, "Cal/mol"),
+            (Unit::JoulePerMole, "J/mol"),
+            (Unit::Kelvin, "K"),
+            (Unit::Hartree, "Ha"),
+            (Unit::Wavenumber, "cm-1"),
+            (Unit::Meter, "m"),
+            (Unit::Hertz, "Hz"),
+            (Unit::Second, "s"),
+        ].iter().cloned().collect()
+    })
+}
+
+
+impl fmt::Display for Unit {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if f.alternate() {
+            write!(f, "{:?}", self)
+        } else {
+            write!(f, "{}", get_unit_str()[self])
+        }
+    }
 }
 
 
@@ -282,7 +347,7 @@ fn get_ratio_ev_to_other() -> &'static HashMap<Unit, f64> {
 }
 
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 /// Each energy quantity should contains three parts: number, prefix and unit.
 pub struct Quantity {
     /// Singular float number
@@ -301,6 +366,17 @@ impl FromStr for Quantity {
 
     fn from_str(s: &str) -> Result<Self> {
         Quantity::parse_quantity(s)
+    }
+}
+
+
+impl fmt::Display for Quantity {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if f.alternate() {
+            write!(f, "{:11.6} {:#} {:#}", self.number, self.prefix, self.unit)
+        } else {
+            write!(f, "{:11.6} {:}{:}", self.number, self.prefix, self.unit)
+        }
     }
 }
 
@@ -343,7 +419,7 @@ impl Quantity {
             .normalize_unit()
     }
 
-    fn normalize_prefix(mut self) -> Self {
+    pub fn normalize_prefix(mut self) -> Self {
         let scale = get_prefix_scale()[&self.prefix];
         self.number *= scale;
         self.prefix = MetricPrefix::One;
@@ -396,7 +472,17 @@ impl Quantity {
         self = self.normalize_prefix();
         let number = self.number;
         let prefix = match number {
-            x if x <= 1E-18 => Atto,
+            x if x <= 1E-15 => Atto,
+            x if x <= 1E-12 => Femto,
+            x if x <= 1E-9  => Pico,
+            x if x <= 1E-6  => Nano,
+            x if x <= 1E-3  => Micro,
+            x if x <= 1E0   => Milli,
+            x if x <= 1E3   => One,
+            x if x <= 1E6   => Kilo,
+            x if x <= 1E9   => Mega,
+            x if x <= 1E12  => Giga,
+            x if x <= 1E15  => Tera,
             _ => Exa,
         };
 
@@ -443,6 +529,32 @@ fn double(i: &str) -> IResult<&str, f64> {
         let s = a.to_string() + b + c + d;
         s.parse::<f64>().unwrap()
     })(i)
+}
+
+
+#[derive(Debug, Args)]
+/// Conversion between various energy units.
+pub struct Uc {
+    /// Input energy quantity to be converted. Multiple input are supported.
+    pub input: Vec<String>,
+}
+
+
+impl OptProcess for Uc {
+    fn process(&self) -> Result<()> {
+        for i in self.input.iter() {
+            println!("==================== Processing input \"{}\" ====================", i);
+
+            let q = Quantity::from_str(i)?;
+            for q_unit in get_unit_str().keys().map(|u| q.to_quantity(*u)) {
+                println!(" {} ==  {}", q, q_unit);
+            }
+            
+            println!("================================================================================");
+            println!();
+        }
+        Ok(())
+    }
 }
 
 
