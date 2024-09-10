@@ -16,7 +16,10 @@ use anyhow::{
     Result,
     Context,
 };
-use plotly::common::ColorScalePalette;
+use plotly::{
+    self,
+    common::ColorScalePalette,
+};
 use ndarray::Array1;
 
 use crate::types::{
@@ -291,6 +294,12 @@ See \"https://developer.mozilla.org/en-US/docs/Web/CSS/color_value for availed n
         NAMED_COLORS[id]
     }
 
+}
+
+
+pub fn generate_plotly_configuration() -> plotly::Configuration {
+    plotly::Configuration::new()
+        .responsive(true)
 }
 
 

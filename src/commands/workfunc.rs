@@ -19,6 +19,7 @@ use crate::{
     ChargeType,
     Outcar,
     commands::common::write_array_to_txt,
+    commands::common::generate_plotly_configuration,
 };
 
 #[derive(Debug, Args)]
@@ -129,6 +130,7 @@ impl OptProcess for Workfunc {
                     .zero_line(true))
             .height(960);
         plot.set_layout(layout);
+        plot.set_configuration(generate_plotly_configuration());
 
         info!("Writing to {:?}", self.htmlout);
         plot.write_html(&self.htmlout);

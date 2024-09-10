@@ -33,6 +33,7 @@ use crate::{
     commands::common::{
         RawSelection,
         write_array_to_txt,
+        generate_plotly_configuration,
     }
 };
 
@@ -546,6 +547,7 @@ impl OptProcess for Dos {
                     )
             .height(960);
         plot.set_layout(layout);
+        plot.set_configuration(generate_plotly_configuration());
 
         info!("Writing DOS plot to {:?}", htmlout);
         plot.write_html(htmlout);

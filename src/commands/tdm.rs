@@ -26,6 +26,7 @@ use crate::{
         WavecarType,
     },
     commands::common::write_array_to_txt,
+    commands::common::generate_plotly_configuration,
 };
 
 
@@ -351,6 +352,7 @@ I suggest you provide `gamma_half` argument to avoid confusion.");
             .height(960);
 
         plot.set_layout(layout);
+        plot.set_configuration(generate_plotly_configuration());
 
         // Write html
         info!("Writing plot to {:?}", &self.htmlout);

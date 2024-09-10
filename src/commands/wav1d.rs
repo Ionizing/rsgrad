@@ -24,6 +24,7 @@ use crate::{
         range_parse,
     },
     commands::common::write_array_to_txt,
+    commands::common::generate_plotly_configuration,
     OptProcess,
 };
 
@@ -230,6 +231,7 @@ I suggest you provide `gamma_half` argument to avoid confusion.");
                     .title(plotly::common::Title::with_text("Distance (Å)")))
             .height(960);
         plot.set_layout(layout);
+        plot.set_configuration(generate_plotly_configuration());
 
         plot.use_local_plotly();
         info!("Writing to {:?}", self.htmlout);

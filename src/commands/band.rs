@@ -61,6 +61,7 @@ use crate::{
     commands::common::{
         write_array_to_txt,
         RawSelection,
+        generate_plotly_configuration,
     }
 };
 
@@ -897,6 +898,7 @@ impl OptProcess for Band {
             write_array_to_txt(&fname, data_ref, "kpath(in_2pi) band-levels(nkpoints_x_nbands)")?;
         }
 
+        plot.set_configuration(generate_plotly_configuration());
         plot.write_html(htmlout);
 
         if self.to_inline_html {
