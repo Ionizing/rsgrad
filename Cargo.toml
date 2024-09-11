@@ -18,26 +18,26 @@ clap = { version = "4.5.4", features = ["derive"] }
 colored = "2"
 log = "0.4"
 env_logger = "0.8"
-ndarray = "0.15"
+ndarray = "0.16"
 #ndarray-npy = "0.8"
 anyhow = "1.0"
 flate2 = "1.0"
 directories = "4.0"
 serde = "1.0"
-#plotly = { git = "https://github.com/Ionizing/plotly", rev = "25c41e39a8290f28429a7767404270ac91914110", features = ["plotly_ndarray"] }
-plotly = { version = "0.9.0", features = ["plotly_ndarray"] }
+plotly = { git = "https://github.com/Ionizing/plotly", rev = "5e5af76b95c1093d5b0523c9800927178c3245ec", features = ["plotly_ndarray"] }
+#plotly = { version = "0.9.0", features = ["plotly_ndarray"] }
 toml = "0.8"
 indexmap = { version = "1.8", features = ["serde"] }
 rand = "0.8"
 byteorder = "1.4"
-ndrustfft = "0.4.2"
+ndrustfft = "0.5.0"
 paste = "1.0"
 memchr = "2.6.4"
 enum_dispatch = "0.3.12"
 #hdf5 = "0.8.1"
 #hdf5-sys = { version = "0.8.1", features = ["static"] }
-hdf5 = { git = "https://github.com/CramBL/hdf5-rust", rev = "1b53164290abc4250abd59b98e8fa78901078632" }
-hdf5-sys = { git = "https://github.com/CramBL/hdf5-rust", rev = "1b53164290abc4250abd59b98e8fa78901078632", features = ["static"] }
+hdf5 = { git = "https://github.com/Ionizing/hdf5-rust", rev = "7808503c3a8e78ac22be1b8f5497c5ceb8eee780" }
+hdf5-sys = { git = "https://github.com/Ionizing/hdf5-rust", rev = "7808503c3a8e78ac22be1b8f5497c5ceb8eee780", features = ["static"] }
 figment = { version = "0.10.19", features = ["toml"] }
 cauchy = "0.4.0"
 nom = "7.1.3"
