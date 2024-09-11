@@ -603,7 +603,7 @@ impl Wavecar {
 
                 ensure!(nplw % 2 == 0, "Odd NPLW for NCL WAVECAR.");   // ncl wavefunction, two spinors
                 let nplw = nplw / 2;
-                Ok(Wavefunction::Ncl32Array2(ret.into_shape((2, nplw)).unwrap()))
+                Ok(Wavefunction::Ncl32Array2(ret.into_shape_with_order((2, nplw)).unwrap()))
             },
             WFPrecType::Complex64 => {
                 let ret = self._read_wavefunction_raw(ispin, ikpoint, iband)?;
@@ -613,7 +613,7 @@ impl Wavecar {
 
                 ensure!(nplw % 2 == 0, "Odd NPLW for NCL WAVECAR.");
                 let nplw = nplw / 2;
-                Ok(Wavefunction::Ncl64Array2(ret.into_shape((2, nplw)).unwrap()))
+                Ok(Wavefunction::Ncl64Array2(ret.into_shape_with_order((2, nplw)).unwrap()))
             },
         }
     }
@@ -869,7 +869,7 @@ impl Wavecar {
         };
 
         let nplw = self.nplws[ikpoint as usize] as usize / 2;
-        let coeffs: Array2<c64> = coeffs.into_shape((2, nplw)).unwrap();
+        let coeffs: Array2<c64> = coeffs.into_shape_with_order((2, nplw)).unwrap();
         let mut wavk = Array4::<c64>::zeros((2, ngxr, ngyr, ngzr));
         let mut wavr = Array4::<c64>::zeros((2, ngxr, ngyr, ngzr));
 
@@ -902,21 +902,21 @@ impl Wavecar {
         match wav {
             Wavefunction::Complex32Array1(wf) => {
                 wf.mapv(|x| Complex::<f64>::new(x.re as f64, x.im as f64))
-                    .into_shape((1, nplw))
+                    .into_shape_with_order((1, nplw))
             },
             Wavefunction::Complex64Array1(wf) => {
-                wf.into_shape((1, nplw))
+                wf.into_shape_with_order((1, nplw))
             },
             Wavefunction::Float64Array3(wf) => {
                 wf.mapv(|x| Complex::<f64>::new(x, 0.0))
-                    .into_shape((1, nplw))
+                    .into_shape_with_order((1, nplw))
             },
             Wavefunction::Ncl32Array2(wf) => {
                 wf.mapv(|x| Complex::<f64>::new(x.re as f64, x.im as f64))
-                    .into_shape((2, nplw))
+                    .into_shape_with_order((2, nplw))
             }
             Wavefunction::Ncl64Array2(wf) => {
-                wf.into_shape((2, nplw))
+                wf.into_shape_with_order((2, nplw))
             }
             _ => panic!("Unexpected wavefunction type passed to '_wav_kspace'.")
         }

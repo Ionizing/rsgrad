@@ -103,7 +103,7 @@ impl OptProcess for Gap {
             .into_iter()
             .map(|v| v.as_slice().unwrap().partition_point(|&x| x > threshold))
             .collect::<Array1<usize>>()
-            .into_shape((nspin, nkpts)).unwrap();
+            .into_shape_with_order((nspin, nkpts)).unwrap();
 
         let vbidx = cbidx.clone() - 1;
 
@@ -123,7 +123,7 @@ impl OptProcess for Gap {
         let cbeigs = multizip((cbidx.clone(), eigs.lanes(Axis(2))))
             .map(|(i, v)| v[i])
             .collect::<Array1<f64>>()
-            .into_shape((nspin, nkpts)).unwrap();
+            .into_shape_with_order((nspin, nkpts)).unwrap();
         let cbm = cbeigs.rows().into_iter()
             .map(|v| v.iter().copied().fold(f64::NAN, f64::min))
             .collect::<Vec<f64>>();
@@ -136,7 +136,7 @@ impl OptProcess for Gap {
         let vbeigs = multizip((vbidx.clone(), eigs.lanes(Axis(2))))
             .map(|(i, v)| v[i])
             .collect::<Array1<f64>>()
-            .into_shape((nspin, nkpts)).unwrap();
+            .into_shape_with_order((nspin, nkpts)).unwrap();
         let vbm = vbeigs.rows()
             .into_iter()
             .map(|v| v.iter().copied().fold(f64::NAN, f64::max))

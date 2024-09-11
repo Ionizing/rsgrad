@@ -395,7 +395,7 @@ impl Band {
                         .legend_group("Total bandstructure")
                         .show_legend(show_legend)
                         .hover_info(plotly::common::HoverInfo::Text)
-                        .hover_template((hover_template0 + "E-Ef: %{y:.4f} eV"))
+                        .hover_template(hover_template0 + "E-Ef: %{y:.4f} eV")
                         .name(legend_name);
                     plot.add_trace(tr);
                 });
@@ -599,7 +599,7 @@ impl Band {
         (0 .. nbands)
             .for_each(|iband| {
                 let dispersion = cropped_eigvals.slice(s![0, .., iband]).to_owned();
-                let projection = projections.slice(s![.., iband]).to_owned().into_raw_vec();
+                let projection = projections.slice(s![.., iband]).to_owned().into_raw_vec_and_offset().0;
                 let show_legend = 0 == iband;
                 let hover_template_array = projection.iter()
                     .map(|x| {

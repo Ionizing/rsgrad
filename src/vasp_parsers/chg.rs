@@ -257,7 +257,7 @@ impl fmt::Display for ChargeDensity {
                         if charge.is_standard_layout() {
                             charge.reversed_axes().into_iter().collect()
                         } else {
-                            charge.into_raw_vec()
+                            charge.into_raw_vec_and_offset().0
                         }
                     })
                     .collect::<Vec<_>>()
@@ -268,7 +268,7 @@ impl fmt::Display for ChargeDensity {
                         if charge.is_standard_layout() {
                             charge.reversed_axes().into_iter().collect()
                         } else {
-                            charge.into_raw_vec()
+                            charge.into_raw_vec_and_offset().0
                         }
                     })
                     .collect::<Vec<_>>()

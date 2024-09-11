@@ -291,9 +291,9 @@ impl Dos {
             }
 
             let tdos = if 0 == ispin {
-                tdos.into_raw_vec()
+                tdos.into_raw_vec_and_offset().0
             } else {
-                let mut r = tdos.into_raw_vec();
+                let mut r = tdos.into_raw_vec_and_offset().0;
                 r.reverse();
                 r
             };
@@ -343,9 +343,9 @@ impl Dos {
             tdos *= factor;
 
             let tdos = if 0 == ispin {
-                tdos.into_raw_vec()
+                tdos.into_raw_vec_and_offset().0
             } else {
-                let mut r = tdos.into_raw_vec();
+                let mut r = tdos.into_raw_vec_and_offset().0;
                 r.reverse();
                 r
             };
@@ -460,7 +460,7 @@ impl OptProcess for Dos {
         } else {
             xvals.clone()
                 .into_iter()
-                .chain(xvals.clone().into_raw_vec().into_iter().rev())
+                .chain(xvals.clone().into_raw_vec_and_offset().0.into_iter().rev())
                 .collect::<Vector<f64>>()
         };
 
