@@ -121,7 +121,7 @@ impl OptProcess for Workfunc {
         plot.use_local_plotly();
 
         let layout = plotly::Layout::new()
-            .title(plotly::common::Title::with_text(&format!("Work function along {} axis", self.axis)))
+            .title(plotly::common::Title::with_text(format!("Work function along {} axis", self.axis)))
             .y_axis(plotly::layout::Axis::new()
                     .title(plotly::common::Title::with_text("E-Ef (eV)"))
                     .zero_line(true))

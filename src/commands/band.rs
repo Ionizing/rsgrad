@@ -395,7 +395,7 @@ impl Band {
                         .legend_group("Total bandstructure")
                         .show_legend(show_legend)
                         .hover_info(plotly::common::HoverInfo::Text)
-                        .hover_template(&(hover_template0 + "E-Ef: %{y:.4f} eV"))
+                        .hover_template((hover_template0 + "E-Ef: %{y:.4f} eV"))
                         .name(legend_name);
                     plot.add_trace(tr);
                 });

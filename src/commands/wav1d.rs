@@ -223,7 +223,7 @@ I suggest you provide `gamma_half` argument to avoid confusion.");
             });
 
         let layout = plotly::Layout::new()
-            .title(plotly::common::Title::with_text(&format!("Wavefunction Along {} Axis", self.axis)))
+            .title(plotly::common::Title::with_text(format!("Wavefunction Along {} Axis", self.axis)))
             .y_axis(plotly::layout::Axis::new()
                     .title(plotly::common::Title::with_text("E-E<sub>f</sub> (eV)"))
                     .zero_line(true))

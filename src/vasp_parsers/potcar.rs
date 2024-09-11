@@ -100,7 +100,7 @@ impl AtomicPotcar {
             ].into_iter().find(|p| p.is_file())
                 .context(format!("No suitable POTCAR found for element {}", symbol))?;
 
-            let bytes = std::fs::read(&fname)?;
+            let bytes = std::fs::read(fname)?;
             let mut gz = GzDecoder::new(&bytes[..]);
             let mut s = String::new();
             gz.read_to_string(&mut s)?;

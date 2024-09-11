@@ -261,7 +261,7 @@ I suggest providing `gamma_half` argument to avoid confusion.");
                     if self.sum_chgs {
                         chg_sum.lock().unwrap().add_assign(&chgd);
                     } else {
-                        save_to_vasp(&ofname, &chgd, &pos)?;
+                        save_to_vasp(ofname, &chgd, &pos)?;
                     }
                 }
 
@@ -281,13 +281,13 @@ I suggest providing `gamma_half` argument to avoid confusion.");
                     match wavecar_type {
                         WavecarType::NonCollinear => {
                             let ofname = format!("{}_{}-{}-{}{}_ure.vasp", &self.prefix, ispin+1, ikpoint+1, iband+1, eigs_suffix);
-                            save_to_vasp(&ofname, d1.as_ref().unwrap(), &pos)?;
+                            save_to_vasp(ofname, d1.as_ref().unwrap(), &pos)?;
                             let ofname = format!("{}_{}-{}-{}{}_dre.vasp", &self.prefix, ispin+1, ikpoint+1, iband+1, eigs_suffix);
-                            save_to_vasp(&ofname, d3.as_ref().unwrap(), &pos)?;
+                            save_to_vasp(ofname, d3.as_ref().unwrap(), &pos)?;
                         },
                         _ => {
                             let ofname = format!("{}_{}-{}-{}{}_re.vasp", &self.prefix, ispin+1, ikpoint+1, iband+1, eigs_suffix);
-                            save_to_vasp(&ofname, d1.as_ref().unwrap(), &pos)?;
+                            save_to_vasp(ofname, d1.as_ref().unwrap(), &pos)?;
                         },
                     }
                 }
@@ -296,16 +296,16 @@ I suggest providing `gamma_half` argument to avoid confusion.");
                     match wavecar_type {
                         WavecarType::Standard => {
                             let ofname = format!("{}_{}-{}-{}{}_im.vasp", &self.prefix, ispin+1, ikpoint+1, iband+1, eigs_suffix);
-                            save_to_vasp(&ofname, d2.as_ref().unwrap(), &pos)?;
+                            save_to_vasp(ofname, d2.as_ref().unwrap(), &pos)?;
                         },
                         WavecarType::GamaHalf(_) => {
                             bail!("Gamma-halved wavefunction doesn't have imaginary part, please check your input.");
                         },
                         WavecarType::NonCollinear => {
                             let ofname = format!("{}_{}-{}-{}{}_uim.vasp", &self.prefix, ispin+1, ikpoint+1, iband+1, eigs_suffix);
-                            save_to_vasp(&ofname, d2.as_ref().unwrap(), &pos)?;
+                            save_to_vasp(ofname, d2.as_ref().unwrap(), &pos)?;
                             let ofname = format!("{}_{}-{}-{}{}_dim.vasp", &self.prefix, ispin+1, ikpoint+1, iband+1, eigs_suffix);
-                            save_to_vasp(&ofname, d4.as_ref().unwrap(), &pos)?;
+                            save_to_vasp(ofname, d4.as_ref().unwrap(), &pos)?;
                         },
                     }
                 }
@@ -319,7 +319,7 @@ I suggest providing `gamma_half` argument to avoid confusion.");
                             if self.sum_chgs {
                                 chg_sum.lock().unwrap().add_assign(&chgd);
                             } else {
-                                save_to_vasp(&ofname, &chgd, &pos)?;
+                                save_to_vasp(ofname, &chgd, &pos)?;
                             }
                         },
                         _ => bail!("`-o uns` works for `ncl` WAVECAR only, please check.")
@@ -335,7 +335,7 @@ I suggest providing `gamma_half` argument to avoid confusion.");
                             if self.sum_chgs {
                                 chg_sum.lock().unwrap().add_assign(&chgd);
                             } else {
-                                save_to_vasp(&ofname, &chgd, &pos)?;
+                                save_to_vasp(ofname, &chgd, &pos)?;
                             }
                         },
                         _ => bail!("`-o dns` works for `ncl` WAVECAR only, please check.")

@@ -84,7 +84,7 @@ impl OptProcess for Pot {
         if fname.is_file() {
             warn!("Found `POTCAR` in specified dir, renaming it to `POTCAR.bak`");
             let renamed_fname = fname.with_extension("bak");
-            std::fs::rename(&fname, &renamed_fname)?;
+            std::fs::rename(&fname, renamed_fname)?;
         }
 
         info!("Writing POTCAR to {:?} ...", &fname);
