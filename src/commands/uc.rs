@@ -534,6 +534,8 @@ fn double(i: &str) -> IResult<&str, f64> {
 
 #[derive(Debug, Args)]
 /// Conversion between various energy units.
+#[command(arg_required_else_help(true),
+          after_help = "Try `rsgrad uc 298K` to see what happens.")]
 pub struct Uc {
     /// Input energy quantity to be converted. Multiple input are supported.
     pub input: Vec<String>,
