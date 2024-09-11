@@ -21,6 +21,7 @@ Now `rsgrad` provides several features:
 11. Generate _POTCAR_ according to _POSCAR_;
 12. Calculate Transition Dipole Moment;
 13. Calculate band gap and print locations of CBM and VBM.
+14. Convert one quantity to other units that representing same energy.
 
 Wish you have a good time with `rsgrad` ^\_^
 
