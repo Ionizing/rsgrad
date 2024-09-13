@@ -1,6 +1,5 @@
 use std::sync::OnceLock;
-use std::hash::Hash;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::str::FromStr;
 use std::fmt;
 
@@ -31,7 +30,7 @@ use crate::Result;
 use crate::OptProcess;
 
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
 /// Metrix prefixes
 pub enum MetricPrefix {
     /// 10⁻¹⁸
@@ -161,8 +160,8 @@ impl MetricPrefix {
 }
 
 
-fn get_prefix_scale() -> &'static HashMap<MetricPrefix, f64> {
-    static INSTANCE: OnceLock<HashMap<MetricPrefix, f64>> = OnceLock::new();
+fn get_prefix_scale() -> &'static BTreeMap<MetricPrefix, f64> {
+    static INSTANCE: OnceLock<BTreeMap<MetricPrefix, f64>> = OnceLock::new();
     INSTANCE.get_or_init(|| {
         [
             (MetricPrefix::Atto,  1E-18),
@@ -183,8 +182,8 @@ fn get_prefix_scale() -> &'static HashMap<MetricPrefix, f64> {
 }
 
 
-fn get_prefix_str() -> &'static HashMap<MetricPrefix, &'static str> {
-    static INSTANCE: OnceLock<HashMap<MetricPrefix, &'static str>> = OnceLock::new();
+fn get_prefix_str() -> &'static BTreeMap<MetricPrefix, &'static str> {
+    static INSTANCE: OnceLock<BTreeMap<MetricPrefix, &'static str>> = OnceLock::new();
     INSTANCE.get_or_init(|| {
         [
             (MetricPrefix::Atto,  "a"),
@@ -216,7 +215,7 @@ impl fmt::Display for MetricPrefix {
 }
 
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
 /// Energy units.
 pub enum Unit {
     /// eV, treated as the basic unit
@@ -248,8 +247,8 @@ pub enum Unit {
 }
 
 
-fn get_unit_str() -> &'static HashMap<Unit, &'static str> {
-    static INSTANCE: OnceLock<HashMap<Unit, &'static str>> = OnceLock::new();
+fn get_unit_str() -> &'static BTreeMap<Unit, &'static str> {
+    static INSTANCE: OnceLock<BTreeMap<Unit, &'static str>> = OnceLock::new();
     INSTANCE.get_or_init(|| {
         [
             (Unit::ElectronVolt, "eV"),
@@ -329,8 +328,8 @@ impl Unit {
 }
 
 
-fn get_ratio_ev_to_other() -> &'static HashMap<Unit, f64> {
-    static INSTANCE: OnceLock<HashMap<Unit, f64>> = OnceLock::new();
+fn get_ratio_ev_to_other() -> &'static BTreeMap<Unit, f64> {
+    static INSTANCE: OnceLock<BTreeMap<Unit, f64>> = OnceLock::new();
     INSTANCE.get_or_init(|| {
         [
             (Unit::ElectronVolt,   1.0f64),
