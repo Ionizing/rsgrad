@@ -298,8 +298,9 @@ See \"https://developer.mozilla.org/en-US/docs/Web/CSS/color_value for availed n
 
 
 pub fn generate_plotly_configuration() -> plotly::Configuration {
-    plotly::Configuration::new()
+    plotly::Configuration::default()
         .responsive(true)
+        .fill_frame(true)
 }
 
 

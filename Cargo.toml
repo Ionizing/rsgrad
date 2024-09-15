@@ -1,6 +1,6 @@
 [package]
 name = "rsgrad"
-version = "0.5.1"
+version = "0.5.2"
 authors = ["Ionizing <PeterSmith_9@outlook.com>"]
 edition = "2018"
 
@@ -24,8 +24,8 @@ anyhow = "1.0"
 flate2 = "1.0"
 directories = "4.0"
 serde = "1.0"
-plotly = { git = "https://github.com/Ionizing/plotly", rev = "5e5af76b95c1093d5b0523c9800927178c3245ec", features = ["plotly_ndarray"] }
-#plotly = { version = "0.9.0", features = ["plotly_ndarray"] }
+#plotly = { git = "https://github.com/Ionizing/plotly", rev = "5e5af76b95c1093d5b0523c9800927178c3245ec", features = ["plotly_ndarray"] }
+plotly = { version = "0.9.0", features = ["plotly_ndarray"] }
 toml = "0.8"
 indexmap = { version = "1.8", features = ["serde"] }
 rand = "0.8"

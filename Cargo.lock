@@ -905,7 +905,8 @@ checksum = "d231b230927b5e4ad203db57bbcbee2802f6bce620b1e4a9024a07d94e2907ec"
 [[package]]
 name = "plotly"
 version = "0.9.1"
-source = "git+https://github.com/Ionizing/plotly?rev=5e5af76b95c1093d5b0523c9800927178c3245ec#5e5af76b95c1093d5b0523c9800927178c3245ec"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d944e5f68193cb484fa63cfff0b22e5d1c2773221ff242f30d18645873fbdbfa"
 dependencies = [
  "dyn-clone",
  "erased-serde",
@@ -923,7 +924,8 @@ dependencies = [
 [[package]]
 name = "plotly_derive"
 version = "0.9.1"
-source = "git+https://github.com/Ionizing/plotly?rev=5e5af76b95c1093d5b0523c9800927178c3245ec#5e5af76b95c1093d5b0523c9800927178c3245ec"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dd8a29f91d6bfbba26a2ad35baecd507f59b87dacfdf90c21c04404e621e5d78"
 dependencies = [
  "darling",
  "proc-macro2",
@@ -1215,7 +1217,7 @@ dependencies = [
 
 [[package]]
 name = "rsgrad"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "anyhow",
  "byteorder",
