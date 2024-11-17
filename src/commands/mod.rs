@@ -13,3 +13,4 @@ pub mod common;
 pub mod tdm;
 pub mod gap;
 pub mod uc;
+pub mod modelnac;
