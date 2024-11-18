@@ -20,5 +20,6 @@ Now `rsgrad` provides several features:
 12. Calculate Transition Dipole Moment from _WAVECAR_;
 13. Calculate band gap and print locations of CBM and VBM.
 14. Convert one quantity to other units that representing same energy.
+15. Calculate the model non-adiabatic coupling for NAMD-LMI (a subset of Hefei-NAMD)
 
 Wish you have a good time with `rsgrad` ^\_^
