@@ -2,7 +2,6 @@ use std::path::PathBuf;
 use clap::Args;
 use anyhow::{
     Context,
-    anyhow,
     bail,
     ensure,
 };
@@ -30,8 +29,8 @@ use crate::{
 };
 
 
+#[allow(non_camel_case_types)]
 type c64 = Complex<f64>;
-type c32 = Complex<f32>;
 
 
 #[derive(Debug, Args)]
@@ -42,7 +41,19 @@ type c32 = Complex<f32>;
 /// time, and the NAC (<i|d/dt|j>) vanishes.
 ///
 /// Detailed fields of the produced file:{n}
-/// - 
+/// - ikpoint: K point index, counts from 1;{n}
+/// - nspin: number of spin channels;{n}
+/// - nbands: Number of total bands in WAVECAR;{n}
+/// - brange: selected band indices, <start> ..= <end>, index counts from 1;{n}
+/// - nbrange: number of selected bands, nbrange = end - start + 1;{n}
+/// - efermi: Fermi's level;{n}
+/// - potim: ionic time step;{n}
+/// - temperature: 1E-6 Kelvin as default;{n}
+/// - eigs: band eigenvalues;{n}
+/// - pij_r/pij_i: real and imaginary part of <i|p|j>;{n}
+/// - proj: Projection on each orbitals of selected bands, cropped from PROCAR.
+///
+/// Some fields not listed here are not meaningful but essential for the NAMD-LMI.
 pub struct ModelNac {
     #[arg(short='w', long, default_value = "./WAVECAR")]
     /// WAVECAR file name.
@@ -92,8 +103,8 @@ please remove the argument `gamma_half`.")
             }
 
             let gammahalf = match gammahalf.as_ref() {
-                "x" => WavecarType::GamaHalf(Axis::X),
-                "z" => WavecarType::GamaHalf(Axis::Z),
+                "x" => WavecarType::GammaHalf(Axis::X),
+                "z" => WavecarType::GammaHalf(Axis::Z),
                 _ => panic!("Unreachable branch"),
             };
             
@@ -118,31 +129,85 @@ I suggest providing `gamma_half` argument to avoid confusion.");
 
         
         let nsw     = 9;
-        let nspin   = wav.nspin;
+        let nspin   = wav.nspin as usize;
         let ikpoint = self.ikpoint;
-        let nbands  = wav.nbands;
+        let nbands  = wav.nbands as usize;
         let nbrange = brange[1] - brange[0] + 1;
 
-        let olaps = na::Array4::<f64>::zeros((nsw, nspin as usize, nbrange, nbrange));
-        let mut eigs  = na::Array3::<f64>::zeros((nsw, nspin as usize, nbrange));
-        let mut pijs  = na::Array5::<c64>::zeros((nsw, nspin as usize, 3, nbrange, nbrange));
+        let efermi = wav.efermi;
+        let olaps = na::Array4::<f64>::zeros((nsw, nspin, nbrange, nbrange));
+        let eigs  = wav.band_eigs.slice(na::s![na::NewAxis, .., ikpoint-1, brange[0]-1 .. brange[1]]).to_owned();
 
-        //wav.band_eigs.slice(na::s![])
-        for isw in  0..nsw {
-            eigs.slice_mut(na::s![isw, .., ..])
-                .assign(&wav.band_eigs.slice(na::s![.., ikpoint-1, brange[0]-1 .. brange[1]]));
-        }
+        // <i|p|j>, transition dipole moment
+        let mut pijs  = na::Array5::<c64>::zeros((nsw, nspin, 3, nbrange, nbrange));
 
+        let nspinor = match wav.wavecar_type {
+            WavecarType::NonCollinear => 2,
+            _ => 1usize,
+        };
+        let nplw = wav.nplws[ikpoint - 1] as usize;
+        let mut phi = na::Array2::<c64>::zeros((nbrange, nplw));
+        let gvecs = na::arr2(&wav.generate_fft_grid_cart(ikpoint as u64 - 1))
+            .rows()
+            .into_iter()
+            .map(|g| [
+                c64::new(g[0], 0.0),
+                c64::new(g[1], 0.0),
+                c64::new(g[2], 0.0),
+            ])
+            .cycle()
+            .take(nplw)
+            .flatten()
+            .collect::<na::Array1<c64>>()
+            .into_shape_with_order((nplw, 3))
+            .unwrap();
         for ispin in 0 .. nspin {
-            //let phi_i = wav.rekk
+            for (ii, iband) in (brange[0] - 1 .. brange[1]).enumerate() {
+                phi.slice_mut(na::s![ii, ..]).assign(
+                    &wav._wav_kspace(ispin as u64, ikpoint as u64 - 1, iband as u64, nplw / nspinor)
+                    .into_shape_with_order((nplw,))
+                    .with_context(|| "Wavefunction reshape failed.")?
+                );
+            }
 
-            //for (ii, iband) in (brange[0] - 1 .. brange[1]).enumerate() {
-                //for (jj, jband) in (brange[0] - 1 .. brange[1]).enumerate().skip(ii+1) {
-                    ////let pij = wav.transition_dipole_moment
-                    ////pijs.slice_mut(na::s![isw, ispin])
-                //}
-            //}
+            for idirect in 0 .. 3 {
+                let phi_x_gvecs: na::Array2<_> = phi.clone() * gvecs.slice(na::s![na::NewAxis, .., idirect]);
+
+                // <i | p | j>, in eV*fs/Angstrom
+                let pij_tmp = match wav.wavecar_type {
+                    WavecarType::GammaHalf(_) => phi.mapv(|v| v.conj()).dot(&phi_x_gvecs.t())
+                                               - phi_x_gvecs.mapv(|v| v.conj()).dot(&phi.t()),
+                    _ => phi.mapv(|v| v.conj()).dot(&phi_x_gvecs.t()),
+                };
+                pijs.slice_mut(na::s![.., ispin, idirect, .., ..]).assign(&pij_tmp.slice(na::s![na::NewAxis, .., ..]));
+            }
         }
+
+        let proj = procar.pdos.projected.slice(na::s![.., ikpoint-1, brange[0]-1 .. brange[1], .., ..]).to_owned();
+        
+        let f = H5File::create(&self.h5out)?;
+
+        f.new_dataset::<usize>().create("ikpoint")?.write_scalar(&self.ikpoint)?;
+        f.new_dataset::<usize>().create("nspin")?.write_scalar(&nspin)?;
+        f.new_dataset::<usize>().create("nbands")?.write_scalar(&nbands)?;
+        f.new_dataset::<usize>().create("ndigit")?.write_scalar(&4)?;
+        f.new_dataset::<[usize;2]>().create("brange")?.write_scalar(&brange)?;
+        f.new_dataset::<usize>().create("nbrange")?.write_scalar(&nbrange)?;
+        f.new_dataset::<usize>().create("nsw")?.write_scalar(&nsw)?;
+        f.new_dataset::<f64>().create("efermi")?.write_scalar(&efermi)?;
+        f.new_dataset::<f64>().create("potim")?.write_scalar(&self.potim)?;
+        f.new_dataset::<f64>().create("temperature")?.write_scalar(&1E-6)?;
+        f.new_dataset::<bool>().create("phasecorrection")?.write_scalar(&true)?;
+
+        f.new_dataset_builder().with_data(&olaps).create("olaps_r")?;
+        f.new_dataset_builder().with_data(&olaps).create("olaps_i")?;
+
+        f.new_dataset_builder().with_data(&eigs).create("eigs")?;
+
+        f.new_dataset_builder().with_data(&pijs.mapv(|v| v.re)).create("pij_r")?;
+        f.new_dataset_builder().with_data(&pijs.mapv(|v| v.im)).create("pij_i")?;
+        
+        f.new_dataset_builder().with_data(&proj).create("proj")?;
 
         Ok(())
     }

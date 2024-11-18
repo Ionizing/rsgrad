@@ -152,8 +152,8 @@ please remove the argument `gamma_half`.")
             }
 
             let gammahalf = match gammahalf.as_ref() {
-                "x" => WavecarType::GamaHalf(Axis::X),
-                "z" => WavecarType::GamaHalf(Axis::Z),
+                "x" => WavecarType::GammaHalf(Axis::X),
+                "z" => WavecarType::GammaHalf(Axis::Z),
                 _ => panic!("Unreachable branch"),
             };
             
@@ -298,7 +298,7 @@ I suggest providing `gamma_half` argument to avoid confusion.");
                             let ofname = format!("{}_{}-{}-{}{}_im.vasp", &self.prefix, ispin+1, ikpoint+1, iband+1, eigs_suffix);
                             save_to_vasp(ofname, d2.as_ref().unwrap(), &pos)?;
                         },
-                        WavecarType::GamaHalf(_) => {
+                        WavecarType::GammaHalf(_) => {
                             bail!("Gamma-halved wavefunction doesn't have imaginary part, please check your input.");
                         },
                         WavecarType::NonCollinear => {

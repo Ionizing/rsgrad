@@ -26,6 +26,7 @@ use crate::{
         tdm::Tdm,
         gap::Gap,
         uc::Uc, 
+        modelnac::ModelNac,
     },
 };
 
@@ -89,6 +90,8 @@ enum Opt {
     Gap,
 
     Uc,
+
+    ModelNac,
 }
 
 

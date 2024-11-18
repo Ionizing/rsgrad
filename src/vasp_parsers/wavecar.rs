@@ -64,6 +64,7 @@ const PI:           f64 = 3.141_592_653_589_793;
 const PIx2:         f64 = PI * 2.0;
 //const H_PLANCK:     f64 = 6.6260755E-34;
 //const HBAR:         f64 = H_PLANCK / PIx2;
+const HBAR:         f64 = 0.6582119281559802;               // eV * fs
 const RY_TO_EV:     f64 = 13.605826;
 const AU_TO_A:      f64 = 0.529177249;
 const AU_TO_DEBYE:  f64 = 2.541746;
@@ -116,7 +117,7 @@ pub enum WavecarType {
     // VASP is executed via `vasp_gam`, only half of the k-space is utilized because
     // only Gamma point is sampled, which meas the wavefunction in real space is totally
     // real, thus only half of the coefficients are needed in k-space.
-    GamaHalf(Axis),
+    GammaHalf(Axis),
     // VASP is executed via `vasp_ncl`, there should be `LNONCOLLINEAR = T` in OUTCAR.
     // In this type of WAVECAR, ISPIN = 1, but two spinor components are stored in ONE
     // spin component side by side.
@@ -128,9 +129,9 @@ impl fmt::Display for WavecarType {
         let description = match self {
             Self::Standard          => "Standard",
             Self::NonCollinear      => "NonCollinear",
-            Self::GamaHalf(Axis::X) => "GammaX",
-            Self::GamaHalf(Axis::Y) => "GammaY",
-            Self::GamaHalf(Axis::Z) => "GammaZ",
+            Self::GammaHalf(Axis::X) => "GammaX",
+            Self::GammaHalf(Axis::Y) => "GammaY",
+            Self::GammaHalf(Axis::Z) => "GammaZ",
         };
         f.write_str(description)
     }
@@ -499,7 +500,7 @@ impl Wavecar {
         match wavecar_type {
             WavecarType::Standard | WavecarType::NonCollinear 
                                         => gvecs,
-            WavecarType::GamaHalf(axis) => Self::_filter_fft_grid(gvecs, axis)
+            WavecarType::GammaHalf(axis) => Self::_filter_fft_grid(gvecs, axis)
         }
     }
 
@@ -513,6 +514,30 @@ impl Wavecar {
             self.encut,
             self.wavecar_type,
         )
+    }
+
+
+    /// Generate kinetic vetor of each FFT grid point, in eV*fs/Angstrom
+    pub fn generate_fft_grid_cart(&self, ikpoint: u64) -> MatX3<f64> {
+        let kvec  = self.kvecs.row(ikpoint as usize);
+        self.generate_fft_grid(ikpoint)
+            .into_iter()
+            .map(|[gx, gy, gz]| [gx as f64 + kvec[0], gy as f64 + kvec[1], gz as f64 + kvec[2]])
+            .map(|[gx, gy, gz]| {   // now in 1/Angstrom
+                [
+                    gx * self.bcell[0][0] + gy * self.bcell[1][0] + gz * self.bcell[2][0],
+                    gx * self.bcell[0][1] + gy * self.bcell[1][1] + gz * self.bcell[2][1],
+                    gx * self.bcell[0][2] + gy * self.bcell[1][2] + gz * self.bcell[2][2],
+                ]
+            })
+            .map(|[px, py, pz]| {   // times 2pi and hbar, in eV*fs/Angstrom
+                [
+                    px * PIx2 * HBAR,
+                    py * PIx2 * HBAR,
+                    pz * PIx2 * HBAR,
+                ]
+            })
+            .collect::<Vec<_>>()
     }
 
 
@@ -530,8 +555,8 @@ impl Wavecar {
         match nplw {
             x if x == gvecs.len()       => Ok(WavecarType::Standard),
             x if x == gvecs.len() * 2   => Ok(WavecarType::NonCollinear),
-            x if x == gvecs_x.len()     => Ok(WavecarType::GamaHalf(Axis::X)),
-            x if x == gvecs_z.len()     => Ok(WavecarType::GamaHalf(Axis::Z)),
+            x if x == gvecs_x.len()     => Ok(WavecarType::GammaHalf(Axis::X)),
+            x if x == gvecs_z.len()     => Ok(WavecarType::GammaHalf(Axis::Z)),
             _ => bail!("Unknown wavecar type found: nplw = {} , ngvecs = {}", nplw, gvecs.len()),
         }
     }
@@ -662,8 +687,8 @@ impl Wavecar {
         match self.wavecar_type {
             WavecarType::Standard           => self._get_wavefunction_realspace_std(ispin, ikpoint, iband, ngxr, ngyr, ngzr),
             WavecarType::NonCollinear       => self._get_wavefunction_realspace_ncl(ispin, ikpoint, iband, ngxr, ngyr, ngzr),
-            WavecarType::GamaHalf(Axis::X)  => self._get_wavefunction_realspace_gamx(ispin, ikpoint, iband, ngxr, ngyr, ngzr),
-            WavecarType::GamaHalf(Axis::Z)  => self._get_wavefunction_realspace_gamz(ispin, ikpoint, iband, ngxr, ngyr, ngzr),
+            WavecarType::GammaHalf(Axis::X)  => self._get_wavefunction_realspace_gamx(ispin, ikpoint, iband, ngxr, ngyr, ngzr),
+            WavecarType::GammaHalf(Axis::Z)  => self._get_wavefunction_realspace_gamz(ispin, ikpoint, iband, ngxr, ngyr, ngzr),
             _ => bail!("Unknown or unsupported WAVECAR: {}", self.wavecar_type),
         }
     }
@@ -716,7 +741,7 @@ impl Wavecar {
 
     // All indices counts from 0.
     fn _get_wavefunction_realspace_gamx(&self, ispin: u64, ikpoint: u64, iband: u64, ngxr: i64, ngyr: i64, ngzr: i64) -> Result<Wavefunction> {
-        assert_eq!(self.wavecar_type, WavecarType::GamaHalf(Axis::X));
+        assert_eq!(self.wavecar_type, WavecarType::GammaHalf(Axis::X));
 
         let ngxk = ngxr / 2 + 1;
         let ngyk = ngyr;
@@ -780,7 +805,7 @@ impl Wavecar {
 
     // All indices counts from 0.
     fn _get_wavefunction_realspace_gamz(&self, ispin: u64, ikpoint: u64, iband: u64, ngxr: i64, ngyr: i64, ngzr: i64) -> Result<Wavefunction> {
-        assert_eq!(self.wavecar_type, WavecarType::GamaHalf(Axis::Z));
+        assert_eq!(self.wavecar_type, WavecarType::GammaHalf(Axis::Z));
 
         let ngxk = ngxr;
         let ngyk = ngyr;
@@ -894,10 +919,10 @@ impl Wavecar {
     }
 
 
-    // Read wavefunction coefficients and convert to Array1<Complex64>
-    //
-    // All indices starts from 0.
-    fn _wav_kspace(&self, ispin: u64, ikpoint: u64, iband: u64, nplw: usize) -> Array2<c64> {
+    /// Read wavefunction coefficients and convert to Array1<Complex64>
+    ///
+    /// All indices starts from 0.
+    pub fn _wav_kspace(&self, ispin: u64, ikpoint: u64, iband: u64, nplw: usize) -> Array2<c64> {
         let wav = self.read_wavefunction(ispin, ikpoint, iband).unwrap();
         match wav {
             Wavefunction::Complex32Array1(wf) => {
@@ -1097,8 +1122,8 @@ impl Wavecar {
         let wavtype = match self.wavecar_type {
             WavecarType::Standard => b'S',
             WavecarType::NonCollinear => b'N',
-            WavecarType::GamaHalf(Axis::X) => b'X',
-            WavecarType::GamaHalf(Axis::Z) => b'Z',
+            WavecarType::GammaHalf(Axis::X) => b'X',
+            WavecarType::GammaHalf(Axis::Z) => b'Z',
             _ => bail!("Unexpected wavecar type."),
         };
 
@@ -1358,7 +1383,7 @@ mod tests {
     #[ignore]
     fn test_wavefunction_realspace_gamz() {
         let mut wav = Wavecar::from_file("WAVECAR").unwrap();
-        wav.set_wavecar_type(WavecarType::GamaHalf(Axis::Z)).unwrap();
+        wav.set_wavecar_type(WavecarType::GammaHalf(Axis::Z)).unwrap();
         let ngxr = wav.ngrid[0] as i64 * 2;
         let ngyr = wav.ngrid[0] as i64 * 2;
         let ngzr = wav.ngrid[0] as i64 * 2;

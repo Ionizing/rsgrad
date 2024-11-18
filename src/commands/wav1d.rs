@@ -117,8 +117,8 @@ please remove the argument `gamma_half`.")
             }
 
             let gammahalf = match gammahalf.as_ref() {
-                "x" => WavecarType::GamaHalf(Axis::X),
-                "z" => WavecarType::GamaHalf(Axis::Z),
+                "x" => WavecarType::GammaHalf(Axis::X),
+                "z" => WavecarType::GammaHalf(Axis::Z),
                 _ => panic!("Unreachable branch"),
             };
             
