@@ -1,0 +1,258 @@
+<!DOCTYPE HTML>
+<html lang="en" class="sidebar-visible no-js rust">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Gap - RSGRAD&#x27;S BOOK</title>
+        <!-- Custom HTML head -->
+        <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff" />
+
+        <link rel="icon" href="favicon.svg">
+        <link rel="shortcut icon" href="favicon.png">
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        <link rel="stylesheet" href="css/print.css" media="print">
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="fonts/fonts.css">
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="highlight.css">
+        <link rel="stylesheet" href="tomorrow-night.css">
+        <link rel="stylesheet" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        <!-- MathJax -->
+        <script async type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    </head>
+    <body>
+        <!-- Provide site root to javascript -->
+        <script type="text/javascript">
+            var path_to_root = "";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "rust";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script type="text/javascript">
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script type="text/javascript">
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('no-js')
+            html.classList.remove('rust')
+            html.classList.add(theme);
+            html.classList.add('js');
+        </script>
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script type="text/javascript">
+            var html = document.querySelector('html');
+            var sidebar = 'hidden';
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            }
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="Introduction.html">Introduction</a></li><li class="chapter-item expanded affix "><a href="Installation.html">Installation</a></li><li class="spacer"></li><li class="chapter-item expanded "><a href="Relaxation.html"><strong aria-hidden="true">1.</strong> Relaxation</a></li><li class="chapter-item expanded "><a href="DOS.html"><strong aria-hidden="true">2.</strong> Density of States</a></li><li class="chapter-item expanded "><a href="Band.html"><strong aria-hidden="true">3.</strong> Band Structure</a></li><li class="chapter-item expanded "><a href="Trajectory.html"><strong aria-hidden="true">4.</strong> Trajectory</a></li><li class="chapter-item expanded "><a href="ChgDiff.html"><strong aria-hidden="true">5.</strong> Charge Density Difference</a></li><li class="chapter-item expanded "><a href="Vibration.html"><strong aria-hidden="true">6.</strong> Vibration</a></li><li class="chapter-item expanded "><a href="Wavefunction3D.html"><strong aria-hidden="true">7.</strong> Wavefunction 3D</a></li><li class="chapter-item expanded "><a href="Wavefunction1D.html"><strong aria-hidden="true">8.</strong> Wavefunction 1D</a></li><li class="chapter-item expanded "><a href="Workfunction.html"><strong aria-hidden="true">9.</strong> Workfunction</a></li><li class="chapter-item expanded "><a href="POSCAR.html"><strong aria-hidden="true">10.</strong> POSCAR</a></li><li class="chapter-item expanded "><a href="PseudoPotential.html"><strong aria-hidden="true">11.</strong> POTCAR</a></li><li class="chapter-item expanded "><a href="TransitionDipoleMoment.html"><strong aria-hidden="true">12.</strong> Transition Dipole Moment</a></li><li class="chapter-item expanded "><a href="Gap.html" class="active"><strong aria-hidden="true">13.</strong> Gap</a></li><li class="chapter-item expanded "><a href="UnitConversion.html"><strong aria-hidden="true">14.</strong> UnitConversion</a></li><li class="chapter-item expanded "><a href="ModelNac.html"><strong aria-hidden="true">15.</strong> ModelNAC</a></li><li class="spacer"></li><li class="chapter-item expanded affix "><a href="Feedback.html">Feedback</a></li><li class="chapter-item expanded affix "><a href="Acknowledgements.html">Acknowledgements</a></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.12.1/plotly.min.js"></script>
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky bordered">
+                    <div class="left-buttons">
+                        <button id="sidebar-toggle" class="icon-button" type="button" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </button>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust (default)</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">RSGRAD&#x27;S BOOK</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script type="text/javascript">
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="gap"><a class="header" href="#gap">Gap</a></h1>
+<p>This command (<code>rsgrad gap</code>) calculates the band gap and prints positions of VBM and CBM.</p>
+<p>There are two ways to run this command:</p>
+<ol>
+<li>Use <code>WAVECAR</code> only. All required information can be extracted from <code>WAVECAR</code>.</li>
+<li>Or use <code>PROCAR</code> and <code>OUTCAR</code> instead. <code>PROCAR</code> is read for the band energies, band occupations and k-point coordinates;
+<code>OUTCAR</code> is read for the Fermi level only.</li>
+</ol>
+<p>Note: Usually it's faster to parse results from <code>WAVECAR</code>.</p>
+<p>If your system is a non-SCF calculation for band structure, you may need to specify the correct Fermi level by
+<code>rsgrad gap -e &lt;put the correct E-fermi here&gt;</code>, the correct Fermi level can be obtained from the OUTCAR of SCF calculation.</p>
+<h2 id="help-message"><a class="header" href="#help-message">Help Message</a></h2>
+<pre><code class="language-shell">$ rsgrad gap --help
+rsgrad-gap
+Find band gap and print positions of VBM and CBM
+
+USAGE:
+    rsgrad gap [OPTIONS]
+
+OPTIONS:
+    -e, --efermi &lt;EFERMI&gt;      Specify Fermi level, if left empty, this value would be read from
+                               WAVECAR or OUTCAR
+    -h, --help                 Print help information
+    -o, --outcar &lt;OUTCAR&gt;      OUTCAR file name, this file is parsed to get Fermi level only
+                               [default: OUTCAR]
+    -p, --procar &lt;PROCAR&gt;      PROCAR file name, OUTCAR is also needed to get Fermi level [default:
+                               PROCAR]
+    -w, --wavecar &lt;WAVECAR&gt;    WAVECAR file name, no more files needed [default: WAVECAR]
+</code></pre>
+<h2 id="example"><a class="header" href="#example">Example</a></h2>
+<ol>
+<li>For metal system:</li>
+</ol>
+<pre><code class="language-shell">[2022-12-01T11:30:49Z INFO  rsgrad::commands::gap] Trying to parse &quot;WAVECAR&quot; ...
+----------------------------------------
+ Current system is         Metal
+----------------------------------------
+[2022-12-01T11:30:49Z INFO  rsgrad] Time used: 166.251241ms
+</code></pre>
+<ol start="2">
+<li>For non-spin-polarized direct gap system:</li>
+</ol>
+<pre><code class="language-shell">[2022-12-01T11:37:15Z INFO  rsgrad::commands::gap] Trying to parse &quot;WAVECAR&quot; ...
+--------------------------------------------------------------------------------
+ Current system has    Direct Gap    of   0.328    eV
+  CBM @ k-point     1 of ( 0.000, 0.000, 0.000) , band   819 of    0.322 eV
+  VBM @ k-point     1 of ( 0.000, 0.000, 0.000) , band   818 of   -0.006 eV
+--------------------------------------------------------------------------------
+[2022-12-01T11:37:15Z INFO  rsgrad] Time used: 253.556682ms
+</code></pre>
+<ol start="3">
+<li>For spin-polarized direct gap system:</li>
+</ol>
+<pre><code class="language-shell">$ rsgrad gap
+[2022-12-01T11:38:16Z INFO  rsgrad::commands::gap] Trying to parse &quot;WAVECAR&quot; ...
+--------------------------------------------------------------------------------
+    ====================  Gap Info For     SPIN UP      ====================
+ Current system has    Direct Gap    of   0.976    eV
+  CBM @ k-point     1 of ( 0.000, 0.000, 0.000) , band   129 of    0.498 eV
+  VBM @ k-point     1 of ( 0.000, 0.000, 0.000) , band   128 of   -0.478 eV
+    ====================  Gap Info For    SPIN DOWN     ====================
+ Current system has    Direct Gap    of   0.980    eV
+  CBM @ k-point     1 of ( 0.000, 0.000, 0.000) , band   129 of    0.499 eV
+  VBM @ k-point     1 of ( 0.000, 0.000, 0.000) , band   128 of   -0.481 eV
+--------------------------------------------------------------------------------
+[2022-12-01T11:38:16Z INFO  rsgrad] Time used: 31.744371ms
+</code></pre>
+<ol start="4">
+<li>For non-spin-polarized indirect gap system:</li>
+</ol>
+<pre><code class="language-shell">$ rsgrad gap
+[2022-12-01T11:40:52Z INFO  rsgrad::commands::gap] Trying to parse &quot;WAVECAR&quot; ...
+--------------------------------------------------------------------------------
+ Current system has   Indirect Gap   of   1.160    eV
+  CBM @ k-point    25 of ( 0.000, 0.444, 0.444) , band     5 of    1.097 eV
+  VBM @ k-point    17 of ( 0.000, 0.000, 0.000) , band     4 of   -0.062 eV
+--------------------------------------------------------------------------------
+[2022-12-01T11:40:52Z INFO  rsgrad] Time used: 22.565948ms
+</code></pre>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="TransitionDipoleMoment.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+                            <a rel="next" href="UnitConversion.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="TransitionDipoleMoment.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+                    <a rel="next" href="UnitConversion.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+        <script type="text/javascript">
+            window.playground_copyable = true;
+        </script>
+        <script src="elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="mark.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="searcher.js" type="text/javascript" charset="utf-8"></script>
+        <script src="clipboard.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="highlight.js" type="text/javascript" charset="utf-8"></script>
+        <script src="book.js" type="text/javascript" charset="utf-8"></script>
+
+        <!-- Custom JS scripts -->
+    </body>
+</html>
