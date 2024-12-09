@@ -184,6 +184,7 @@ I suggest providing `gamma_half` argument to avoid confusion.");
         }
 
         let proj = procar.pdos.projected.slice(na::s![.., ikpoint-1, brange[0]-1 .. brange[1], .., ..]).to_owned();
+        let proj = na::stack(na::Axis(0), &vec![proj.view(); nsw])?;
 
         info!("Saving to {:?}", &self.h5out);
         
