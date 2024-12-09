@@ -196,7 +196,7 @@ I suggest providing `gamma_half` argument to avoid confusion.");
         f.new_dataset::<usize>().create("ndigit")?.write_scalar(&4)?;
         f.new_dataset::<[usize;2]>().create("brange")?.write_scalar(&brange)?;
         f.new_dataset::<usize>().create("nbrange")?.write_scalar(&nbrange)?;
-        f.new_dataset::<usize>().create("nsw")?.write_scalar(&nsw)?;
+        f.new_dataset::<usize>().create("nsw")?.write_scalar(&(nsw+1))?;
         f.new_dataset::<f64>().create("efermi")?.write_scalar(&efermi)?;
         f.new_dataset::<f64>().create("potim")?.write_scalar(&self.potim)?;
         f.new_dataset::<f64>().create("temperature")?.write_scalar(&1E-6)?;
