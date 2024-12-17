@@ -141,10 +141,11 @@ I suggest providing `gamma_half` argument to avoid confusion.");
         // <i|p|j>, transition dipole moment
         let mut pijs  = na::Array5::<c64>::zeros((nsw, nspin, 3, nbrange, nbrange));
 
-        let nspinor = match wav.wavecar_type {
-            WavecarType::NonCollinear => 2,
-            _ => 1usize,
+        let lncl    = match wav.wavecar_type {
+            WavecarType::NonCollinear => true,
+            _ => false,
         };
+        let nspinor = if lncl { 2usize } else { 1 };
         let nplw = wav.nplws[ikpoint - 1] as usize;
         let mut phi = na::Array2::<c64>::zeros((nbrange, nplw));
         let gvecs = na::arr2(&wav.generate_fft_grid_cart(ikpoint as u64 - 1))
@@ -192,6 +193,7 @@ I suggest providing `gamma_half` argument to avoid confusion.");
 
         f.new_dataset::<usize>().create("ikpoint")?.write_scalar(&self.ikpoint)?;
         f.new_dataset::<usize>().create("nspin")?.write_scalar(&nspin)?;
+        f.new_dataset::<bool>().create("lncl")?.write_scalar(&lncl)?;
         f.new_dataset::<usize>().create("nbands")?.write_scalar(&nbands)?;
         f.new_dataset::<usize>().create("ndigit")?.write_scalar(&4)?;
         f.new_dataset::<[usize;2]>().create("brange")?.write_scalar(&brange)?;
