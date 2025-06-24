@@ -80,7 +80,7 @@ type c32 = Complex<f32>;
 
 // impl Norm for ArrayBase to reduce binary size.
 // copied from https://docs.rs/ndarray-linalg/latest/src/ndarray_linalg/norm.rs.html
-trait Norm {
+pub trait Norm {
     type Output;
     fn norm(&self) -> Self::Output;
 }

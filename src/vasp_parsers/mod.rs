@@ -5,3 +5,4 @@ pub mod procar;
 pub mod potcar;
 pub mod chg;
 pub mod wavecar;
+pub mod soc;
