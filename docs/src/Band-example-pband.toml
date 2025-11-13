@@ -8,3 +8,4 @@ segment-ranges  = [[1, 10], [11, 20], [21, 30], [31, 40]]
 [pband.Si-p-orbit]
 orbits  = "px py pz"
 color   = "red"
+factor  = 2.0
