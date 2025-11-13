@@ -198,6 +198,7 @@ fn slice_to_complex(buffer: &[f64]) -> &[c64] {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use approx::abs_diff_eq;
 
     #[test]
     fn test_vec_to_complex() {
@@ -253,8 +254,8 @@ mod tests {
         let nkpoints = 14usize;
         let ikpoint = 1usize;
         let hmm = calc_hmm("tests", nbands, nkpoints, ikpoint).unwrap();
-        assert_eq!(hmm[(0, 0, 0)], c64::new(-5.5624424817112524e-12, -7.940933880509066e-22));
-        assert_eq!(hmm[(1, 207, 0)], c64::new(0.0002937153288168673, 3.179271745971495e-5));
-        assert_eq!(hmm[(0, 207, 207)], c64::new(-3.608022704651101e-5, 2.1277467635028025e-18));
+        assert!(abs_diff_eq!(hmm[(0, 0, 0)], c64::new(-5.5624424817112524e-12, -7.940933880509066e-22)));
+        assert!(abs_diff_eq!(hmm[(1, 207, 0)], c64::new(0.0002937153288168673, 3.179271745971495e-5)));
+        assert!(abs_diff_eq!(hmm[(0, 207, 207)], c64::new(-3.608022704651101e-5, 2.1277467635028025e-18)));
     }
 }
