@@ -1,0 +1,351 @@
+<!DOCTYPE HTML>
+<html lang="en" class="sidebar-visible no-js rust">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>POSCAR - RSGRAD&#x27;S BOOK</title>
+        <!-- Custom HTML head -->
+        <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff" />
+
+        <link rel="icon" href="favicon.svg">
+        <link rel="shortcut icon" href="favicon.png">
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        <link rel="stylesheet" href="css/print.css" media="print">
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="fonts/fonts.css">
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="highlight.css">
+        <link rel="stylesheet" href="tomorrow-night.css">
+        <link rel="stylesheet" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        <!-- MathJax -->
+        <script async type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    </head>
+    <body>
+        <!-- Provide site root to javascript -->
+        <script type="text/javascript">
+            var path_to_root = "";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "rust";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script type="text/javascript">
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script type="text/javascript">
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('no-js')
+            html.classList.remove('rust')
+            html.classList.add(theme);
+            html.classList.add('js');
+        </script>
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script type="text/javascript">
+            var html = document.querySelector('html');
+            var sidebar = 'hidden';
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            }
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="Introduction.html">Introduction</a></li><li class="chapter-item expanded affix "><a href="Installation.html">Installation</a></li><li class="spacer"></li><li class="chapter-item expanded "><a href="Relaxation.html"><strong aria-hidden="true">1.</strong> Relaxation</a></li><li class="chapter-item expanded "><a href="DOS.html"><strong aria-hidden="true">2.</strong> Density of States</a></li><li class="chapter-item expanded "><a href="Band.html"><strong aria-hidden="true">3.</strong> Band Structure</a></li><li class="chapter-item expanded "><a href="Trajectory.html"><strong aria-hidden="true">4.</strong> Trajectory</a></li><li class="chapter-item expanded "><a href="ChgDiff.html"><strong aria-hidden="true">5.</strong> Charge Density Difference</a></li><li class="chapter-item expanded "><a href="Vibration.html"><strong aria-hidden="true">6.</strong> Vibration</a></li><li class="chapter-item expanded "><a href="Wavefunction3D.html"><strong aria-hidden="true">7.</strong> Wavefunction 3D</a></li><li class="chapter-item expanded "><a href="Wavefunction1D.html"><strong aria-hidden="true">8.</strong> Wavefunction 1D</a></li><li class="chapter-item expanded "><a href="Workfunction.html"><strong aria-hidden="true">9.</strong> Workfunction</a></li><li class="chapter-item expanded "><a href="POSCAR.html" class="active"><strong aria-hidden="true">10.</strong> POSCAR</a></li><li class="chapter-item expanded "><a href="PseudoPotential.html"><strong aria-hidden="true">11.</strong> POTCAR</a></li><li class="chapter-item expanded "><a href="TransitionDipoleMoment.html"><strong aria-hidden="true">12.</strong> Transition Dipole Moment</a></li><li class="chapter-item expanded "><a href="Gap.html"><strong aria-hidden="true">13.</strong> Gap</a></li><li class="chapter-item expanded "><a href="UnitConversion.html"><strong aria-hidden="true">14.</strong> UnitConversion</a></li><li class="chapter-item expanded "><a href="ModelNac.html"><strong aria-hidden="true">15.</strong> ModelNAC</a></li><li class="spacer"></li><li class="chapter-item expanded affix "><a href="Feedback.html">Feedback</a></li><li class="chapter-item expanded affix "><a href="Acknowledgements.html">Acknowledgements</a></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.12.1/plotly.min.js"></script>
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky bordered">
+                    <div class="left-buttons">
+                        <button id="sidebar-toggle" class="icon-button" type="button" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </button>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust (default)</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">RSGRAD&#x27;S BOOK</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script type="text/javascript">
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="poscar"><a class="header" href="#poscar">POSCAR</a></h1>
+<p>There are several operations that <code>rsgrad pos</code> can do</p>
+<ul>
+<li>Convert the fractional coordinates to Cartesian coordinates or convert reversely;</li>
+<li>Split the <em>POSCAR</em> and save the two parts;<br />
+<em>This command is useful when you want to calculate charge density difference and adsorption energy</em>.</li>
+<li>Format the <em>POSCAR</em> and add element symbol tags to each atom.</li>
+</ul>
+<h2 id="help-message"><a class="header" href="#help-message">Help Message</a></h2>
+<pre><code class="language-shell">$ rsgrad pos --help
+rsgrad-pos 
+Operation(s) about POSCAR, including split it into two POSCARs
+
+USAGE:
+    rsgrad pos [OPTIONS] [--] [POSCAR]
+
+ARGS:
+    &lt;POSCAR&gt;
+            Specify the input POSCAR file
+            
+            [default: ./POSCAR]
+
+OPTIONS:
+    -a, --a-name &lt;A_NAME&gt;
+            Splitted POSCAR path with selected atoms
+            
+            [default: POSCAR_A]
+
+    -b, --b-name &lt;B_NAME&gt;
+            Splitted POSCAR path with complement of `a_name`
+            
+            [default: POSCAR_B]
+
+    -c, --cartesian
+            Cartesian coordinates is used in writting POSCAR
+
+        --convert
+            Convert POSCAR to cartesian coordinates or fractional coordinates
+
+        --converted &lt;CONVERTED&gt;
+            The target path of converted POSCAR
+            
+            [default: POSCAR_new]
+
+    -h, --help
+            Print help information
+
+    -i, --select-indices &lt;SELECT_INDICES&gt;...
+            Selects the indices to operate.
+            
+            Step indices start from '1', if '0' is given, all the structures will be selected. Step
+            indices can be negative, where negative index means counting reversely. E.g. &quot;-i -2 -1 1
+            2 3&quot; means selecting the last two and the first three atom.
+
+        --no-add-symbols-tags
+            The symbols of each atom will not be written as comment in POSCAR
+
+        --no-preserve-constraints
+            Atom constraints will be dropped when writting POSCAR
+
+    -s, --split
+            Split POSCAR according to selected_indices
+</code></pre>
+<h2 id="examples"><a class="header" href="#examples">Examples</a></h2>
+<ul>
+<li>Format the <em>POSCAR</em> to add element symbol tags</li>
+</ul>
+<p>The original <em>POSCAR</em> of CO<sub>2</sub>:</p>
+<pre><code> C  O 
+ 1.0000000000000000
+    20.0000000000000000    0.0000000000000000    0.0000000000000000
+     0.0000000000000000   20.0000000000000000    0.0000000000000000
+     0.0000000000000000    0.0000000000000000   20.0000000000000000
+ C   O  
+   1   2
+Direct
+  0.5000000000000000  0.5000000000000000 -0.5000000000000000
+  0.5754584707965210  0.4974961803083730  0.5000000000000000
+  0.4249089651951450  0.5078477015701101  0.5000000000000000
+</code></pre>
+<p>Then run <code>rsgrad pos POSCAR --convert</code></p>
+<pre><code class="language-shell">$ rsgrad pos POSCAR --convert
+[2022-07-14T15:38:47Z INFO  rsgrad::commands::pos] Reading POSCAR file &quot;POSCAR&quot; ...
+[2022-07-14T15:38:47Z INFO  rsgrad::commands::pos] Converting it to &quot;POSCAR_new&quot;
+[2022-07-14T15:38:47Z INFO  rsgrad::commands::pos] Done
+[2022-07-14T15:38:47Z INFO  rsgrad] Time used: 1.96796ms
+</code></pre>
+<p>The formatted file should be <em>POSCAR_new</em></p>
+<pre><code>C  O
+ 1.0000000
+      20.000000000       0.000000000       0.000000000
+       0.000000000      20.000000000       0.000000000
+       0.000000000       0.000000000      20.000000000
+      C      O
+      1      2
+Direct
+      0.5000000000      0.5000000000     -0.5000000000 !      C-001    1
+      0.5754584708      0.4974961803      0.5000000000 !      O-001    2
+      0.4249089652      0.5078477016      0.5000000000 !      O-002    3
+</code></pre>
+<ul>
+<li>Convert <em>POSCAR</em> to Cartesian coordinates</li>
+</ul>
+<p>Just run <code>rsgrad pos POSCAR --convert --cartesian</code></p>
+<pre><code class="language-shell">$ rsgrad pos POSCAR --convert --cartesian
+[2022-07-14T15:40:33Z INFO  rsgrad::commands::pos] Reading POSCAR file &quot;POSCAR&quot; ...
+[2022-07-14T15:40:33Z INFO  rsgrad::commands::pos] Converting it to &quot;POSCAR_new&quot;
+[2022-07-14T15:40:33Z INFO  rsgrad::commands::pos] Done
+[2022-07-14T15:40:33Z INFO  rsgrad] Time used: 1.57861ms
+</code></pre>
+<p>The converted file <em>POSCAR_new</em> should be like</p>
+<pre><code>C  O
+ 1.0000000
+      20.000000000       0.000000000       0.000000000
+       0.000000000      20.000000000       0.000000000
+       0.000000000       0.000000000      20.000000000
+      C      O
+      1      2
+Cartesian
+     10.0000000000     10.0000000000    -10.0000000000 !      C-001    1
+     11.5091694159      9.9499236062     10.0000000000 !      O-001    2
+      8.4981793039     10.1569540314     10.0000000000 !      O-002    3
+</code></pre>
+<ul>
+<li>Split the <em>POSCAR</em></li>
+</ul>
+<p>Let take the CO<sub>2</sub> structure as the example again. Here we will take the
+C atom out to see what the operation does.</p>
+<p>The C atom index is <code>1</code>, so we should run <code>rsgrad pos POSCAR -s -i 1</code></p>
+<pre><code class="language-shell">$ rsgrad pos POSCAR -s -i 1
+[2022-07-14T15:49:32Z INFO  rsgrad::commands::pos] Reading POSCAR file &quot;POSCAR&quot; ...
+[2022-07-14T15:49:32Z INFO  rsgrad::commands::pos] Splitting it to &quot;POSCAR_A&quot; and &quot;POSCAR_B&quot; ...
+[2022-07-14T15:49:32Z INFO  rsgrad::commands::pos] &quot;POSCAR_A&quot; contains
+[2022-07-14T15:49:32Z INFO  rsgrad::commands::pos]       C     1
+[2022-07-14T15:49:32Z INFO  rsgrad::commands::pos] &quot;POSCAR_B&quot; contains
+[2022-07-14T15:49:32Z INFO  rsgrad::commands::pos]       O     2
+[2022-07-14T15:49:32Z INFO  rsgrad::commands::pos] &quot;POSCAR_A&quot; written
+[2022-07-14T15:49:32Z INFO  rsgrad::commands::pos] &quot;POSCAR_B&quot; written
+[2022-07-14T15:49:32Z INFO  rsgrad] Time used: 2.11275ms
+</code></pre>
+<p>The separated files should be like</p>
+<pre><code class="language-shell">$ bat POSCAR_A POSCAR_B
+───────┬──────────────────────────────────────────────────────────────────────────
+       │ File: POSCAR_A
+───────┼──────────────────────────────────────────────────────────────────────────
+   1   │ Generated by rsgrad, POSCAR with selected atoms
+   2   │  1.0000000
+   3   │       20.000000000       0.000000000       0.000000000
+   4   │        0.000000000      20.000000000       0.000000000
+   5   │        0.000000000       0.000000000      20.000000000
+   6   │       C
+   7   │       1
+   8   │ Direct
+   9   │       0.5000000000      0.5000000000     -0.5000000000 !      C-001    1
+───────┴──────────────────────────────────────────────────────────────────────────
+───────┬──────────────────────────────────────────────────────────────────────────
+       │ File: POSCAR_B
+───────┼──────────────────────────────────────────────────────────────────────────
+   1   │ Generated by rsgrad, POSCAR complement
+   2   │  1.0000000
+   3   │       20.000000000       0.000000000       0.000000000
+   4   │        0.000000000      20.000000000       0.000000000
+   5   │        0.000000000       0.000000000      20.000000000
+   6   │       O
+   7   │       2
+   8   │ Direct
+   9   │       0.5754584708      0.4974961803      0.5000000000 !      O-001    1
+  10   │       0.4249089652      0.5078477016      0.5000000000 !      O-002    2
+───────┴──────────────────────────────────────────────────────────────────────────
+</code></pre>
+<p>The process schema:</p>
+<p><img src="./POSCAR-example.png" alt="" /></p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="Workfunction.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+                            <a rel="next" href="PseudoPotential.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="Workfunction.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+                    <a rel="next" href="PseudoPotential.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+        <script type="text/javascript">
+            window.playground_copyable = true;
+        </script>
+        <script src="elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="mark.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="searcher.js" type="text/javascript" charset="utf-8"></script>
+        <script src="clipboard.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="highlight.js" type="text/javascript" charset="utf-8"></script>
+        <script src="book.js" type="text/javascript" charset="utf-8"></script>
+
+        <!-- Custom JS scripts -->
+    </body>
+</html>

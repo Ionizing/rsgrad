@@ -1,0 +1,351 @@
+<!DOCTYPE HTML>
+<html lang="en" class="sidebar-visible no-js rust">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Wavefunction 3D - RSGRAD&#x27;S BOOK</title>
+        <!-- Custom HTML head -->
+        <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff" />
+
+        <link rel="icon" href="favicon.svg">
+        <link rel="shortcut icon" href="favicon.png">
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        <link rel="stylesheet" href="css/print.css" media="print">
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="fonts/fonts.css">
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="highlight.css">
+        <link rel="stylesheet" href="tomorrow-night.css">
+        <link rel="stylesheet" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        <!-- MathJax -->
+        <script async type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    </head>
+    <body>
+        <!-- Provide site root to javascript -->
+        <script type="text/javascript">
+            var path_to_root = "";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "rust";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script type="text/javascript">
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script type="text/javascript">
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('no-js')
+            html.classList.remove('rust')
+            html.classList.add(theme);
+            html.classList.add('js');
+        </script>
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script type="text/javascript">
+            var html = document.querySelector('html');
+            var sidebar = 'hidden';
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            }
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="Introduction.html">Introduction</a></li><li class="chapter-item expanded affix "><a href="Installation.html">Installation</a></li><li class="spacer"></li><li class="chapter-item expanded "><a href="Relaxation.html"><strong aria-hidden="true">1.</strong> Relaxation</a></li><li class="chapter-item expanded "><a href="DOS.html"><strong aria-hidden="true">2.</strong> Density of States</a></li><li class="chapter-item expanded "><a href="Band.html"><strong aria-hidden="true">3.</strong> Band Structure</a></li><li class="chapter-item expanded "><a href="Trajectory.html"><strong aria-hidden="true">4.</strong> Trajectory</a></li><li class="chapter-item expanded "><a href="ChgDiff.html"><strong aria-hidden="true">5.</strong> Charge Density Difference</a></li><li class="chapter-item expanded "><a href="Vibration.html"><strong aria-hidden="true">6.</strong> Vibration</a></li><li class="chapter-item expanded "><a href="Wavefunction3D.html" class="active"><strong aria-hidden="true">7.</strong> Wavefunction 3D</a></li><li class="chapter-item expanded "><a href="Wavefunction1D.html"><strong aria-hidden="true">8.</strong> Wavefunction 1D</a></li><li class="chapter-item expanded "><a href="Workfunction.html"><strong aria-hidden="true">9.</strong> Workfunction</a></li><li class="chapter-item expanded "><a href="POSCAR.html"><strong aria-hidden="true">10.</strong> POSCAR</a></li><li class="chapter-item expanded "><a href="PseudoPotential.html"><strong aria-hidden="true">11.</strong> POTCAR</a></li><li class="chapter-item expanded "><a href="TransitionDipoleMoment.html"><strong aria-hidden="true">12.</strong> Transition Dipole Moment</a></li><li class="chapter-item expanded "><a href="Gap.html"><strong aria-hidden="true">13.</strong> Gap</a></li><li class="chapter-item expanded "><a href="UnitConversion.html"><strong aria-hidden="true">14.</strong> UnitConversion</a></li><li class="chapter-item expanded "><a href="ModelNac.html"><strong aria-hidden="true">15.</strong> ModelNAC</a></li><li class="spacer"></li><li class="chapter-item expanded affix "><a href="Feedback.html">Feedback</a></li><li class="chapter-item expanded affix "><a href="Acknowledgements.html">Acknowledgements</a></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.12.1/plotly.min.js"></script>
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky bordered">
+                    <div class="left-buttons">
+                        <button id="sidebar-toggle" class="icon-button" type="button" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </button>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust (default)</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">RSGRAD&#x27;S BOOK</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script type="text/javascript">
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="wavefunction-3d"><a class="header" href="#wavefunction-3d">Wavefunction 3D</a></h1>
+<p>Main functions of <code>rsgrad wav3d</code></p>
+<ul>
+<li>List the brief information of <em>WAVECAR</em>;</li>
+<li>Save the selected wavefunction to <em>.vasp</em> file.</li>
+</ul>
+<h2 id="help-message"><a class="header" href="#help-message">Help Message</a></h2>
+<pre><code class="language-shell">$ rsgrad wav3d --help
+Plot wavefunction in realspace, and save it as '.vasp' file
+
+Usage: rsgrad wav3d [OPTIONS]
+
+Options:
+  -w, --wavecar &lt;WAVECAR&gt;
+          WAVECAR file name
+          
+          [default: ./WAVECAR]
+
+  -p, --poscar &lt;POSCAR&gt;
+          POSCAR filename, POSCAR is needed to get the real-space wavefunction
+          
+          [default: ./POSCAR]
+
+  -s, --ispins [&lt;ISPINS&gt;...]
+          Select spin index, starting from 1
+          
+          [default: 1]
+
+  -k, --ikpoints [&lt;IKPOINTS&gt;...]
+          Select kpoint index, starting from 1.
+          
+          You can input ranges directly: `-k 1..4 5..10`
+          
+          [default: 1]
+
+  -b, --ibands [&lt;IBANDS&gt;...]
+          Select band index, starting from 1.
+          
+          You can input ranges directly: `-b 1..4 5..10`
+
+  -l, --list
+          List the brief info of current WAVECAR
+
+  -d, --detail
+          Show the eigen values and band occupations of current WAVECAR.
+          
+          This flag should be used with `--list`
+
+      --gamma-half &lt;GAMMA_HALF&gt;
+          Gamma Half direction of WAVECAR. You need to set this to 'x' or 'z' when processing WAVECAR produced by `vasp_gam`
+          
+          [possible values: x, z]
+
+      --ngrid &lt;NGRID&gt; &lt;NGRID&gt; &lt;NGRID&gt;
+          Grid size for realspace wavefunction, 3 numbers are required, i.e. NGXF NGYF and NGZF.
+          
+          If this argument is left empty, NG_F will be set as NG_F=2*NG_.
+          
+          Be aware that NG_F must be greater than or at least equal to corresponding NG_.
+
+  -o, --output-parts [&lt;OUTPUT_PARTS&gt;...]
+          Specify output part of the wavefunction.
+          
+          Detailed message:
+           - normsquared/ns: Perform `ρ(r) = |ѱ(r)|^2` action to get the spatial distribution of selected band.
+           - real/re: Real part of the wavefunction, suffix '_re.vasp' is added to the output filename.
+           - imag/im: Imaginary part of the wavefunction, suffix '_im.vasp' is added to the output filename.
+           - reim: Output both real part and imaginary parts of the wavefunction.
+           - uns/dns: Perform `ρ(r) = |ѱ(r)|^2` for spinor up/down only. **Note: this option works for `ncl` WAVECAR only.**
+          
+          [possible values: normsquared, ns, uns, dns, real, re, imag, im, reim]
+
+      --prefix &lt;PREFIX&gt;
+          Prefix of output filename
+          
+          [default: wav]
+
+  -e, --show-eigs-suffix
+          Add eigen value suffix to the filename
+
+      --sum-chgs
+          Perform sum-up of the charge densities for selected bands.
+          
+          With this flag open, only `normsquared` or `ns` or `uns` or `dns` are allowed for the `-o`/`--output-parts` option.
+           IMPORTANT NOTES:
+           - The prefix for output filename `sum-prefix` is also required and has no default prefix.
+           - The individual charge densities will not be saved to corresponding '.vasp' files if this flag is on.
+
+      --sum-prefix &lt;SUM_PREFIX&gt;
+          Specify the output file for the summed charge densities.
+          
+          This argument is required if `sum_chgs` is on.
+
+  -h, --help
+          Print help (see a summary with '-h')
+</code></pre>
+<h2 id="example"><a class="header" href="#example">Example</a></h2>
+<ul>
+<li>List the brief information of <em>WAVECAR</em></li>
+</ul>
+<pre><code class="language-shell">$ rsgrad wav3d -l
+
+[2022-07-14T09:19:51Z INFO  rsgrad::commands::wav3d] Reading WAVECAR: &quot;./WAVECAR&quot;
+LENGTH     =             54145104
+RECLEN     =              1388336
+TYPE       =             Standard
+NSPIN      =                    1
+NKPTS      =                    1
+NBANDS     =                   36
+ENCUT      =              450.000
+EFERMI     =               -5.368
+VOLUME     =             8000.000
+NGRID      = [  71,   71,   71]
+NPLWS      = [173541]
+ACELL      = [[  20.000,    0.000,    0.000], [   0.000,   20.000,    0.000], [   0.000,    0.000,   20.000]]
+BCELL      = [[   0.050,    0.000,    0.000], [   0.000,    0.050,    0.000], [   0.000,    0.000,    0.050]]
+
+
+[2022-07-14T09:19:51Z INFO  rsgrad] Time used: 160.337862ms
+</code></pre>
+<p>if you want the band eigen values information</p>
+<pre><code class="language-shell">$ rsgrad wav3d -ld
+
+...
+&lt;BRIEF INFORMATION ABOUT WAVECAR&gt;
+...
+
+ISPIN:  1  IKPOINT:    1  IBAND:     1 E-Efermi:    -19.991 Occupation: 1.000
+ISPIN:  1  IKPOINT:    1  IBAND:     2 E-Efermi:    -18.141 Occupation: 1.000
+ISPIN:  1  IKPOINT:    1  IBAND:     3 E-Efermi:    -18.141 Occupation: 1.000
+ISPIN:  1  IKPOINT:    1  IBAND:     4 E-Efermi:    -16.418 Occupation: 1.000
+ISPIN:  1  IKPOINT:    1  IBAND:     5 E-Efermi:    -15.534 Occupation: 1.000
+ISPIN:  1  IKPOINT:    1  IBAND:     6 E-Efermi:    -15.532 Occupation: 1.000
+ISPIN:  1  IKPOINT:    1  IBAND:     7 E-Efermi:    -10.662 Occupation: 1.000
+ISPIN:  1  IKPOINT:    1  IBAND:     8 E-Efermi:    -10.661 Occupation: 1.000
+...
+</code></pre>
+<ul>
+<li>Save the selected wavefunction to <em>.vasp</em> file</li>
+</ul>
+<pre><code class="language-shell">$ rsgrad wav3d -b {10..20} -o ns -e
+
+[2022-07-14T09:23:06Z INFO  rsgrad::commands::wav3d] Reading WAVECAR: &quot;./WAVECAR&quot;
+[2022-07-14T09:23:06Z INFO  rsgrad::commands::wav3d] Reading POSCAR: &quot;./POSCAR&quot;
+[2022-07-14T09:23:06Z INFO  rsgrad::commands::wav3d] Processing spin 1, k-point   1, band   10 ...
+[2022-07-14T09:23:06Z INFO  rsgrad::commands::wav3d] Processing spin 1, k-point   1, band   13 ...
+[2022-07-14T09:23:06Z INFO  rsgrad::commands::wav3d] Processing spin 1, k-point   1, band   11 ...
+[2022-07-14T09:23:06Z INFO  rsgrad::commands::wav3d] Processing spin 1, k-point   1, band   14 ...
+[2022-07-14T09:23:06Z INFO  rsgrad::commands::wav3d] Processing spin 1, k-point   1, band   12 ...
+[2022-07-14T09:23:06Z INFO  rsgrad::commands::wav3d] Processing spin 1, k-point   1, band   15 ...
+[2022-07-14T09:23:06Z INFO  rsgrad::commands::wav3d] Writing &quot;wav_1-1-13_-5.740eV.vasp&quot; ...
+[2022-07-14T09:23:06Z INFO  rsgrad::commands::wav3d] Writing &quot;wav_1-1-15_-5.601eV.vasp&quot; ...
+[2022-07-14T09:23:06Z INFO  rsgrad::commands::wav3d] Writing &quot;wav_1-1-14_-5.728eV.vasp&quot; ...
+[2022-07-14T09:23:06Z INFO  rsgrad::commands::wav3d] Writing &quot;wav_1-1-10_-8.376eV.vasp&quot; ...
+[2022-07-14T09:23:06Z INFO  rsgrad::commands::wav3d] Writing &quot;wav_1-1-11_-7.385eV.vasp&quot; ...
+[2022-07-14T09:23:06Z INFO  rsgrad::commands::wav3d] Writing &quot;wav_1-1-12_-7.380eV.vasp&quot; ...
+[2022-07-14T09:23:08Z INFO  rsgrad::commands::wav3d] Processing spin 1, k-point   1, band   18 ...
+[2022-07-14T09:23:08Z INFO  rsgrad::commands::wav3d] Processing spin 1, k-point   1, band   19 ...
+[2022-07-14T09:23:09Z INFO  rsgrad::commands::wav3d] Writing &quot;wav_1-1-18_-3.514eV.vasp&quot; ...
+[2022-07-14T09:23:09Z INFO  rsgrad::commands::wav3d] Processing spin 1, k-point   1, band   16 ...
+[2022-07-14T09:23:09Z INFO  rsgrad::commands::wav3d] Processing spin 1, k-point   1, band   20 ...
+[2022-07-14T09:23:09Z INFO  rsgrad::commands::wav3d] Writing &quot;wav_1-1-19_-3.265eV.vasp&quot; ...
+[2022-07-14T09:23:09Z INFO  rsgrad::commands::wav3d] Processing spin 1, k-point   1, band   17 ...
+[2022-07-14T09:23:10Z INFO  rsgrad::commands::wav3d] Writing &quot;wav_1-1-16_-5.477eV.vasp&quot; ...
+[2022-07-14T09:23:10Z INFO  rsgrad::commands::wav3d] Writing &quot;wav_1-1-17_-3.546eV.vasp&quot; ...
+[2022-07-14T09:23:10Z INFO  rsgrad::commands::wav3d] Writing &quot;wav_1-1-20_-0.701eV.vasp&quot; ...
+[2022-07-14T09:23:11Z INFO  rsgrad] Time used: 5.484733549s
+</code></pre>
+<p>Open the <em>.vasp</em> in <em>VESTA</em></p>
+<p><img src="./Wavefunction3D-example.png" alt="" /></p>
+<p><strong><code>rsgrad wav3d</code> supports extracting multiple bands at the same time, and the processes
+executed in parallel, which can save a lot of time.</strong></p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="Vibration.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+                            <a rel="next" href="Wavefunction1D.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="Vibration.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+                    <a rel="next" href="Wavefunction1D.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+        <script type="text/javascript">
+            window.playground_copyable = true;
+        </script>
+        <script src="elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="mark.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="searcher.js" type="text/javascript" charset="utf-8"></script>
+        <script src="clipboard.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="highlight.js" type="text/javascript" charset="utf-8"></script>
+        <script src="book.js" type="text/javascript" charset="utf-8"></script>
+
+        <!-- Custom JS scripts -->
+    </body>
+</html>
