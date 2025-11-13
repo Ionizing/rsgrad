@@ -17,3 +17,4 @@ htmlout         = "band.html"
 # atoms   = "1 3..7 -1"   # which atoms to project on, if commented, all atoms are selected
 # orbits  = "s px dxy"    # which orbits to project on, if commented, all orbits are selected
 # color   = "red"         # the color of marker
+# factor  = 1.00          # the factor multiplied to this pband

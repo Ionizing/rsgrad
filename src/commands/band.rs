@@ -76,6 +76,7 @@ struct Selection {
     iatoms:     Vec<usize>,
     iorbits:    Vec<usize>,
     color:      Option<String>,
+    factor:     f64,
 }
 
 
@@ -96,6 +97,8 @@ fn rawsel_to_sel(r: IndexMap<String, RawSelection>,
         } else {
             None
         };
+        let factor      = val.factor.unwrap_or(1.0);
+        if factor < 0.0 { bail!{"The factor cannot be negative"}; }
 
         let sel = Selection {
             label: label.to_string(),
@@ -103,6 +106,7 @@ fn rawsel_to_sel(r: IndexMap<String, RawSelection>,
             iatoms,
             iorbits,
             color,
+            factor,
         };
 
         sel_vec.push(sel);
@@ -497,7 +501,7 @@ impl Band {
             }
         };
 
-        summed_proj
+        summed_proj * selection.factor
     }
 
 
@@ -992,6 +996,7 @@ mod test {
         assert_eq!(v[0].label, "plot1");
         assert_eq!(v[0].iatoms, &[0, 2, 3, 4, 5, 6, 7]);
         assert_eq!(v[0].iorbits, &[0, 3, 4]);
+        assert_eq!(v[0].factor, 1.14514);
         assert_eq!(c.ylim, (-2.0, 5.0));
 
         let s = toml::to_string(&c).unwrap();
