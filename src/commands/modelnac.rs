@@ -24,7 +24,9 @@ use crate::{
         wavecar::{
             Wavecar,
             WavecarType,
+            Norm,
         },
+        soc::calc_hmm,
     }
 };
 
@@ -43,10 +45,12 @@ type c64 = Complex<f64>;
 /// Detailed fields of the produced file:{n}
 /// - ikpoint: K point index, counts from 1;{n}
 /// - nspin: number of spin channels;{n}
+/// - spin_diabatics: use spin diabatics representation or not;{n}
 /// - nbands: Number of total bands in WAVECAR;{n}
 /// - brange: selected band indices, <start> ..= <end>, index counts from 1;{n}
 /// - nbrange: number of selected bands, nbrange = end - start + 1;{n}
 /// - efermi: Fermi's level;{n}
+/// - normalization: normalize pseudo wavefunction in WAVECAR of not;{n}
 /// - potim: ionic time step;{n}
 /// - temperature: 1E-6 Kelvin as default;{n}
 /// - eigs: band eigenvalues;{n}
@@ -70,11 +74,23 @@ pub struct ModelNac {
     /// Example: --ikpoint 2
     ikpoint: usize,
 
+    #[arg(long, default_value_t = false)]
+    /// Use spin diabatics representation or not.
+    spin_diabatics: bool,
+
+    #[arg(long, default_value = "./")]
+    /// Path that contains NormalCAR and SocCar
+    spin_diabatics_path: PathBuf,
+
     #[arg(long, num_args(2))]
     /// Selected band range, starts from 1.
     ///
     /// Example: --brange 24 42
     brange: Vec<usize>,
+
+    #[arg(long, default_value_t = false)]
+    /// Use normalized wavefunctions in WAVECAR to calculate NAC and TDM.
+    normalization: bool,
 
     #[arg(long, default_value_t = 1.0)]
     /// Ionic time step in femtosecond (fs).
@@ -130,6 +146,8 @@ I suggest providing `gamma_half` argument to avoid confusion.");
         
         let nsw     = 9;
         let nspin   = wav.nspin as usize;
+        let spin_diabatics = self.spin_diabatics;
+        let nkpoints = wav.nkpoints as usize;
         let ikpoint = self.ikpoint;
         let nbands  = wav.nbands as usize;
         let nbrange = brange[1] - brange[0] + 1;
@@ -137,6 +155,10 @@ I suggest providing `gamma_half` argument to avoid confusion.");
         let efermi = wav.efermi;
         let olaps = na::Array4::<f64>::zeros((nsw, nspin, nbrange, nbrange));
         let eigs  = wav.band_eigs.slice(na::s![na::NewAxis, .., ikpoint-1, brange[0]-1 .. brange[1]]).to_owned();
+
+        if spin_diabatics && nspin != 2 {
+            bail!("Spin diabatics representation requires ISPIN = 2.");
+        }
 
         // <i|p|j>, transition dipole moment
         let mut pijs  = na::Array5::<c64>::zeros((nsw, nspin, 3, nbrange, nbrange));
@@ -164,11 +186,16 @@ I suggest providing `gamma_half` argument to avoid confusion.");
             .unwrap();
         for ispin in 0 .. nspin {
             for (ii, iband) in (brange[0] - 1 .. brange[1]).enumerate() {
-                phi.slice_mut(na::s![ii, ..]).assign(
-                    &wav._wav_kspace(ispin as u64, ikpoint as u64 - 1, iband as u64, nplw / nspinor)
-                    .into_shape_with_order((nplw,))
-                    .with_context(|| "Wavefunction reshape failed.")?
-                );
+                phi.slice_mut(na::s![ii, ..]).assign(&{
+                    let mut ket = wav._wav_kspace(ispin as u64, ikpoint as u64 - 1, iband as u64, nplw / nspinor)
+                        .into_shape_with_order((nplw,))
+                        .with_context(|| "Wavefunction reshape failed.")?;
+                    if self.normalization {
+                        let norm_inv = 1.0 / ket.norm();
+                        ket.mapv_inplace(|v| v.scale(norm_inv));
+                    }
+                    ket
+                });
             }
 
             for idirect in 0 .. 3 {
@@ -187,12 +214,21 @@ I suggest providing `gamma_half` argument to avoid confusion.");
         let proj = procar.pdos.projected.slice(na::s![.., ikpoint-1, brange[0]-1 .. brange[1], .., ..]).to_owned();
         let proj = na::stack(na::Axis(0), &vec![proj.view(); nsw])?;
 
+        // Calculate SOC matrix for spin diabatics representation
+        let soc = if self.spin_diabatics {
+            let hmm = calc_hmm(&self.spin_diabatics_path, nbands, nkpoints, ikpoint)?;
+            Some(hmm.slice(na::s![.., brange[0]-1 .. brange[1], brange[0]-1 .. brange[1]]).to_owned())
+        } else {
+            None
+        };
+
         info!("Saving to {:?}", &self.h5out);
         
         let f = H5File::create(&self.h5out)?;
 
         f.new_dataset::<usize>().create("ikpoint")?.write_scalar(&self.ikpoint)?;
         f.new_dataset::<usize>().create("nspin")?.write_scalar(&nspin)?;
+        f.new_dataset::<bool>().create("spin_diabatics")?.write_scalar(&spin_diabatics)?;
         f.new_dataset::<bool>().create("lncl")?.write_scalar(&lncl)?;
         f.new_dataset::<usize>().create("nbands")?.write_scalar(&nbands)?;
         f.new_dataset::<usize>().create("ndigit")?.write_scalar(&4)?;
@@ -202,6 +238,7 @@ I suggest providing `gamma_half` argument to avoid confusion.");
         f.new_dataset::<f64>().create("efermi")?.write_scalar(&efermi)?;
         f.new_dataset::<f64>().create("potim")?.write_scalar(&self.potim)?;
         f.new_dataset::<f64>().create("temperature")?.write_scalar(&1E-6)?;
+        f.new_dataset::<bool>().create("normalization")?.write_scalar(&self.normalization)?;
         f.new_dataset::<bool>().create("phasecorrection")?.write_scalar(&true)?;
 
         f.new_dataset_builder().with_data(&olaps).create("olaps_r")?;
@@ -211,6 +248,11 @@ I suggest providing `gamma_half` argument to avoid confusion.");
 
         f.new_dataset_builder().with_data(&pijs.mapv(|v| v.re)).create("pij_r")?;
         f.new_dataset_builder().with_data(&pijs.mapv(|v| v.im)).create("pij_i")?;
+
+        if let Some(soc) = soc {
+            f.new_dataset_builder().with_data(&soc.mapv(|v| v.re)).create("soc_r")?;
+            f.new_dataset_builder().with_data(&soc.mapv(|v| v.im)).create("soc_i")?;
+        }
         
         f.new_dataset_builder().with_data(&proj).create("proj")?;
 
