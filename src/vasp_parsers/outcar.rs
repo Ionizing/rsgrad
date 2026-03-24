@@ -78,15 +78,17 @@ pub trait GetEFermi {
 }
 
 impl GetEFermi for str {
-    fn get_efermi(&self) -> Result<f64> { 
+    fn get_efermi(&self) -> Result<f64> {
+        static RE: std::sync::OnceLock<Regex> = std::sync::OnceLock::new();
+        let re = RE.get_or_init(|| Regex::new(r" E-fermi :\s*(\S+)").unwrap());
+
         let start_pos = self
             .rmatch_indices(" E-fermi :")
             .next()
             .context("Fermi level info not found")?
             .0;
 
-        let x = Regex::new(r" E-fermi :\s*(\S+)")
-            .unwrap()
+        let x = re
             .captures(&self[start_pos ..])
             .context("Fermi level info not found")?;
         x.get(1)
@@ -161,10 +163,16 @@ impl Outcar {
             s.spawn(|_| { ion_types       = Self::parse_ion_types(&context) });
             s.spawn(|_| { ion_masses      = Self::parse_ion_masses(&context) });
 
-            s.spawn(|_| { nscfv          = Self::parse_nscfs(&context) });
+            // parse_nscfs_and_magmoms scans "free  energy" once and processes
+            // all N ionic-step segments in parallel, replacing the two separate
+            // sequential spawns that formerly each scanned the full context.
+            s.spawn(|_| {
+                let (n, m) = Self::parse_nscfs_and_magmoms(&context);
+                nscfv  = n;
+                magmomv = m;
+            });
             s.spawn(|_| { totenv         = Self::parse_toten(&context) });
             s.spawn(|_| { toten_zv       = Self::parse_toten_z(&context) });
-            s.spawn(|_| { magmomv        = Self::parse_magmoms(&context) });
             s.spawn(|_| { cputimev       = Self::parse_cputime(&context) });
             s.spawn(|_| {
                 let (_posv, _forcev) = Self::parse_posforce(&context);
@@ -316,11 +324,20 @@ impl Outcar {
     }
 
     fn parse_magmoms(context: &str) -> Vec<Option<Vec<f64>>> {
-        Regex::new(r"free  energy")
-            .unwrap()
-            .find_iter(context)
-            .map(|x| x.start())
-            .map(|x| Self::_parse_magmom(&context[..x]))
+        static RE: std::sync::OnceLock<Regex> = std::sync::OnceLock::new();
+        let re = RE.get_or_init(|| Regex::new(r"free  energy").unwrap());
+
+        let positions: Vec<usize> = re.find_iter(context)
+            .map(|m| m.start())
+            .collect();
+
+        if positions.is_empty() { return vec![]; }
+
+        // Same segmentation trick as parse_nscfs: O(total) instead of O(N²).
+        std::iter::once(0usize)
+            .chain(positions.iter().copied())
+            .zip(positions.iter().copied())
+            .map(|(seg_start, seg_end)| Self::_parse_magmom(&context[seg_start..seg_end]))
             .collect()
     }
 
@@ -347,17 +364,17 @@ impl Outcar {
     }
 
     fn parse_posforce(context: &str) -> (Vec<MatX3<f64>>, Vec<MatX3<f64>>) {
-        Regex::new(r"(?m)^ POSITION \s+ TOTAL-FORCE \(eV/Angst\)")
+        use rayon::prelude::*;
+
+        let positions: Vec<usize> = Regex::new(r"(?m)^ POSITION \s+ TOTAL-FORCE \(eV/Angst\)")
             .expect("TOTAL-FORCE info not found in this OUTCAR")
             .find_iter(context)
-            .map(|x| {
-                Self::_parse_posforce_single_iteration(&context[x.start()..])
-            })
-            .fold((vec![], vec![]), |mut acc, (p, f)| {
-                acc.0.push(p);
-                acc.1.push(f);
-                acc
-            })
+            .map(|x| x.start())
+            .collect();
+
+        positions.into_par_iter()
+            .map(|x| Self::_parse_posforce_single_iteration(&context[x..]))
+            .unzip()
     }
 
     fn _parse_posforce_single_iteration(context: &str) -> (MatX3<f64>, MatX3<f64>) {
@@ -403,8 +420,12 @@ impl Outcar {
     }
 
     fn parse_cell(context: &str) -> Mat33<f64> {
-        let pos = Regex::new(r"volume of cell : .*\n[ ]*direct lattice vectors")
-            .unwrap()
+        static RE: std::sync::OnceLock<Regex> = std::sync::OnceLock::new();
+        let re = RE.get_or_init(|| {
+            Regex::new(r"volume of cell : .*\n[ ]*direct lattice vectors").unwrap()
+        });
+
+        let pos = re
             .find(context)
             .expect("Lattice vectors info not found in current OUTCAR")
             .start();
@@ -429,14 +450,19 @@ impl Outcar {
     }
 
     fn parse_opt_cells(context: &str) -> Vec<Mat33<f64>> {
+        use rayon::prelude::*;
+
         let skip_cnt: usize = 1 +
             context.contains(" old parameters") as usize;
 
-        Regex::new(r"volume of cell : .*\n[ ]*direct lattice vectors")
+        let positions: Vec<usize> = Regex::new(r"volume of cell : .*\n[ ]*direct lattice vectors")
             .unwrap()
             .find_iter(context)
             .map(|x| x.start())
             .skip(skip_cnt)
+            .collect();
+
+        positions.into_par_iter()
             .map(|x| Self::parse_cell(&context[x..]))
             .collect()
     }
@@ -474,24 +500,66 @@ impl Outcar {
         v
     }
 
+    /// Combined replacement for separate `parse_nscfs` + `parse_magmoms` calls.
+    ///
+    /// Scans for "free  energy" boundaries **once** (saving a full 400 MB pass),
+    /// then processes every ionic-step segment in parallel with Rayon.
+    fn parse_nscfs_and_magmoms(context: &str) -> (Vec<i32>, Vec<Option<Vec<f64>>>) {
+        use rayon::prelude::*;
+
+        static RE: std::sync::OnceLock<Regex> = std::sync::OnceLock::new();
+        let re = RE.get_or_init(|| Regex::new(r"free  energy").unwrap());
+
+        let positions: Vec<usize> = re.find_iter(context)
+            .map(|m| m.start())
+            .collect();
+
+        if positions.is_empty() { return (vec![], vec![]); }
+
+        let seg_bounds: Vec<(usize, usize)> = std::iter::once(0usize)
+            .chain(positions.iter().copied())
+            .zip(positions.iter().copied())
+            .collect();
+
+        seg_bounds.into_par_iter()
+            .map(|(s, e)| {
+                let seg = &context[s..e];
+                (Self::_parse_nscf(seg), Self::_parse_magmom(seg))
+            })
+            .unzip()
+    }
+
     fn parse_nscfs(context: &str) -> Vec<i32> {
-        Regex::new(r"free  energy")  // navigate to tail of ionic step
-            .unwrap()
-            .find_iter(context)
-            .map(|x| x.start())
-            .map(|x| Self::_parse_nscf(&context[..x]))
+        static RE: std::sync::OnceLock<Regex> = std::sync::OnceLock::new();
+        let re = RE.get_or_init(|| Regex::new(r"free  energy").unwrap());
+
+        // Collect ionic-step boundary positions once.
+        let positions: Vec<usize> = re.find_iter(context)
+            .map(|m| m.start())
+            .collect();
+
+        if positions.is_empty() { return vec![]; }
+
+        // Feed each parse function only the slice belonging to that ionic step,
+        // turning the original O(N²) backward-search into O(total_size).
+        std::iter::once(0usize)
+            .chain(positions.iter().copied())
+            .zip(positions.iter().copied())
+            .map(|(seg_start, seg_end)| Self::_parse_nscf(&context[seg_start..seg_end]))
             .collect()
     }
 
     fn _parse_nscf(context: &str) -> i32 {
+        static RE: std::sync::OnceLock<Regex> = std::sync::OnceLock::new();
+        let re = RE.get_or_init(|| Regex::new(r"Iteration\s*\d+\(\s*(\d+)\)").unwrap());
+
         let pos = context
             .rmatch_indices("Iteration") // get the last "Iteration" during ionic step
             .next()
             .unwrap()
             .0;
         let context = &context[pos..];
-        let x = Regex::new(r"Iteration\s*\d+\(\s*(\d+)\)")
-            .unwrap()
+        let x = re
             .captures(context)
             .expect("SCF iteration header not found");
         x.get(1)
@@ -568,6 +636,8 @@ impl Outcar {
     }
 
     fn parse_vibrations(context: &str) -> Option<Vec<Vibration>> {
+        use rayon::prelude::*;
+
         let massess_sqrt = Self::parse_ion_masses(context)
             .iter()
             .map(|x| x.sqrt())
@@ -575,15 +645,18 @@ impl Outcar {
 
         let ndof = Self::_parse_dof(context)? as usize;
 
-        let mut vibs = Regex::new(r"(?m) .* 2PiTHz.* cm-1")
+        let positions: Vec<usize> = Regex::new(r"(?m) .* 2PiTHz.* cm-1")
             .unwrap()
             .find_iter(context)
             .take(ndof)
             .map(|x| x.start())
-            .map(|x| Self::_parse_single_vibmode(&context[x..]))
-            .collect::<Vec<_>>();
+            .collect();
 
-        if vibs.is_empty() { return None; }
+        if positions.is_empty() { return None; }
+
+        let mut vibs: Vec<Vibration> = positions.into_par_iter()
+            .map(|x| Self::_parse_single_vibmode(&context[x..]))
+            .collect();
 
         vibs.iter_mut()
             .for_each(|v| {
@@ -599,8 +672,14 @@ impl Outcar {
     }
 
     fn _parse_single_vibmode(context: &str) -> Vibration {
-        let freq = Regex::new(r"2PiTHz \s*(\S*) cm-1")
-            .unwrap()
+        static RE_FREQ: std::sync::OnceLock<Regex> = std::sync::OnceLock::new();
+        static RE_IMAGINE: std::sync::OnceLock<Regex> = std::sync::OnceLock::new();
+        static RE_DXDYDZ: std::sync::OnceLock<Regex> = std::sync::OnceLock::new();
+        let re_freq    = RE_FREQ   .get_or_init(|| Regex::new(r"2PiTHz \s*(\S*) cm-1").unwrap());
+        let re_imagine = RE_IMAGINE.get_or_init(|| Regex::new(r"f(/i|  )= .* THz").unwrap());
+        let re_dxdydz  = RE_DXDYDZ .get_or_init(|| Regex::new(r"dx \s* dy \s* dz").unwrap());
+
+        let freq = re_freq
             .captures(context)
             .expect("Cannot find mode frequency info in current OUTCAR")
             .get(1)
@@ -609,8 +688,7 @@ impl Outcar {
             .parse::<f64>()
             .expect("Parsing vibration mode frequency as float value failed");
 
-        let is_imagine = match Regex::new(r"f(/i|  )= .* THz")  // Find the line contains "f/i=  xxxx THz"
-            .unwrap()
+        let is_imagine = match re_imagine  // Find the line contains "f/i=  xxxx THz"
             .captures(context)
             .unwrap()
             .get(1)
@@ -622,8 +700,7 @@ impl Outcar {
             };
 
 
-        let start_pos = Regex::new(r"dx \s* dy \s* dz")
-            .unwrap()
+        let start_pos = re_dxdydz
             .find(context)
             .unwrap()
             .start();
