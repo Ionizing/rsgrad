@@ -2,7 +2,8 @@
 
 Main functions of `rsgrad wav3d`
 - List the brief information of _WAVECAR_;
-- Save the selected wavefunction to _.vasp_ file.
+- Save the selected pseudo-wavefunction to _.vasp_ file;
+- Reconstruct and save the all-electron wavefunction with `--ae`.
 
 ## Help Message
 
@@ -22,6 +23,11 @@ Options:
           POSCAR filename, POSCAR is needed to get the real-space wavefunction
           
           [default: ./POSCAR]
+
+      --potcar <POTCAR>
+          POTCAR filename, required when reconstructing all-electron wavefunctions
+          
+          [default: ./POTCAR]
 
   -s, --ispins [<ISPINS>...]
           Select spin index, starting from 1
@@ -52,6 +58,14 @@ Options:
           Gamma Half direction of WAVECAR. You need to set this to 'x' or 'z' when processing WAVECAR produced by `vasp_gam`
           
           [possible values: x, z]
+
+      --ae
+          Reconstruct the all-electron wavefunction instead of using the pseudo-wavefunction
+
+      --aecut <AECUT>
+          AE energy cutoff in eV. Negative values mean |aecut| * pscut
+          
+          [default: -2]
 
       --ngrid <NGRID> <NGRID> <NGRID>
           Grid size for realspace wavefunction, 3 numbers are required, i.e. NGXF NGYF and NGZF.
@@ -180,3 +194,17 @@ Open the _.vasp_ in _VESTA_
 
 __`rsgrad wav3d` supports extracting multiple bands at the same time, and the processes
 executed in parallel, which can save a lot of time.__
+
+## All-Electron Reconstruction
+
+`rsgrad aewfc` has been merged into `rsgrad wav3d`.
+
+Use `--ae` to reconstruct the all-electron wavefunction, and provide `--potcar`.
+
+```shell
+$ rsgrad wav3d --ae --potcar POTCAR -b 10 -o ns
+```
+
+If you also want the reconstructed real and imaginary parts, keep using `-o re`, `-o im`, or `-o reim`.
+
+Current limitation: `--ae` is not available for non-collinear WAVECAR.

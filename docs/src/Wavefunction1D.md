@@ -3,6 +3,8 @@
 This command is similar to `rsgrad wav3d`. The only difference is that `wav1d` integrates
 the wavefunction over specified plane, and produces the averaged one dimensional wavefunction.
 
+It also supports all-electron reconstruction through `--ae`.
+
 This command is useful when you are looking for image potential states.
 
 {{#include ./Wave1D-example-inline0.html}}
@@ -10,74 +12,93 @@ This command is useful when you are looking for image potential states.
 ## Help Message
 ```shell
 $ rsgrad wav1d --help
-rsgrad-wav1d 
 Plot wavefunction in realspace, then integrate over some plane, and save it as '.txt' file
 
-USAGE:
-    rsgrad wav1d [OPTIONS]
+Usage: rsgrad wav1d [OPTIONS]
 
-OPTIONS:
-        --axis <AXIS>
-            Integration direction. e.g. if 'z' is provided, the XoY plane is integrated
-            
-            [default: z]
-            [possible values: X, Y, Z]
+Options:
+  -w, --wavecar <WAVECAR>
+          WAVECAR file name
+          
+          [default: ./WAVECAR]
 
-    -b, --ibands <IBANDS>...
-            Select band index, starting from 1
+  -s, --ispins [<ISPINS>...]
+          Select spin index, starting from 1
+          
+          [default: 1]
 
-    -d, --detail
-            Show the eigen values and band occupations of current WAVECAR.
-            
-            This flag should be used with `--list`
+  -k, --ikpoints [<IKPOINTS>...]
+          Select kpoint index, starting from 1.
+          
+          You can input range directly: `-k 1..5 8..10`
+          
+          [default: 1]
 
-        --gamma-half <GAMMA_HALF>
-            Gamma Half direction of WAVECAR. You need to set this to 'x' or 'z' when processing
-            WAVECAR produced by `vasp_gam`
-            
-            [possible values: x, z]
+  -b, --ibands [<IBANDS>...]
+          Select band index, starting from 1.
+          
+          You can input range directly: `-b 5..10 14..19`
 
-    -h, --help
-            Print help information
+  -l, --list
+          List the brief info of current WAVECAR
 
-        --htmlout <HTMLOUT>
-            Specify the file name to be written with html wav1d data
-            
-            [default: wav1d.html]
+  -d, --detail
+          Show the eigen values and band occupations of current WAVECAR.
+          
+          This flag should be used with `--list`
 
-    -k, --ikpoints <IKPOINTS>...
-            Select kpoint index, starting from 1
-            
-            [default: 1]
+      --gamma-half <GAMMA_HALF>
+          Gamma Half direction of WAVECAR. You need to set this to 'x' or 'z' when processing WAVECAR produced by `vasp_gam`
+          
+          [possible values: x, z]
 
-    -l, --list
-            List the brief info of current WAVECAR
+      --poscar <POSCAR>
+          POSCAR filename, required when reconstructing all-electron wavefunctions
+          
+          [default: ./POSCAR]
 
-    -s, --ispins <ISPINS>...
-            Select spin index, starting from 1
-            
-            [default: 1]
+      --potcar <POTCAR>
+          POTCAR filename, required when reconstructing all-electron wavefunctions
+          
+          [default: ./POTCAR]
 
-        --scale <SCALE>
-            Scale the wavefunction
-            
-            [default: 10]
+      --ae
+          Reconstruct the all-electron wavefunction density instead of using the pseudo-wavefunction
 
-        --show
-            Open the browser and show the plot immediately
+      --aecut <AECUT>
+          AE energy cutoff in eV. Negative values mean |aecut| * pscut
+          
+          [default: -2]
 
-        --to-inline-html
-            Render the plot and print thw rendered code to stdout
+      --txtout <TXTOUT>
+          Specify the file name to be written with raw wav1d data
+          
+          [default: wav1d.txt]
 
-        --txtout <TXTOUT>
-            Specify the file name to be written with raw wav1d data
-            
-            [default: wav1d.txt]
+      --htmlout <HTMLOUT>
+          Specify the file name to be written with html wav1d data
+          
+          [default: wav1d.html]
 
-    -w, --wavecar <WAVECAR>
-            WAVECAR file name
-            
-            [default: ./WAVECAR]
+      --axis <AXIS>
+          Integration direction. e.g. if 'z' is provided, the XoY plane is integrated
+          
+          [default: z]
+          [possible values: x, y, z]
+
+      --to-inline-html
+          Render the plot and print thw rendered code to stdout
+
+      --show
+          Open the browser and show the plot immediately
+
+      --scale <SCALE>
+          Scale the wavefunction
+          
+          [default: 10]
+
+  -h, --help
+          Print help (see more with '--help')
 ```
 
 
@@ -107,3 +128,15 @@ Then produces
 {{#include ./Wave1D-example-inline.html}}
 
 __Note: The Fermi level is shiftted to 0.0 eV__
+
+## All-Electron Reconstruction
+
+`rsgrad aewfc` has been merged into `rsgrad wav1d` for 1D integrated output.
+
+Use `--ae --poscar POSCAR --potcar POTCAR` to integrate the reconstructed all-electron density:
+
+```shell
+$ rsgrad wav1d --ae --poscar POSCAR --potcar POTCAR -b 20..27
+```
+
+Current limitation: `--ae` is not available for non-collinear WAVECAR.

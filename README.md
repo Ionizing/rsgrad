@@ -12,8 +12,8 @@ Now `rsgrad` provides several features:
 4. Save the frames with given MD or relaxation trajectory;
 5. Calculate charge density difference;
 6. Analyze the vibration eigen values and eigen vectors;
-7. Plot the wave function at given bands in real-space;
-8. Plot the wave function at given bands in real-space then integrate it over specified plane;
+7. Plot the pseudo or all-electron wave function at given bands in real-space;
+8. Plot the pseudo or all-electron wave function at given bands in real-space then integrate it over specified plane;
 9. Plot and visualize the work function;
 10. Split _POSCAR_;  
     Convert between fractional coordinates and Cartesian coordinates;  
@@ -22,7 +22,8 @@ Now `rsgrad` provides several features:
 12. Calculate Transition Dipole Moment;
 13. Calculate band gap and print locations of CBM and VBM.
 14. Convert one quantity to other units that representing same energy.
-15. Calculate model non-adiabatic coupling (NAC) for NAMD-LMI (a subset of Hefei-NAMD).
+15. Calculate model non-adiabatic coupling (NAC) for NAMD-LMI (a subset of Hefei-NAMD);
+16. Reconstruct all-electron wavefunctions directly from `wav3d` and `wav1d` with `--ae`.
 
 Wish you have a good time with `rsgrad` ^\_^
 
