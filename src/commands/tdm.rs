@@ -27,6 +27,7 @@ use crate::{
     },
     commands::common::write_array_to_txt,
     commands::common::generate_plotly_configuration,
+    pawpot::{PawPoscar, PawWavecar, PawPotcar, compute_tdm_paw},
 };
 
 
@@ -107,6 +108,18 @@ pub struct Tdm {
     #[arg(long)]
     /// Highest energy scale for tdm_smeared.txt, default for max(dE) + 2.0
     xmax: Option<f64>,
+
+    #[arg(long)]
+    /// POSCAR file for PAW-corrected TDM (optional). Requires --potcar.
+    poscar: Option<PathBuf>,
+
+    #[arg(long)]
+    /// POTCAR file for PAW-corrected TDM (optional). Requires --poscar.
+    potcar: Option<PathBuf>,
+
+    #[arg(long)]
+    /// Use pseudo-only TDM (no PAW one-centre correction) when PAW mode is active.
+    lpseudo: bool,
 }
 
 
@@ -250,6 +263,47 @@ I suggest you provide `gamma_half` argument to avoid confusion.");
         let ibands = Self::check_and_transform_band_index(self.ibands.as_slice(), nbands)?;
         let jbands = Self::check_and_transform_band_index(self.jbands.as_slice(), nbands)?;
 
+        // Check if PAW correction is requested
+        let use_paw = self.poscar.is_some() && self.potcar.is_some();
+
+        // Pre-compute PAW TDM entries if PAW mode is active
+        let paw_tdm_map: Option<std::collections::HashMap<(usize, usize), [f64; 3]>> =
+            if use_paw {
+                let poscar_path = self.poscar.as_ref().unwrap();
+                let potcar_path = self.potcar.as_ref().unwrap();
+                info!("PAW mode: reading POSCAR from {:?}", poscar_path);
+                let paw_poscar = PawPoscar::from_file(poscar_path)?;
+                info!("PAW mode: reading POTCAR from {:?}", potcar_path);
+                let paw_potcar = PawPotcar::from_file(potcar_path)?;
+                info!("PAW mode: reading WAVECAR from {:?}", &self.wavecar);
+                let mut paw_wav = PawWavecar::from_file(&self.wavecar)?;
+
+                let all_ibands: Vec<usize> = self.ibands.to_vec();
+                let all_jbands: Vec<usize> = self.jbands.to_vec();
+
+                let entries = compute_tdm_paw(
+                    &paw_poscar,
+                    &paw_potcar,
+                    &mut paw_wav,
+                    ispin + 1,
+                    ikpoint + 1,
+                    &all_ibands,
+                    &all_jbands,
+                    self.lpseudo,
+                )?;
+
+                let mut map = std::collections::HashMap::new();
+                for e in entries {
+                    let tx = e.dipole[0].norm();
+                    let ty = e.dipole[1].norm();
+                    let tz = e.dipole[2].norm();
+                    map.insert((e.iband - 1, e.jband - 1), [tx, ty, tz]);
+                }
+                Some(map)
+            } else {
+                None
+            };
+
         let tdms = iproduct!(ibands, jbands)
             .filter(|(iband, jband)| iband < jband)
             .collect::<Vec<_>>()
@@ -260,11 +314,17 @@ I suggest you provide `gamma_half` argument to avoid confusion.");
                 #[allow(non_snake_case)]
                 let dE    = eig_j - eig_i;
 
-                let [tdmx, tdmy, tdmz] = wav.transition_dipole_moment(ispin as u64, ikpoint as u64, iband as u64, jband as u64);
-
-                let tdmx = tdmx.norm();
-                let tdmy = tdmy.norm();
-                let tdmz = tdmz.norm();
+                let (tdmx, tdmy, tdmz) = if let Some(ref map) = paw_tdm_map {
+                    if let Some(&[tx, ty, tz]) = map.get(&(iband, jband)) {
+                        (tx, ty, tz)
+                    } else {
+                        let [tdmx, tdmy, tdmz] = wav.transition_dipole_moment(ispin as u64, ikpoint as u64, iband as u64, jband as u64);
+                        (tdmx.norm(), tdmy.norm(), tdmz.norm())
+                    }
+                } else {
+                    let [tdmx, tdmy, tdmz] = wav.transition_dipole_moment(ispin as u64, ikpoint as u64, iband as u64, jband as u64);
+                    (tdmx.norm(), tdmy.norm(), tdmz.norm())
+                };
 
                 Tdms{iband, jband, Ei: eig_i, Ej: eig_j, dE, tx: tdmx, ty: tdmy, tz: tdmz}
             })

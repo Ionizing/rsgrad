@@ -25,8 +25,11 @@ use crate::{
         wav1d::Wav1D,
         tdm::Tdm,
         gap::Gap,
-        uc::Uc, 
+        uc::Uc,
         modelnac::ModelNac,
+        aewfc::Aewfc,
+        normalcar::Normalcar,
+        overlap::Overlap,
     },
 };
 
@@ -92,6 +95,12 @@ enum Opt {
     Uc,
 
     ModelNac,
+
+    Aewfc,
+
+    Normalcar,
+
+    Overlap,
 }
 
 

@@ -3,6 +3,7 @@ pub mod commands;
 pub mod types;
 pub mod settings;
 pub mod cli;
+pub mod pawpot;
 
 pub use types::{
     Result,

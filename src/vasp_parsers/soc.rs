@@ -52,7 +52,7 @@ where P: AsRef<Path> {
     let rec_l = f.read_i32::<LittleEndian>().unwrap();
     let nproj = rec_l / 16;
     f.seek(SeekFrom::Current(-4)).unwrap();
-    let mut cproj = na::Array3::<c64>::zeros((2, nbands as usize, nproj as usize));
+    let mut cproj = na::Array3::<c64>::zeros((2, nbands, nproj as usize));
     let mut buf = vec![0.0f64; nproj as usize * 2];
     for ispin in 0 .. 2 {
         for ikpt in 0 .. nkpoints {
@@ -62,7 +62,7 @@ where P: AsRef<Path> {
                 if ikpt + 1 == ikpoint {
                     f.read_f64_into::<LittleEndian>(&mut buf).unwrap();
                     for iproj in 0 .. nproj {
-                        cproj[(ispin as usize, iband as usize, iproj as usize)] = c64::new(buf[2 * iproj as usize], buf[2 * iproj as usize + 1]);
+                        cproj[(ispin as usize, iband, iproj as usize)] = c64::new(buf[2 * iproj as usize], buf[2 * iproj as usize + 1]);
                     }
                 } else {
                     f.seek(SeekFrom::Current(16 * nproj as i64)).unwrap();
