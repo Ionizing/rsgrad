@@ -22,6 +22,7 @@ use crate::{
 
 #[derive(Debug, Args)]
 #[command(allow_negative_numbers = true)]
+#[command(arg_required_else_help = true)]
 /// Tracking vibration information.
 ///
 /// For systems enabled vibration mode calculation, this command can extract

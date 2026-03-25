@@ -150,6 +150,7 @@ impl Configuration {
 
 #[derive(Debug, Clone, Args)]
 #[command(allow_negative_numbers = true)]
+#[command(arg_required_else_help = true)]
 /// Calculate density of states from PROCAR and OUTCAR.
 ///
 /// The fermi level is extracted from OUTCAR, and DOS is calculated by

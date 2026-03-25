@@ -15,6 +15,7 @@ use crate::{
 
 
 #[derive(Debug, Args)]
+#[command(arg_required_else_help = true)]
 /// Calculate charge density difference. 
 ///
 /// The operation is performed by `chgdiff = chgcar_ab - (chgcar_a + chgcar_b)`.

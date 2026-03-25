@@ -16,6 +16,7 @@ use crate::{
 
 #[derive(Debug, Args)]
 #[command(allow_negative_numbers = true)]
+#[command(arg_required_else_help = true)]
 /// Operation(s) about POSCAR, including split it into two POSCARs.
 pub struct Pos {
     #[arg(default_value = "./POSCAR")]

@@ -36,6 +36,7 @@ type c64 = Complex<f64>;
 
 
 #[derive(Debug, Args)]
+#[command(arg_required_else_help = true)]
 /// Calculate model non-adiabatic coupling (NAC) for NAMD-LMI (a subset of Hefei-NAMD).
 ///
 /// This NAC contains eigenvalues and transition dipole moment (TDM) calculated from selected WAVECAR.

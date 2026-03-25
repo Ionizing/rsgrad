@@ -21,6 +21,7 @@ use crate::{
 
 #[derive(Debug, Args)]
 #[command(allow_negative_numbers = true)]
+#[command(arg_required_else_help = true)]
 /// Operations about relaxation/MD trajectory.
 ///
 /// POSCAR is needed if you want to preserve the constraints when saving frames to POSCAR.

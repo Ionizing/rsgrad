@@ -27,6 +27,7 @@ use crate::{
 
 
 #[derive(Debug, Args)]
+#[command(arg_required_else_help = true)]
 /// Find band gap and print positions of VBM and CBM
 pub struct Gap {
     #[arg(long, short = 'w', default_value = "WAVECAR")]

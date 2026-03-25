@@ -174,6 +174,7 @@ impl Configuration {
 
 #[derive(Debug, Clone, Args)]
 #[command(allow_negative_numbers = true)]
+#[command(arg_required_else_help = true)]
 /// Plot bandstructure and projected bandstructure
 /// 
 /// You may need to generate a template and then use the `--config` option to plot the projected

@@ -32,6 +32,7 @@ use crate::{
 
 
 #[derive(Debug, Args)]
+#[command(arg_required_else_help = true)]
 /// Calculate Transition Dipole Moment (TDM) between given bands.
 ///
 /// Note: This command can only calculate the TDM between bands in

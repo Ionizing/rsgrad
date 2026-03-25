@@ -34,6 +34,7 @@ use crate::{
 
 #[derive(Debug, Args)]
 #[command(allow_negative_numbers = true)]
+#[command(arg_required_else_help = true)]
 /// Plot wavefunction in realspace, and save it as '.vasp' file.
 pub struct Wav3D {
     #[arg(long, short = 'w', default_value = "./WAVECAR")]

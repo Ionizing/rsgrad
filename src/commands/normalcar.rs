@@ -11,6 +11,7 @@ use crate::{
 
 
 #[derive(Debug, Args)]
+#[command(arg_required_else_help = true)]
 /// Write NormalCAR (PAW projector coefficients) from POSCAR + POTCAR + WAVECAR.
 ///
 /// The NormalCAR stores the PAW projector coefficients β = ⟨p̃_i|ψ̃⟩ for every

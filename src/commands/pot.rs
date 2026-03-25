@@ -18,6 +18,7 @@ use crate::{
 
 
 #[derive(Debug, Args)]
+#[command(arg_required_else_help = true)]
 /// Generate the POTCAR according to POSCAR
 pub struct Pot {
     #[arg(long, short)]

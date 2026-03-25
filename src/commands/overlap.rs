@@ -12,6 +12,7 @@ use crate::{
 
 
 #[derive(Debug, Args)]
+#[command(arg_required_else_help = true)]
 /// Compute AE wavefunction overlaps between two WAVECARs.
 ///
 /// Computes S_{ij}(k) = <Φ_i^a(k)|Φ_j^b(k)> including the PAW one-centre correction.

@@ -32,6 +32,7 @@ use crate::{
 
 #[derive(Debug, Args)]
 #[command(allow_negative_numbers = true)]
+#[command(arg_required_else_help = true)]
 /// Plot wavefunction in realspace, then integrate over some plane, and save it as '.txt' file.
 pub struct Wav1D {
     #[arg(long, short = 'w', default_value = "./WAVECAR")]
