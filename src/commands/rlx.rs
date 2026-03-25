@@ -18,7 +18,6 @@ use crate::{
 
 
 #[derive(Debug, Args)]
-#[command(arg_required_else_help = true)]
 /// Tracking relaxation or MD progress.
 ///
 /// Contains the evolution of energy, maximum of Hellmann-Feynman forces, 

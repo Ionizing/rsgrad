@@ -23,7 +23,6 @@ use crate::{
 };
 
 #[derive(Debug, Args)]
-#[command(arg_required_else_help = true)]
 /// Calculate work-function from LOCPOT file, OUTCAR is also needed to get the Fermi level.
 ///
 /// The work function is calculated by plannar integration of the data cube in LOCPOT. The
