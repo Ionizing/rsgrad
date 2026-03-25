@@ -112,16 +112,16 @@ pub fn compute_tdm_paw(
                 for ig in 0..nplw {
                     let cjc = cj[ig].conj();
                     let cci = ci[ig].conj();
-                    for alpha in 0..3 {
+                    for (alpha, dp_alpha) in dp.iter_mut().enumerate() {
                         let g = gk[ig][alpha];
-                        dp[alpha] += (cjc * ci[ig] - cj[ig] * cci) * g / 2.0;
+                        *dp_alpha += (cjc * ci[ig] - cj[ig] * cci) * g / 2.0;
                     }
                 }
             } else {
                 for ig in 0..nplw {
                     let cjc = cj[ig].conj();
-                    for alpha in 0..3 {
-                        dp[alpha] += cjc * ci[ig] * gk[ig][alpha];
+                    for (alpha, dp_alpha) in dp.iter_mut().enumerate() {
+                        *dp_alpha += cjc * ci[ig] * gk[ig][alpha];
                     }
                 }
             }

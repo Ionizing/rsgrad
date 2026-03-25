@@ -408,8 +408,7 @@ fn build_sbt_projectors(
                 .map(|&q| sbt_direct(q, l, radgrid, simp_w, ps_wave, rmax))
                 .collect();
 
-            for ig in 0..n_ae {
-                let iu = glen_to_idx[ig];
+            for (ig, &iu) in glen_to_idx.iter().enumerate().take(n_ae) {
                 let gae_val = sbt_ae_uniq[iu] * inv_sqrt_vol;
                 let gps_val = sbt_ps_uniq[iu] * inv_sqrt_vol;
                 let ylm_vals = &ylm_ae[l][ig];

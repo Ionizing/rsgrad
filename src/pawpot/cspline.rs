@@ -364,38 +364,13 @@ mod tests {
         y_interpolated: Vec<f64>,
     }
 
-
-    /// Generates a vector of `num` evenly spaced samples over the interval [`start`, `stop`].
-    fn linspace(start: f64, stop: f64, num: usize) -> Vec<f64> {
-        match num {
-            0 => return Vec::new(),
-            1 => return vec![start],
-            _ => {}
-        }
-
-        let step = (stop - start) / ((num - 1) as f64);
-        let mut result = Vec::with_capacity(num);
-
-        for i in 0..num {
-            let value = start + (i as f64) * step;
-            result.push(value);
-        }
-
-        // Ensure the last element is exactly 'stop' to prevent floating-point drift.
-        if num > 0 {
-            *result.last_mut().unwrap() = stop;
-        }
-
-        result
-    }
-
     fn get_testset_from_json() -> &'static HashMap<String, SplineTestRef>
     {
         static CUBIC_SPLINE_TESTS: OnceLock<HashMap<String, SplineTestRef>> = OnceLock::new();
         const TEST_FNAME: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/pawpot/cspline_ref.json");
-        &CUBIC_SPLINE_TESTS.get_or_init(|| {
+        CUBIC_SPLINE_TESTS.get_or_init(|| {
             let content = std::fs::read_to_string(TEST_FNAME)
-                .expect(&format!("Could not read reference file: {:?}", TEST_FNAME));
+                .unwrap_or_else(|_| panic!("Could not read reference file: {:?}", TEST_FNAME));
             let data: HashMap<String, SplineTestRef> = serde_json::from_str(&content)
                 .expect("Failed to deserialize JSON data into HashMap");
             data

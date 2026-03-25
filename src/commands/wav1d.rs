@@ -13,6 +13,7 @@ use ndarray::Array1;
 use plotly;
 
 use crate::{
+    pawpot::{PawPoscar, PawPotcar, PawWavecar, VaspAeWfc},
     vasp_parsers::wavecar::{
         Wavecar,
         WavecarType,
@@ -67,6 +68,22 @@ pub struct Wav1D {
     /// Gamma Half direction of WAVECAR. You need to set this to 'x' or 'z' when
     /// processing WAVECAR produced by `vasp_gam`.
     gamma_half: Option<String>,
+
+    #[arg(long, default_value = "./POSCAR", requires = "ae")]
+    /// POSCAR filename, required when reconstructing all-electron wavefunctions.
+    poscar: PathBuf,
+
+    #[arg(long, default_value = "./POTCAR", requires = "ae")]
+    /// POTCAR filename, required when reconstructing all-electron wavefunctions.
+    potcar: PathBuf,
+
+    #[arg(long)]
+    /// Reconstruct the all-electron wavefunction density instead of using the pseudo-wavefunction.
+    ae: bool,
+
+    #[arg(long, default_value_t = -2.0, requires = "ae")]
+    /// AE energy cutoff in eV. Negative values mean |aecut| * pscut.
+    aecut: f64,
 
 //  #[arg(long, short = 'o', default_value = "ns",
 //              possible_values=&["normsquared", "ns", "real", "re", "imag", "im"])]
@@ -159,24 +176,38 @@ I suggest you provide `gamma_half` argument to avoid confusion.");
 
         let wav = wav;  // Cancel the mutability
 
+        if self.ae && wav.wavecar_type == WavecarType::NonCollinear {
+            bail!("`--ae` is not supported for non-collinear WAVECAR yet.");
+        }
+
         let mut dat = indices.into_par_iter()
-            .map(|(ispin, ikpoint, iband)| {
+            .map(|(ispin, ikpoint, iband)| -> Result<(f64, String, Array1<f64>)> {
                 info!("Processing spin {}, k-point {:3}, band {:4} ...", ispin+1, ikpoint+1, iband+1);
                 let eig = eigs[[ispin as usize, ikpoint as usize, iband as usize]] - efermi;
                 let label = format!("s{}_k{}_b{}_{:06.3}eV", ispin+1, ikpoint+1, iband+1, eig);
 
-                let wavr = wav.get_wavefunction_realspace(ispin, ikpoint, iband, None)
-                    .unwrap_or_else(|_| panic!("Failed to get wavefunction in realspace at s{} k{} b{}", ispin+1, ikpoint+1, iband+1))
-                    .normalize();
+                let chgd = if self.ae {
+                    let poscar = PawPoscar::from_file(&self.poscar)?;
+                    let pawpot = PawPotcar::from_file(&self.potcar)?;
+                    let wavecar = PawWavecar::from_file(&self.wavecar)?;
+                    let mut aewfc = VaspAeWfc::new(wavecar, &poscar, &pawpot, ikpoint as usize + 1, self.aecut)?;
+                    let [nx, ny, nz] = aewfc.aegrid;
+                    let phi = aewfc.get_ae_wfc(ispin as usize + 1, iband as usize + 1, false)?;
+                    ndarray::Array3::from_shape_vec((nx, ny, nz), phi.iter().map(|v| v.norm_sqr()).collect())?
+                } else {
+                    let wavr = wav.get_wavefunction_realspace(ispin, ikpoint, iband, None)
+                        .unwrap_or_else(|_| panic!("Failed to get wavefunction in realspace at s{} k{} b{}", ispin+1, ikpoint+1, iband+1))
+                        .normalize();
 
-                let chgd = match wavr {
-                    Wavefunction::Complex64Array3(w)  => w.mapv(|v| v.norm_sqr()),
-                    Wavefunction::Float64Array3(w)    => w.mapv(|v| v * v),
-                    Wavefunction::Ncl64Array4(w)      => {
-                        w.slice(s![0usize, .., .., ..]).mapv(|v| v.norm_sqr()) +
-                            w.slice(s![1usize, .., .., ..]).mapv(|v| v.norm_sqr())
-                    },
-                    _ => unreachable!("Invalid Wavefunction type."),
+                    match wavr {
+                        Wavefunction::Complex64Array3(w)  => w.mapv(|v| v.norm_sqr()),
+                        Wavefunction::Float64Array3(w)    => w.mapv(|v| v * v),
+                        Wavefunction::Ncl64Array4(w)      => {
+                            w.slice(s![0usize, .., .., ..]).mapv(|v| v.norm_sqr()) +
+                                w.slice(s![1usize, .., .., ..]).mapv(|v| v.norm_sqr())
+                        },
+                        _ => unreachable!("Invalid Wavefunction type."),
+                    }
                 };
 
                 let chg1d = match self.axis {
@@ -194,9 +225,9 @@ I suggest you provide `gamma_half` argument to avoid confusion.");
                     },
                 } * self.scale;
 
-                (eig, label, chg1d)
+                Ok((eig, label, chg1d))
             })
-            .collect::<Vec<(f64, String, Array1<f64>)>>();
+            .collect::<Result<Vec<(f64, String, Array1<f64>)>>>()?;
 
         // sort in descending order
         dat.sort_unstable_by(|(e1, _, _), (e2, _, _)| e2.partial_cmp(e1).unwrap());
@@ -206,11 +237,18 @@ I suggest you provide `gamma_half` argument to avoid confusion.");
             Axis::Y => 1usize,
             Axis::Z => 2usize,
         };
-        let axislen = {
+        let (axislen, npts) = if self.ae {
+            let poscar = PawPoscar::from_file(&self.poscar)?;
+            let pawpot = PawPotcar::from_file(&self.potcar)?;
+            let wavecar = PawWavecar::from_file(&self.wavecar)?;
+            let aewfc = VaspAeWfc::new(wavecar, &poscar, &pawpot, 1, self.aecut)?;
             let r = wav.acell[iaxis];
-            (r[0] + r[0] + r[1] * r[1] + r[2] * r[2]).sqrt()
+            ((r[0] + r[0] + r[1] * r[1] + r[2] * r[2]).sqrt(), aewfc.aegrid[iaxis])
+        } else {
+            let r = wav.acell[iaxis];
+            ((r[0] + r[0] + r[1] * r[1] + r[2] * r[2]).sqrt(), wav.ngrid[iaxis] as usize * 2)
         };
-        let xdat = ndarray::Array::linspace(0.0, axislen, wav.ngrid[iaxis] as usize * 2);
+        let xdat = ndarray::Array::linspace(0.0, axislen, npts);
         
         let mut plot = plotly::Plot::new();
 

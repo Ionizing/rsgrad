@@ -653,41 +653,41 @@ mod tests {
             for (unit, ssunit) in &unit_cases {
                 for sunit in ssunit {
                     for sprefix in ssprefix {
-                        let s = vec!["1.0", sprefix, sunit].join(" ");
+                        let s = ["1.0", sprefix, sunit].join(" ");
                         assert_eq!(parser(&s), Ok(("", (1.0f64, *prefix, *unit))), "{}", s);
 
-                        let s = vec!["0.05E2", sprefix, sunit].join(" ");
+                        let s = ["0.05E2", sprefix, sunit].join(" ");
                         assert_eq!(parser(&s), Ok(("", (5.0f64, *prefix, *unit))), "{}", s);
 
-                        let s = vec!["0.05e2", sprefix, sunit].join(" ");
+                        let s = ["0.05e2", sprefix, sunit].join(" ");
                         assert_eq!(parser(&s), Ok(("", (5.0f64, *prefix, *unit))), "{}", s);
 
-                        let s = vec!["1.0", sprefix, sunit].join("");
+                        let s = ["1.0", sprefix, sunit].join("");
                         assert_eq!(parser(&s), Ok(("", (1.0f64, *prefix, *unit))), "{}", s);
 
-                        let s = vec!["0.05E2", sprefix, sunit].join("");
+                        let s = ["0.05E2", sprefix, sunit].join("");
                         assert_eq!(parser(&s), Ok(("", (5.0f64, *prefix, *unit))), "{}", s);
 
-                        let s = vec!["0.05e2", sprefix, sunit].join("");
+                        let s = ["0.05e2", sprefix, sunit].join("");
                         assert_eq!(parser(&s), Ok(("", (5.0f64, *prefix, *unit))), "{}", s);
                     }
 
-                    let s = vec!["1.0", sunit].join(" ");
+                    let s = ["1.0", sunit].join(" ");
                     assert_eq!(parser(&s), Ok(("", (1.0f64, One, *unit))), "{}", s);
 
-                    let s = vec!["0.05E2", sunit].join(" ");
+                    let s = ["0.05E2", sunit].join(" ");
                     assert_eq!(parser(&s), Ok(("", (5.0f64, One, *unit))), "{}", s);
 
-                    let s = vec!["0.05e2", sunit].join(" ");
+                    let s = ["0.05e2", sunit].join(" ");
                     assert_eq!(parser(&s), Ok(("", (5.0f64, One, *unit))), "{}", s);
 
-                    let s = vec!["1.0", sunit].join("");
+                    let s = ["1.0", sunit].join("");
                     assert_eq!(parser(&s), Ok(("", (1.0f64, One, *unit))), "{}", s);
 
-                    let s = vec!["0.05E2", sunit].join("");
+                    let s = ["0.05E2", sunit].join("");
                     assert_eq!(parser(&s), Ok(("", (5.0f64, One, *unit))), "{}", s);
 
-                    let s = vec!["0.05e2", sunit].join("");
+                    let s = ["0.05e2", sunit].join("");
                     assert_eq!(parser(&s), Ok(("", (5.0f64, One, *unit))), "{}", s);
                 }
             }

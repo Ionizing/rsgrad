@@ -14,6 +14,7 @@ use rayon::prelude::*;
 use itertools::iproduct;
 
 use crate::{
+    pawpot::{PawPoscar, PawPotcar, PawWavecar, VaspAeWfc},
     vasp_parsers::{
         chg,
         wavecar::{
@@ -42,6 +43,10 @@ pub struct Wav3D {
     #[arg(long, short = 'p', default_value = "./POSCAR")]
     /// POSCAR filename, POSCAR is needed to get the real-space wavefunction.
     poscar: PathBuf,
+
+    #[arg(long, default_value = "./POTCAR", requires = "ae")]
+    /// POTCAR filename, required when reconstructing all-electron wavefunctions.
+    potcar: PathBuf,
 
     #[arg(long, short = 's', default_value = "1", num_args(0..=2))]
     /// Select spin index, starting from 1.
@@ -73,6 +78,14 @@ pub struct Wav3D {
     /// Gamma Half direction of WAVECAR. You need to set this to 'x' or 'z' when
     /// processing WAVECAR produced by `vasp_gam`.
     gamma_half: Option<String>,
+
+    #[arg(long)]
+    /// Reconstruct the all-electron wavefunction instead of using the pseudo-wavefunction.
+    ae: bool,
+
+    #[arg(long, default_value_t = -2.0, requires = "ae")]
+    /// AE energy cutoff in eV. Negative values mean |aecut| * pscut.
+    aecut: f64,
 
     #[arg(long, number_of_values = 3)]
     /// Grid size for realspace wavefunction, 3 numbers are required, i.e. NGXF NGYF and NGZF.
@@ -229,6 +242,15 @@ I suggest providing `gamma_half` argument to avoid confusion.");
         let wavecar_type = wav.wavecar_type;
         let wav = wav;  // Cancel the mutability
 
+        if self.ae {
+            if wavecar_type == WavecarType::NonCollinear {
+                bail!("`--ae` is not supported for non-collinear WAVECAR yet.");
+            }
+            if has_uns || has_dns {
+                bail!("`-o uns` and `-o dns` are not available with `--ae`.");
+            }
+        }
+
 
         let chg_sum = Arc::new(Mutex::new(
                 Array3::<f64>::zeros([ngrid[0] as usize, ngrid[1] as usize, ngrid[2] as usize])
@@ -244,15 +266,41 @@ I suggest providing `gamma_half` argument to avoid confusion.");
                     String::new()
                 };
 
-                let wavr = wav.get_wavefunction_realspace(ispin, ikpoint, iband, Some(ngrid))?.normalize();
-                let chgd = match wavr.clone() {
-                    Wavefunction::Complex64Array3(w)  => w.mapv(|v| v.norm_sqr() * factor),
-                    Wavefunction::Float64Array3(w)    => w.mapv(|v| v * v * factor),
-                    Wavefunction::Ncl64Array4(w)      => {
-                        w.slice(s![0usize, .., .., ..]).mapv(|v| v.norm_sqr() * factor) +
-                        w.slice(s![1usize, .., .., ..]).mapv(|v| v.norm_sqr() * factor)
-                    },
-                    _ => unreachable!("Invalid Wavefunction type."),
+                let (chgd, d1, d2, d3, d4) = if self.ae {
+                    let poscar = PawPoscar::from_file(&self.poscar)?;
+                    let pawpot = PawPotcar::from_file(&self.potcar)?;
+                    let wavecar = PawWavecar::from_file(&self.wavecar)?;
+                    let mut aewfc = VaspAeWfc::new(wavecar, &poscar, &pawpot, ikpoint as usize + 1, self.aecut)?;
+                    let [nx, ny, nz] = aewfc.aegrid;
+                    let phi = aewfc.get_ae_wfc(ispin as usize + 1, iband as usize + 1, false)?;
+                    let chgd = Array3::from_shape_vec((nx, ny, nz), phi.iter().map(|v| v.norm_sqr() * pos.get_volume().abs()).collect())?;
+                    let real = Array3::from_shape_vec((nx, ny, nz), phi.iter().map(|v| v.re).collect())?;
+                    let imag = Array3::from_shape_vec((nx, ny, nz), phi.iter().map(|v| v.im).collect())?;
+                    (chgd, Some(real), Some(imag), None, None)
+                } else {
+                    let wavr = wav.get_wavefunction_realspace(ispin, ikpoint, iband, Some(ngrid))?.normalize();
+                    let chgd = match wavr.clone() {
+                        Wavefunction::Complex64Array3(w)  => w.mapv(|v| v.norm_sqr() * factor),
+                        Wavefunction::Float64Array3(w)    => w.mapv(|v| v * v * factor),
+                        Wavefunction::Ncl64Array4(w)      => {
+                            w.slice(s![0usize, .., .., ..]).mapv(|v| v.norm_sqr() * factor) +
+                            w.slice(s![1usize, .., .., ..]).mapv(|v| v.norm_sqr() * factor)
+                        },
+                        _ => unreachable!("Invalid Wavefunction type."),
+                    };
+
+                    let (d1, d2, d3, d4) = match wavr {
+                        Wavefunction::Complex64Array3(w) => ( Some(w.mapv(|x| x.re * factor)), Some(w.mapv(|x| x.im * factor)), None, None ),
+                        Wavefunction::Float64Array3(w)   => ( Some(w), None, None, None),
+                        Wavefunction::Ncl64Array4(w)     => (
+                            Some(w.slice(s![0usize, .. ,.. ,..]).mapv(|v| v.re * factor)),
+                            Some(w.slice(s![0usize, .. ,.. ,..]).mapv(|v| v.im * factor)),
+                            Some(w.slice(s![1usize, .. ,.. ,..]).mapv(|v| v.re * factor)),
+                            Some(w.slice(s![1usize, .. ,.. ,..]).mapv(|v| v.im * factor)),
+                            ),
+                        _ => unreachable!("Invalid Wavefunction type."),
+                    };
+                    (chgd, d1, d2, d3, d4)
                 };
 
                 if has_normsquared {
@@ -264,18 +312,6 @@ I suggest providing `gamma_half` argument to avoid confusion.");
                         save_to_vasp(ofname, &chgd, &pos)?;
                     }
                 }
-
-                let (d1, d2, d3, d4) = match wavr {
-                    Wavefunction::Complex64Array3(w) => ( Some(w.mapv(|x| x.re * factor)), Some(w.mapv(|x| x.im * factor)), None, None ),
-                    Wavefunction::Float64Array3(w)   => ( Some(w), None, None, None),
-                    Wavefunction::Ncl64Array4(w)     => (
-                        Some(w.slice(s![0usize, .. ,.. ,..]).mapv(|v| v.re * factor)),
-                        Some(w.slice(s![0usize, .. ,.. ,..]).mapv(|v| v.im * factor)),
-                        Some(w.slice(s![1usize, .. ,.. ,..]).mapv(|v| v.re * factor)),
-                        Some(w.slice(s![1usize, .. ,.. ,..]).mapv(|v| v.im * factor)),
-                        ),
-                    _ => unreachable!("Invalid Wavefunction type."),
-                };
 
                 if has_real {
                     match wavecar_type {

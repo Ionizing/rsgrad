@@ -16,8 +16,6 @@ use ndrustfft::Complex;
 
 #[allow(non_camel_case_types)]
 type c64 = Complex<f64>;
-#[allow(non_camel_case_types)]
-type c32 = Complex<f32>;
 
 
 /// Read NormalCAR data, ikpoint count from 1, then returns the projector coefficients CPROJ
@@ -100,7 +98,7 @@ where P: AsRef<Path> {
     anyhow::ensure!(nproj * nproj * 4 * 2 == v.len(), "Invalid SocCar length.");
 
     let ret = na::Array1::from_vec(vec_to_complex(v));
-    Ok(ret.into_shape((4, nproj, nproj))?)
+    Ok(ret.into_shape_with_order((4, nproj, nproj))?)
 }
 
 
@@ -183,6 +181,7 @@ fn vec_to_complex(mut buffer: Vec<f64>) -> Vec<c64> {
 }
 
 
+#[cfg(test)]
 // https://stackoverflow.com/a/54188098/8977923
 fn slice_to_complex(buffer: &[f64]) -> &[c64] {
     unsafe {

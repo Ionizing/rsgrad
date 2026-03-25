@@ -174,8 +174,8 @@ fn test_debug_tdm_dp_components() {
     let mut dp_ps = [C128::new(0.0, 0.0); 3];
     for ig in 0..nplw {
         let cjc = cj[ig].conj();
-        for alpha in 0..3 {
-            dp_ps[alpha] += cjc * ci[ig] * gk[ig][alpha];
+        for (alpha, dp_ps_alpha) in dp_ps.iter_mut().enumerate() {
+            *dp_ps_alpha += cjc * ci[ig] * gk[ig][alpha];
         }
     }
     eprintln!("dp_ps[x,y,z] = {:.6e} {:.6e} {:.6e}", dp_ps[0], dp_ps[1], dp_ps[2]);
@@ -260,12 +260,12 @@ fn test_debug_tdm_dp_components() {
         let lmmax = lmmax_per_type[ntype];
         let nab = &nablaij[ntype];
         eprintln!("Atom {} (type={}, lmmax={}, nproj={}):", iatom, ntype, lmmax, nproj2);
-        for alpha in 0..1 { // just x
+        for (alpha, nab_alpha) in nab.iter().enumerate().take(1) { // just x
             let mut corr = C128::new(0.0, 0.0);
             for m in 0..lmmax {
                 let mut tmp = C128::new(0.0, 0.0);
                 for n in 0..lmmax {
-                    tmp += nab[alpha][m][n] * bi[nproj2 + n];
+                    tmp += nab_alpha[m][n] * bi[nproj2 + n];
                 }
                 let contrib = bj[nproj2 + m].conj() * tmp;
                 if contrib.norm() > 1e-8 {

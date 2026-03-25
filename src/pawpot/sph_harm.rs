@@ -96,16 +96,18 @@ pub fn sph_r(xyz: &[[f64; 3]], l: usize) -> Vec<Vec<f64>> {
             .collect();
 
         for (ii, m_signed) in (-(l as i64)..=(l as i64)).enumerate() {
-            result[i][ii] = if m_signed < 0 {
-                let am = (-m_signed) as usize;
-                let factor = if am % 2 == 0 { 1.0 } else { -1.0 };
-                factor * SQRT_2 * ylm_c[am].im
-            } else if m_signed == 0 {
-                ylm_c[0].re
-            } else {
-                let m = m_signed as usize;
-                let factor = if m % 2 == 0 { 1.0 } else { -1.0 };
-                factor * SQRT_2 * ylm_c[m].re
+            result[i][ii] = match m_signed.cmp(&0) {
+                std::cmp::Ordering::Less => {
+                    let am = (-m_signed) as usize;
+                    let factor = if am % 2 == 0 { 1.0 } else { -1.0 };
+                    factor * SQRT_2 * ylm_c[am].im
+                }
+                std::cmp::Ordering::Equal => ylm_c[0].re,
+                std::cmp::Ordering::Greater => {
+                    let m = m_signed as usize;
+                    let factor = if m % 2 == 0 { 1.0 } else { -1.0 };
+                    factor * SQRT_2 * ylm_c[m].re
+                }
             };
         }
     }

@@ -110,9 +110,9 @@ fn test_crexp_debug() {
     println!("ylm[l=0][ig=0..4]: {:?}", &ylm0[..4]);
 
     // Check qproj values
-    for ig in 0..5 {
+    for (ig, ylm_vals) in ylm0.iter().enumerate().take(5) {
         let q = spls[0].eval(nonlq.glen[ig]).unwrap_or(0.0);
-        let y = ylm0[ig][0];
+        let y = ylm_vals[0];
         let vol = poscar.volume().abs();
         let base = q * y / vol.sqrt();
         let factor = if ig == 0 { 1.0 } else { std::f64::consts::SQRT_2 };
@@ -130,8 +130,8 @@ fn test_qij_co2() {
     println!("C lmmax={}", pp_c.lmmax());
     println!("C ls={:?}", pp_c.ls());
     println!("Q_C diagonal:");
-    for i in 0..pp_c.lmmax() {
-        print!("  [{i}] = {:.8}", qij_c[i][i]);
+    for (i, row) in qij_c.iter().enumerate().take(pp_c.lmmax()) {
+        print!("  [{i}] = {:.8}", row[i]);
     }
     println!();
     println!("Q_C[0][1]={:.8}, Q_C[1][0]={:.8}", qij_c[0][1], qij_c[1][0]);
@@ -140,8 +140,8 @@ fn test_qij_co2() {
     let qij_o = pp_o.get_qij();
     println!("O lmmax={}", pp_o.lmmax());
     println!("Q_O diagonal:");
-    for i in 0..pp_o.lmmax() {
-        print!("  [{i}] = {:.8}", qij_o[i][i]);
+    for (i, row) in qij_o.iter().enumerate().take(pp_o.lmmax()) {
+        print!("  [{i}] = {:.8}", row[i]);
     }
     println!();
 

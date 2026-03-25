@@ -1287,7 +1287,7 @@ mod tests {
 
             let shape = wavr.shape();
 
-            let chgd = wavr.map(|v| v.re as f64);
+            let chgd = wavr.map(|v| v.re);
             let ngrid = [shape[0], shape[1], shape[2]];
 
             let pos = poscar::Poscar::from_file("POSCAR").unwrap();
@@ -1325,7 +1325,7 @@ mod tests {
 
             let shape = wavr.shape();
 
-            let chgd = wavr.slice(s![0, .., .., ..]).map(|v| v.re as f64);
+            let chgd = wavr.slice(s![0, .., .., ..]).map(|v| v.re);
             let ngrid = [shape[1], shape[2], shape[3]];
 
             let pos = poscar::Poscar::from_file("POSCAR").unwrap();
@@ -1363,7 +1363,7 @@ mod tests {
 
             let shape = wavr.shape();
 
-            let chgd = wavr.map(|v| *v as f64);
+            let chgd = wavr.map(|v| *v);
             let ngrid = [shape[0], shape[1], shape[2]];
 
             let pos = poscar::Poscar::from_file("POSCAR").unwrap();
@@ -1402,7 +1402,7 @@ mod tests {
 
             let shape = wavr.shape();
 
-            let chgd = wavr.mapv(|v| v as f64);
+            let chgd = wavr.mapv(|v| v);
             let ngrid = [shape[0], shape[1], shape[2]];
 
             let pos = poscar::Poscar::from_file("POSCAR").unwrap();

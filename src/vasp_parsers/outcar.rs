@@ -323,6 +323,7 @@ impl Outcar {
             .collect()
     }
 
+    #[cfg(test)]
     fn parse_magmoms(context: &str) -> Vec<Option<Vec<f64>>> {
         static RE: std::sync::OnceLock<Regex> = std::sync::OnceLock::new();
         let re = RE.get_or_init(|| Regex::new(r"free  energy").unwrap());
@@ -529,6 +530,7 @@ impl Outcar {
             .unzip()
     }
 
+    #[cfg(test)]
     fn parse_nscfs(context: &str) -> Vec<i32> {
         static RE: std::sync::OnceLock<Regex> = std::sync::OnceLock::new();
         let re = RE.get_or_init(|| Regex::new(r"free  energy").unwrap());
@@ -1789,9 +1791,9 @@ mod tests{
  NGX,Y,Z   is equivalent  to a cutoff of  12.40, 12.40, 12.47 a.u."#;
 
         let output = vec![10.811; 18].into_iter()
-            .chain(vec![14.001; 18].into_iter())
-            .chain(vec![12.011; 108].into_iter())
-            .chain(vec![22.990].into_iter())
+            .chain(vec![14.001; 18])
+            .chain(vec![12.011; 108])
+            .chain(vec![22.990])
             .collect::<Vec<_>>();
 
         assert_eq!(Outcar::parse_ion_masses(input), output);

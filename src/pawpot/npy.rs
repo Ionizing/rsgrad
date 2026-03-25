@@ -78,6 +78,7 @@ pub fn write_npy_c128(path: impl AsRef<Path>, data: &[C128], shape: &[u64]) -> R
 }
 
 /// Write f64 data as .npy (dtype '<f8').
+#[allow(dead_code)]
 pub fn write_npy_f64(path: impl AsRef<Path>, data: &[f64], shape: &[u64]) -> Result<()> {
     let mut w = BufWriter::new(File::create(path.as_ref())?);
     write_npy_header(&mut w, "<f8", shape)?;
@@ -88,6 +89,7 @@ pub fn write_npy_f64(path: impl AsRef<Path>, data: &[f64], shape: &[u64]) -> Res
 }
 
 /// Write i64 data as .npy (dtype '<i8').
+#[allow(dead_code)]
 pub fn write_npy_i64(path: impl AsRef<Path>, data: &[i64], shape: &[u64]) -> Result<()> {
     let mut w = BufWriter::new(File::create(path.as_ref())?);
     write_npy_header(&mut w, "<i8", shape)?;

@@ -58,7 +58,7 @@ fn test_read_poscar() -> Result<()> {
         assert!((ang[1] - a[1]).abs() < THRESHOLD);
         assert!((ang[2] - a[2]).abs() < THRESHOLD);
 
-        if vec!["POSCAR.O2"].contains(&f) {
+        if ["POSCAR.O2"].contains(&f) {
             assert!(pos.constraints.is_some());
             let constraints = pos.constraints.as_ref().unwrap();
             assert_eq!(constraints[0], [true, true, false]);

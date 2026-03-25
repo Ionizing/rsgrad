@@ -244,11 +244,11 @@ mod test {
 
     #[test]
     fn test_parse_lsorbit() -> Result<()> {
-        assert_eq!(Procar::parse_lsorbit(TXT_STD)?, false);
-        assert_eq!(Procar::parse_lsorbit(TXT_SMP)?, false);
-        assert_eq!(Procar::parse_lsorbit(TXT_PHS)?, false);
-        assert_eq!(Procar::parse_lsorbit(TXT_544)?, false);
-        assert_eq!(Procar::parse_lsorbit(TXT_NCL)?, true);
+        assert!(!Procar::parse_lsorbit(TXT_STD)?);
+        assert!(!Procar::parse_lsorbit(TXT_SMP)?);
+        assert!(!Procar::parse_lsorbit(TXT_PHS)?);
+        assert!(!Procar::parse_lsorbit(TXT_544)?);
+        assert!(Procar::parse_lsorbit(TXT_NCL)?);
         Ok(())
     }
 

@@ -93,11 +93,11 @@ impl Nonlq {
                 let tlp1 = 2 * l + 1;
                 let il_factor = C128::new(0.0, 1.0).powi(l as i32);
 
-                for ig in 0..nplw {
-                    if glen[ig] > gmax {
+                for (ig, &glen_ig) in glen.iter().enumerate().take(nplw) {
+                    if glen_ig > gmax {
                         continue;
                     }
-                    let q_val = spl.eval(glen[ig]).unwrap_or(0.0);
+                    let q_val = spl.eval(glen_ig).unwrap_or(0.0);
                     let ylm_vals = &ylm_per_l[l][ig];
 
                     for (im, &y) in ylm_vals.iter().enumerate() {

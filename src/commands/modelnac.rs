@@ -163,10 +163,7 @@ I suggest providing `gamma_half` argument to avoid confusion.");
         // <i|p|j>, transition dipole moment
         let mut pijs  = na::Array5::<c64>::zeros((nsw, nspin, 3, nbrange, nbrange));
 
-        let lncl    = match wav.wavecar_type {
-            WavecarType::NonCollinear => true,
-            _ => false,
-        };
+        let lncl = matches!(wav.wavecar_type, WavecarType::NonCollinear);
         let nspinor = if lncl { 2usize } else { 1 };
         let nplw = wav.nplws[ikpoint - 1] as usize;
         let mut phi = na::Array2::<c64>::zeros((nbrange, nplw));

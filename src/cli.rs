@@ -27,7 +27,6 @@ use crate::{
         gap::Gap,
         uc::Uc,
         modelnac::ModelNac,
-        aewfc::Aewfc,
         normalcar::Normalcar,
         overlap::Overlap,
     },
@@ -95,9 +94,6 @@ enum Opt {
     Uc,
 
     ModelNac,
-
-    Aewfc,
-
     Normalcar,
 
     Overlap,

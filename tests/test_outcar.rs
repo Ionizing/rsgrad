@@ -25,7 +25,7 @@ fn test_normal_outcar() -> Result<()> {
     let fname = get_fpath_in_current_dir!("OUTCAR_multiple_ionic_steps");
     let outcar = Outcar::from_file(&fname)?;
 
-    assert_eq!(outcar.lsorbit, false);
+    assert!(!outcar.lsorbit);
     assert_eq!(outcar.ispin, 1);
     assert_eq!(outcar.ibrion, 1);
     assert_eq!(outcar.nions, 32);
@@ -41,11 +41,11 @@ fn test_normal_outcar() -> Result<()> {
     assert_eq!(outcar.ion_iters.len(), 5);
     assert_eq!(outcar.vib, None);
     outcar.ion_iters.iter()
-                    .zip(vec![14i32, 8, 7, 8, 7].iter())
+                    .zip([14i32, 8, 7, 8, 7].iter())
                     .for_each(|(x, y)| assert_eq!(&x.nscf, y));
 
     outcar.ion_iters.iter()
-                    .zip(vec![-253.61858820,
+                    .zip([-253.61858820,
                               -253.61023247,
                               -253.61629491,
                               -253.58960211,
@@ -53,7 +53,7 @@ fn test_normal_outcar() -> Result<()> {
                     .for_each(|(x, y)| assert_eq!(&x.toten, y));
 
     outcar.ion_iters.iter()
-                    .zip(vec![-253.61858820,
+                    .zip([-253.61858820,
                               -253.61023247,
                               -253.61629491,
                               -253.58960211,
@@ -61,7 +61,7 @@ fn test_normal_outcar() -> Result<()> {
                     .for_each(|(x, y)| assert_eq!(&x.toten_z, y));
 
     outcar.ion_iters.iter()
-                    .zip(vec![-18.05, 21.53, -2.72, -5.24, -0.30].iter())
+                    .zip([-18.05, 21.53, -2.72, -5.24, -0.30].iter())
                     .for_each(|(x, y)| assert_eq!(&x.stress, y));
 
     assert_eq!(&outcar.ion_iters.last().unwrap().cell, &[[7.494265554, 0.000000000, -0.000000000],
@@ -83,7 +83,7 @@ fn test_unfinished_outcar() -> Result<()> {
     let fname = get_fpath_in_current_dir!("OUTCAR_unfinished");
     let outcar = Outcar::from_file(&fname)?;
 
-    assert_eq!(outcar.lsorbit, false);
+    assert!(!outcar.lsorbit);
     assert_eq!(outcar.ispin, 1);
     assert_eq!(outcar.ibrion, 1);
     assert_eq!(outcar.nions, 32);
@@ -100,19 +100,19 @@ fn test_unfinished_outcar() -> Result<()> {
     assert_eq!(outcar.vib, None);
 
     outcar.ion_iters.iter()
-                    .zip(vec![14i32].iter())
+                    .zip([14i32].iter())
                     .for_each(|(x, y)| assert_eq!(&x.nscf, y));
 
     outcar.ion_iters.iter()
-                    .zip(vec![-253.61858820].iter())
+                    .zip([-253.61858820].iter())
                     .for_each(|(x, y)| assert_eq!(&x.toten, y));
 
     outcar.ion_iters.iter()
-                    .zip(vec![-253.61858820].iter())
+                    .zip([-253.61858820].iter())
                     .for_each(|(x, y)| assert_eq!(&x.toten_z, y));
 
     outcar.ion_iters.iter()
-                    .zip(vec![-18.05].iter())
+                    .zip([-18.05].iter())
                     .for_each(|(x, y)| assert_eq!(&x.stress, y));
 
     assert_eq!(&outcar.ion_iters.last().unwrap().cell, &[[7.519999981,         0.0,         0.0],
@@ -134,7 +134,7 @@ fn test_ispin2_outcar() -> Result<()> {
     let fname = get_fpath_in_current_dir!("OUTCAR_ispin2");
     let outcar = Outcar::from_file(&fname)?;
 
-    assert_eq!(outcar.lsorbit, false);
+    assert!(!outcar.lsorbit);
     assert_eq!(outcar.ispin, 2);
     assert_eq!(outcar.ibrion, 1);
     assert_eq!(outcar.nions, 3);
@@ -151,23 +151,23 @@ fn test_ispin2_outcar() -> Result<()> {
     assert_eq!(outcar.vib, None);
 
     outcar.ion_iters.iter()
-                    .zip(vec![27i32, 6, 4].iter())
+                    .zip([27i32, 6, 4].iter())
                     .for_each(|(x, y)| assert_eq!(&x.nscf, y));
 
     outcar.ion_iters.iter()
-                    .zip(vec![-18.95794080,
+                    .zip([-18.95794080,
                               -18.95854979,
                               -18.95862392].iter())
                     .for_each(|(x, y)| assert_eq!(&x.toten, y));
 
     outcar.ion_iters.iter()
-                    .zip(vec![-18.95729223,
+                    .zip([-18.95729223,
                               -18.95789288,
                               -18.95796667].iter())
                     .for_each(|(x, y)| assert_eq!(&x.toten_z, y));
 
     outcar.ion_iters.iter()
-                    .zip(vec![-0.68, -1.59, -1.61].iter())
+                    .zip([-0.68, -1.59, -1.61].iter())
                     .for_each(|(x, y)| assert_eq!(&x.stress, y));
 
     assert_eq!(outcar.ion_iters.last().unwrap()
@@ -176,7 +176,7 @@ fn test_ispin2_outcar() -> Result<()> {
                .forces.last().unwrap(), &[0.000000, 0.00000 , -0.000349]);
 
     outcar.ion_iters.iter()
-                    .zip(vec![Some(vec![0.6003306]),
+                    .zip([Some(vec![0.6003306]),
                               Some(vec![0.5997977]),
                               Some(vec![0.5995733])].iter())
                     .for_each(|(x, y)| assert_eq!(&x.magmom, y));
@@ -190,7 +190,7 @@ fn test_ncl_outcar() -> Result<()> {
     let fname = get_fpath_in_current_dir!("OUTCAR_ncl");
     let outcar = Outcar::from_file(&fname)?;
 
-    assert_eq!(outcar.lsorbit, true);
+    assert!(outcar.lsorbit);
     assert_eq!(outcar.ispin, 1);
     assert_eq!(outcar.ibrion, -1);
     assert_eq!(outcar.nions, 3);
@@ -207,19 +207,19 @@ fn test_ncl_outcar() -> Result<()> {
     assert_eq!(outcar.vib, None);
 
     outcar.ion_iters.iter()
-                    .zip(vec![31i32].iter())
+                    .zip([31i32].iter())
                     .for_each(|(x, y)| assert_eq!(&x.nscf, y));
 
     outcar.ion_iters.iter()
-                    .zip(vec![-19.00260977].iter())
+                    .zip([-19.00260977].iter())
                     .for_each(|(x, y)| assert_eq!(&x.toten, y));
 
     outcar.ion_iters.iter()
-                    .zip(vec![-19.00194579].iter())
+                    .zip([-19.00194579].iter())
                     .for_each(|(x, y)| assert_eq!(&x.toten_z, y));
 
     outcar.ion_iters.iter()
-                    .zip(vec![-1.77].iter())
+                    .zip([-1.77].iter())
                     .for_each(|(x, y)| assert_eq!(&x.stress, y));
 
     assert_eq!(outcar.ion_iters.last().unwrap().positions, vec![[1.90969, -0.00000, 2.55994],
@@ -231,7 +231,7 @@ fn test_ncl_outcar() -> Result<()> {
                                                              [ 0.000006, -0.000003, -0.000618]]);
 
     outcar.ion_iters.iter()
-                    .zip(vec![Some(vec![ 0.0000227, -0.0001244,  0.5998908])].iter())
+                    .zip([Some(vec![ 0.0000227, -0.0001244,  0.5998908])].iter())
                     .for_each(|(x, y)| assert_eq!(&x.magmom, y));
     Ok(())
 }
@@ -241,7 +241,7 @@ fn test_vib_outcar() -> Result<()> {
     let fname = get_fpath_in_current_dir!("OUTCAR_vibrations");
     let outcar = Outcar::from_file(&fname)?;
 
-    assert_eq!(outcar.lsorbit, false);
+    assert!(!outcar.lsorbit);
     assert_eq!(outcar.ispin, 1);
     assert_eq!(outcar.ibrion, 5);
     assert_eq!(outcar.nions, 4);
@@ -257,17 +257,17 @@ fn test_vib_outcar() -> Result<()> {
     assert_eq!(outcar.ion_iters.len(), 25);
 
     outcar.vib.as_ref().unwrap().iter()
-                                .zip(vec![3627.910256, 3620.673620, 3431.763448,
+                                .zip([3627.910256, 3620.673620, 3431.763448,
                                           1551.740811, 1537.186276,  388.963336,
                                            370.876616,  370.090822,    0.658347,
                                              0.752260,    1.873335,  702.438182].iter())
                                 .for_each(|(x, y)| assert_eq!(&x.freq, y));
 
     outcar.vib.as_ref().unwrap().iter()
-                                .zip(vec![false; 9].iter().chain(vec![true; 3].iter()))
+                                .zip([false; 9].iter().chain([true; 3].iter()))
                                 .for_each(|(x, y)| assert_eq!(&x.is_imagine, y));
 
-    outcar.ion_iters.iter().zip(vec![-6.17, -7.03, -5.27, -6.69, -5.65,
+    outcar.ion_iters.iter().zip([-6.17, -7.03, -5.27, -6.69, -5.65,
                                      -6.18, -6.18, -6.18, -6.18, -5.11,
                                      -7.16, -6.18, -6.18, -5.27, -7.03,
                                      -6.68, -5.65, -6.18, -6.18, -6.13,

@@ -14,6 +14,5 @@ pub mod tdm;
 pub mod gap;
 pub mod uc;
 pub mod modelnac;
-pub mod aewfc;
 pub mod normalcar;
 pub mod overlap;
