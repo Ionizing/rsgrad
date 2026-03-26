@@ -273,10 +273,11 @@ I suggest providing `gamma_half` argument to avoid confusion.");
                     let wavecar = PawWavecar::from_file(&self.wavecar)?;
                     let mut aewfc = VaspAeWfc::new(wavecar, &poscar, &pawpot, ikpoint as usize + 1, self.aecut)?;
                     let [nx, ny, nz] = aewfc.aegrid;
-                    let phi = aewfc.get_ae_wfc(ispin as usize + 1, iband as usize + 1, false)?;
-                    let chgd = Array3::from_shape_vec((nx, ny, nz), phi.iter().map(|v| v.norm_sqr() * pos.get_volume().abs()).collect())?;
-                    let real = Array3::from_shape_vec((nx, ny, nz), phi.iter().map(|v| v.re).collect())?;
-                    let imag = Array3::from_shape_vec((nx, ny, nz), phi.iter().map(|v| v.im).collect())?;
+                    let phi = aewfc.get_ae_wfc(ispin as usize + 1, iband as usize + 1, true)?;
+                    let ae_factor = (nx * ny * nz) as f64;
+                    let chgd = Array3::from_shape_vec((nx, ny, nz), phi.iter().map(|v| v.norm_sqr() * ae_factor).collect())?;
+                    let real = Array3::from_shape_vec((nx, ny, nz), phi.iter().map(|v| v.re * ae_factor).collect())?;
+                    let imag = Array3::from_shape_vec((nx, ny, nz), phi.iter().map(|v| v.im * ae_factor).collect())?;
                     (chgd, Some(real), Some(imag), None, None)
                 } else {
                     let wavr = wav.get_wavefunction_realspace(ispin, ikpoint, iband, Some(ngrid))?.normalize();

@@ -48,8 +48,6 @@ pub struct VaspAeWfc {
 
     q_ae_core: Vec<Vec<Vec<f64>>>,
     q_ps_core: Vec<Vec<Vec<f64>>>,
-
-    volume: f64,
 }
 
 impl VaspAeWfc {
@@ -65,7 +63,6 @@ impl VaspAeWfc {
         let kvec = wavecar.kpoints[ikpt - 1].kvec;
         let bcell = wavecar.bcell();
         let volume = poscar.volume().abs();
-
         let aecut = if aecut < 0.0 { -aecut * pscut } else { aecut.max(pscut) };
 
         let ngrid_ps = compute_ngrid_from_cell(&poscar.cell, pscut);
@@ -143,7 +140,6 @@ impl VaspAeWfc {
             cqfak_ae,
             q_ae_core,
             q_ps_core,
-            volume,
         })
     }
 
@@ -263,6 +259,51 @@ impl VaspAeWfc {
         Ok(phi_ae)
     }
 
+    /// Debug helper: return the raw (sg_ae, sg_ps) G-space vectors for a given band.
+    /// These are the on-site AE and PS correction amplitudes over the AE G-sphere,
+    /// before the IFFT into real space.
+    pub fn compute_sg_ae_ps(
+        &mut self,
+        ispin: usize,
+        iband: usize,
+    ) -> Result<(Vec<C128>, Vec<C128>)> {
+        let coeffs_raw = self.wavecar.read_band_coeff(ispin, self.ikpt, iband)?;
+        let beta = self.nonlq.proj(&coeffs_raw);
+
+        let n_ae = self.ae_gvec.len();
+        let natoms = self.element_idx.len();
+
+        let mut sg_ae = vec![C128::new(0.0, 0.0); n_ae];
+        let mut sg_ps = vec![C128::new(0.0, 0.0); n_ae];
+
+        let mut nproj = 0;
+        for iatom in 0..natoms {
+            let ntype = self.element_idx[iatom];
+            let lmmax = self.lmmax_per_type[ntype];
+            let cqfak = &self.cqfak_ae[ntype];
+            let qae = &self.q_ae_core[ntype];
+            let qps = &self.q_ps_core[ntype];
+
+            for ig in 0..n_ae {
+                let phase = self.crexp_ae[ig][iatom];
+                let mut sum_ae = C128::new(0.0, 0.0);
+                let mut sum_ps = C128::new(0.0, 0.0);
+                for ilm in 0..lmmax {
+                    let b = beta[nproj + ilm];
+                    let il = cqfak[ilm];
+                    sum_ae += il * b * qae[ilm][ig];
+                    sum_ps += il * b * qps[ilm][ig];
+                }
+                sg_ae[ig] += phase * sum_ae;
+                sg_ps[ig] += phase * sum_ps;
+            }
+
+            nproj += lmmax;
+        }
+
+        Ok((sg_ae, sg_ps))
+    }
+
     /// Write the AE wavefunction density |ψ|² to a VASP CHGCAR-format file.
     pub fn write_ae_density(
         &mut self,
@@ -273,9 +314,9 @@ impl VaspAeWfc {
     ) -> Result<()> {
         use std::io::Write;
 
-        let phi = self.get_ae_wfc(ispin, iband, false)?;
+        let phi = self.get_ae_wfc(ispin, iband, true)?;
         let [nx, ny, nz] = self.aegrid;
-        let volume = poscar.volume().abs();
+        let ae_factor = (nx * ny * nz) as f64;
 
         let mut f = std::io::BufWriter::new(std::fs::File::create(path.as_ref())?);
 
@@ -307,7 +348,7 @@ impl VaspAeWfc {
             for iy in 0..ny {
                 for iz in 0..nz {
                     let idx = ix * ny * nz + iy * nz + iz;
-                    let rho = phi[idx].norm_sqr() * volume;
+                    let rho = phi[idx].norm_sqr() * ae_factor;
                     write!(f, "  {rho:18.10E}")?;
                     count += 1;
                     if count % 5 == 0 {
@@ -346,10 +387,10 @@ impl VaspAeWfc {
         iband: usize,
         path: impl AsRef<Path>,
     ) -> Result<()> {
-        let wfc = self.get_ae_wfc(ispin, iband, false)?;
+        let wfc = self.get_ae_wfc(ispin, iband, true)?;
         let [nx, ny, nz] = self.aegrid;
-        let volume = self.volume;
-        let density: Vec<f64> = wfc.iter().map(|c| c.norm_sqr() * volume).collect();
+        let ae_factor = (nx * ny * nz) as f64;
+        let density: Vec<f64> = wfc.iter().map(|c| c.norm_sqr() * ae_factor).collect();
         let shape = [nx as u64, ny as u64, nz as u64];
 
         let mut npz = NpzWriter::create(path.as_ref())?;
@@ -445,7 +486,7 @@ fn sbt_direct(
         if radgrid[i] >= rmax {
             break;
         }
-        sum += simp_weights[i] * phi[i] * spherical_jn(l as i32, q * radgrid[i]);
+        sum += simp_weights[i] * radgrid[i] * phi[i] * spherical_jn(l as i32, q * radgrid[i]);
     }
     4.0 * PI * sum
 }

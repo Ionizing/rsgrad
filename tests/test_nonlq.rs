@@ -4,6 +4,7 @@
 use std::convert::TryInto;
 
 use rsgrad::pawpot::{Nonlq, PawPotcar, PawPoscar, PawWavecar};
+use rsgrad::pawpot::VaspAeWfc;
 use num::complex::Complex;
 
 type C128 = Complex<f64>;
@@ -283,4 +284,36 @@ fn test_debug_tdm_dp_components() {
             bj[nproj2..nproj2+lmmax].iter().map(|v| format!("{:.3e}", v.norm())).collect::<Vec<_>>());
         nproj2 += lmmax;
     }
+}
+
+/// Debug test: print sum of |sg_ae|², |sg_ps|², and |sg_ae - sg_ps|² for band 1, kpt 1.
+/// Uses MoS2 test data (WAVECAR, POSCAR, POTCAR in projectors_lreal_false/).
+#[test]
+fn test_debug_sg_ae_ps_norm() {
+    let dir = "tests/pawpot/projectors_lreal_false";
+    let poscar = PawPoscar::from_file(format!("{dir}/POSCAR")).unwrap();
+    let pawpot = PawPotcar::from_file(&format!("{dir}/POTCAR")).unwrap();
+    let wavecar = PawWavecar::from_file(format!("{dir}/WAVECAR")).unwrap();
+
+    let ikpt = 1usize;
+    let iband = 1usize;
+    let ispin = 1usize;
+
+    let mut ae = VaspAeWfc::new(wavecar, &poscar, &pawpot, ikpt, -4.0).unwrap();
+
+    let (sg_ae, sg_ps) = ae.compute_sg_ae_ps(ispin, iband).unwrap();
+
+    let n_ae = sg_ae.len();
+
+    let sum_ae_sq: f64 = sg_ae.iter().map(|v| v.norm_sqr()).sum();
+    let sum_ps_sq: f64 = sg_ps.iter().map(|v| v.norm_sqr()).sum();
+    let sum_diff_sq: f64 = sg_ae.iter()
+        .zip(sg_ps.iter())
+        .map(|(ae, ps)| (ae - ps).norm_sqr())
+        .sum();
+
+    println!("MoS2 band={iband} kpt={ikpt}: n_ae_gvecs={n_ae}");
+    println!("  sum |sg_ae[ig]|^2      = {sum_ae_sq:.8e}");
+    println!("  sum |sg_ps[ig]|^2      = {sum_ps_sq:.8e}");
+    println!("  sum |sg_ae-sg_ps|^2    = {sum_diff_sq:.8e}");
 }

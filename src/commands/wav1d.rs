@@ -193,7 +193,7 @@ I suggest you provide `gamma_half` argument to avoid confusion.");
                     let wavecar = PawWavecar::from_file(&self.wavecar)?;
                     let mut aewfc = VaspAeWfc::new(wavecar, &poscar, &pawpot, ikpoint as usize + 1, self.aecut)?;
                     let [nx, ny, nz] = aewfc.aegrid;
-                    let phi = aewfc.get_ae_wfc(ispin as usize + 1, iband as usize + 1, false)?;
+                    let phi = aewfc.get_ae_wfc(ispin as usize + 1, iband as usize + 1, true)?;
                     ndarray::Array3::from_shape_vec((nx, ny, nz), phi.iter().map(|v| v.norm_sqr()).collect())?
                 } else {
                     let wavr = wav.get_wavefunction_realspace(ispin, ikpoint, iband, None)
